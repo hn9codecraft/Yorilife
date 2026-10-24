@@ -1,0 +1,15 @@
+/* ==========================================================================
+   Yorilife ERP — stylesheet entry point.
+   Order matters: Bootstrap first, then variables, then the Yorilife theme.
+   ========================================================================== */
+
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "bootstrap-icons/font/bootstrap-icons.min.css";
+
+@import "@fontsource/poppins/400.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
+
+@import "./variable.css";
+@import "./theme.css";

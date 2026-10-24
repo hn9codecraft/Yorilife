@@ -1,0 +1,216 @@
+/* ==========================================================================
+   Yorilife ERP — Design tokens
+   Single source of truth for brand colours, typography, spacing and layout.
+   Supporting colours were sampled from https://yorilife.in/ (Oct 2026):
+     #24AEB1 brand teal, #1C8687 teal hover, #1D2A38 heading navy,
+     #7D879C muted grey-blue, #EB3A7B accent pink.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand ---------------------------------------------------------- */
+  --color-primary: #24aeb1;          /* Brand teal — accents, focus, icons */
+  --color-primary-rgb: 36, 174, 177;
+  --color-primary-50: #e9f7f7;
+  --color-primary-100: #c9ecec;
+  --color-primary-200: #94d8d9;
+  --color-primary-600: #1a7f81;      /* Filled buttons/links: 4.8:1 on white */
+  --color-primary-700: #156769;      /* Hover / active */
+  --color-primary-800: #0f4f50;      /* Text on primary-50 */
+
+  --color-secondary: #373f85;        /* Brand navy — 9.5:1 on white */
+  --color-secondary-rgb: 55, 63, 133;
+  --color-secondary-50: #eeeff7;
+  --color-secondary-100: #d5d8eb;
+  --color-secondary-700: #2c336c;
+  --color-secondary-800: #222754;
+
+  --color-accent: #eb3a7b;           /* Website accent pink — use sparingly */
+
+  /* ---- Text ----------------------------------------------------------- */
+  --color-text: #1d2a38;
+  --color-text-rgb: 29, 42, 56;
+  --color-text-muted: #5f6b7e;       /* 5.4:1 on white — secondary text */
+  --color-text-subtle: #7d879c;      /* Placeholders, disabled, meta only */
+  --color-text-inverse: #ffffff;
+  --color-heading: #1d2a38;
+
+  /* ---- Backgrounds & surfaces ---------------------------------------- */
+  --color-background: #f5f8fa;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f0f4f7;
+  --color-surface-hover: #f3f8f8;
+
+  /* ---- Borders -------------------------------------------------------- */
+  --color-border: #e3e8ee;
+  --color-border-strong: #cfd7e1;
+
+  /* ---- Status --------------------------------------------------------- */
+  --color-success: #1f8a5b;
+  --color-success-rgb: 31, 138, 91;
+  --color-success-bg: #e7f5ee;
+  --color-success-text: #155c3d;
+
+  --color-warning: #d98e04;
+  --color-warning-rgb: 217, 142, 4;
+  --color-warning-bg: #fdf4e3;
+  --color-warning-text: #7a5003;
+
+  --color-danger: #d23c47;
+  --color-danger-rgb: 210, 60, 71;
+  --color-danger-bg: #fbeaeb;
+  --color-danger-text: #8c2730;
+
+  --color-info: #3165c8;
+  --color-info-rgb: 49, 101, 200;
+  --color-info-bg: #e9effa;
+  --color-info-text: #234a93;
+
+  /* ---- Focus ---------------------------------------------------------- */
+  --focus-ring-color: rgba(var(--color-primary-rgb), 0.35);
+  --focus-ring: 0 0 0 0.25rem var(--focus-ring-color);
+
+  /* ---- Typography ----------------------------------------------------- */
+  --font-family-base: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Fluid type scale. Every size grows linearly from a 320px viewport (min)
+     to a 1440px viewport (max) and is clamped outside that range.
+     rem keeps browser zoom working; vw only appears inside clamp().
+     These are the only font-size values the theme uses — do not add
+     font-size media queries; pick a token instead.            320px → 1440px */
+  --font-size-xs: clamp(0.75rem, 0.7321rem + 0.0893vw, 0.8125rem);    /* 12 → 13 */
+  --font-size-sm: clamp(0.8125rem, 0.7946rem + 0.0893vw, 0.875rem);   /* 13 → 14 */
+  --font-size-base: clamp(0.875rem, 0.8571rem + 0.0893vw, 0.9375rem); /* 14 → 15  dense ERP body */
+  --font-size-md: clamp(0.9375rem, 0.9018rem + 0.1786vw, 1.0625rem);  /* 15 → 17 */
+  --font-size-lg: clamp(1rem, 0.9643rem + 0.1786vw, 1.125rem);        /* 16 → 18 */
+  --font-size-xl: clamp(1.0625rem, 1.0089rem + 0.2679vw, 1.25rem);    /* 17 → 20 */
+  --font-size-2xl: clamp(1.1875rem, 1.0982rem + 0.4464vw, 1.5rem);    /* 19 → 24 */
+  --font-size-3xl: clamp(1.375rem, 1.2321rem + 0.7143vw, 1.875rem);   /* 22 → 30 */
+
+  /* Icon glyph sizes (Bootstrap Icons are a font, so they share the scale) */
+  --icon-size-sm: var(--font-size-md);
+  --icon-size-md: var(--font-size-lg);
+  --icon-size-lg: var(--font-size-2xl);
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-base: 1.55;
+
+  /* ---- Spacing (4px scale) ------------------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* ---- Radius --------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 50rem;
+
+  /* ---- Shadows -------------------------------------------------------- */
+  --shadow-xs: 0 1px 2px rgba(var(--color-text-rgb), 0.06);
+  --shadow-sm: 0 1px 3px rgba(var(--color-text-rgb), 0.08), 0 1px 2px rgba(var(--color-text-rgb), 0.04);
+  --shadow-md: 0 4px 12px rgba(var(--color-text-rgb), 0.08);
+  --shadow-lg: 0 12px 32px rgba(var(--color-text-rgb), 0.12);
+
+  /* ---- Layout --------------------------------------------------------- */
+  --header-height: 64px;
+  --sidebar-width: 264px;
+  --sidebar-collapsed-width: 76px;   /* Desktop icon rail */
+  --sidebar-current-width: var(--sidebar-width);
+  --container-max-width: 1320px;
+  --container-padding: var(--space-4);
+  --logo-height: 36px;
+  --logo-height-collapsed: 22px;     /* Logo inside the collapsed rail */
+
+  --z-header: 1020;
+  --z-sidebar-backdrop: 1035;
+  --z-sidebar: 1040;
+
+  --transition-fast: 150ms ease-in-out;
+  --transition-base: 220ms ease-in-out;
+
+  /* ---- Breakpoints (reference only — CSS vars can't be used in @media).
+     Mirror Bootstrap 5: sm 576, md 768, lg 992, xl 1200, xxl 1400. ---- */
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1400px;
+}
+
+/* ==========================================================================
+   Bootstrap bridge — map Bootstrap's root variables onto Yorilife tokens so
+   utilities (.text-primary, .bg-secondary-subtle, .border, etc.) stay on-brand.
+   ========================================================================== */
+:root {
+  --bs-primary: var(--color-primary-600);
+  --bs-primary-rgb: 26, 127, 129;
+  --bs-primary-text-emphasis: var(--color-primary-800);
+  --bs-primary-bg-subtle: var(--color-primary-50);
+  --bs-primary-border-subtle: var(--color-primary-200);
+
+  --bs-secondary: var(--color-secondary);
+  --bs-secondary-rgb: var(--color-secondary-rgb);
+  --bs-secondary-text-emphasis: var(--color-secondary-800);
+  --bs-secondary-bg-subtle: var(--color-secondary-50);
+  --bs-secondary-border-subtle: var(--color-secondary-100);
+
+  --bs-success: var(--color-success);
+  --bs-success-rgb: var(--color-success-rgb);
+  --bs-success-text-emphasis: var(--color-success-text);
+  --bs-success-bg-subtle: var(--color-success-bg);
+
+  --bs-warning: var(--color-warning);
+  --bs-warning-rgb: var(--color-warning-rgb);
+  --bs-warning-text-emphasis: var(--color-warning-text);
+  --bs-warning-bg-subtle: var(--color-warning-bg);
+
+  --bs-danger: var(--color-danger);
+  --bs-danger-rgb: var(--color-danger-rgb);
+  --bs-danger-text-emphasis: var(--color-danger-text);
+  --bs-danger-bg-subtle: var(--color-danger-bg);
+
+  --bs-info: var(--color-info);
+  --bs-info-rgb: var(--color-info-rgb);
+  --bs-info-text-emphasis: var(--color-info-text);
+  --bs-info-bg-subtle: var(--color-info-bg);
+
+  --bs-body-font-family: var(--font-family-base);
+  --bs-body-font-size: var(--font-size-base);
+  --bs-body-line-height: var(--line-height-base);
+  --bs-body-color: var(--color-text);
+  --bs-body-color-rgb: var(--color-text-rgb);
+  --bs-body-bg: var(--color-background);
+  --bs-emphasis-color: var(--color-text);
+  --bs-secondary-color: var(--color-text-muted);
+  --bs-tertiary-bg: var(--color-surface-muted);
+  --bs-heading-color: var(--color-heading);
+
+  --bs-border-color: var(--color-border);
+  --bs-border-radius-sm: var(--radius-sm);
+  --bs-border-radius: var(--radius-sm);
+  --bs-border-radius-lg: var(--radius-md);
+  --bs-border-radius-xl: var(--radius-lg);
+
+  --bs-link-color: var(--color-primary-600);
+  --bs-link-color-rgb: 26, 127, 129;
+  --bs-link-hover-color: var(--color-primary-700);
+  --bs-link-hover-color-rgb: 21, 103, 105;
+
+  --bs-focus-ring-color: var(--focus-ring-color);
+  --bs-form-valid-color: var(--color-success);
+  --bs-form-valid-border-color: var(--color-success);
+  --bs-form-invalid-color: var(--color-danger);
+  --bs-form-invalid-border-color: var(--color-danger);
+}

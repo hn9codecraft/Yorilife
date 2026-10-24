@@ -1,0 +1,1842 @@
+/* ==========================================================================
+   Yorilife ERP — Theme
+   All Yorilife styles on top of Bootstrap. Values come from variable.css.
+
+   Sections (order matters — later sections override earlier ones):
+     1. Reset
+     2. Typography
+     3. Layout
+     4. Components
+     5. Utilities
+     6. Responsive  (must stay last)
+   ========================================================================== */
+
+/* ==========================================================================
+   1. Reset — small additions on top of Bootstrap Reboot.
+   ========================================================================== */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+/* Bootstrap icons and inline SVGs inside text stay inline */
+.bi,
+p svg,
+.btn svg {
+  display: inline-block;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Long unbroken strings (codes, emails) must not push the page wider */
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+li,
+dd,
+td {
+  overflow-wrap: break-word;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Bootstrap components draw their own focus ring via box-shadow */
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible,
+.page-link:focus-visible,
+.dropdown-item:focus-visible,
+.btn-close:focus-visible {
+  outline: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    /* 0s, not 0.01ms: a tiny non-zero duration makes every element (default
+       transition-property: all) briefly animate inherited `visibility`, which
+       leaves just-revealed controls unfocusable for a moment. */
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   2. Typography — Poppins (self-hosted via @fontsource/poppins).
+   All sizes use the fluid clamp() tokens from variable.css (--font-size-*),
+   so text scales smoothly with the viewport without font-size media queries.
+   ========================================================================== */
+
+body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-base);
+  color: var(--color-text);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+  font-family: var(--font-family-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--color-heading);
+  margin-bottom: var(--space-3);
+}
+
+h1, .h1 { font-size: var(--font-size-3xl); }
+h2, .h2 { font-size: var(--font-size-2xl); }
+h3, .h3 { font-size: var(--font-size-xl); }
+h4, .h4 { font-size: var(--font-size-lg); }
+h5, .h5 { font-size: var(--font-size-md); }
+h6, .h6 { font-size: var(--font-size-base); }
+
+p {
+  margin-bottom: var(--space-4);
+}
+
+small,
+.small {
+  font-size: var(--font-size-sm);
+}
+
+.text-muted,
+.text-body-secondary {
+  color: var(--color-text-muted) !important;
+}
+
+.text-xs { font-size: var(--font-size-xs); }
+.text-sm { font-size: var(--font-size-sm); }
+
+.fw-medium { font-weight: var(--font-weight-medium) !important; }
+.fw-semibold { font-weight: var(--font-weight-semibold) !important; }
+
+/* Small uppercase label used for section captions and table group headers */
+.eyebrow {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--font-family-mono);
+}
+
+/* ==========================================================================
+   3. Layout — application shell (sidebar, top bar, main, footer) and page
+   structure. Mobile-first: the sidebar is an off-canvas drawer by default and
+   becomes persistent at lg (992px) in section 6 (Responsive).
+   ========================================================================== */
+
+.app-shell {
+  min-height: 100vh;
+  background-color: var(--color-background);
+}
+
+.app-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 0;
+}
+
+/* ---- Sidebar (mobile: off-canvas drawer) ------------------------------ */
+.app-sidebar {
+  position: fixed;
+  inset-block: 0;
+  left: 0;
+  z-index: var(--z-sidebar);
+  display: flex;
+  flex-direction: column;
+  width: min(var(--sidebar-width), calc(100vw - 3rem));
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform var(--transition-base),
+    visibility 0s linear var(--transition-base);
+}
+
+.is-sidebar-open .app-sidebar {
+  transform: none;
+  visibility: visible;
+  box-shadow: var(--shadow-lg);
+  transition: transform var(--transition-base);
+}
+
+/* Same brand stripe as the top bar so both headers line up */
+.app-sidebar::before {
+  content: "";
+  flex-shrink: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+}
+
+.app-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  min-height: var(--header-height);
+  padding-inline: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-sidebar__nav {
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-3) var(--space-3) var(--space-6);
+}
+
+.app-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sidebar-backdrop);
+  background-color: rgba(var(--color-text-rgb), 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--transition-base),
+    visibility 0s linear var(--transition-base);
+}
+
+.is-sidebar-open .app-sidebar-backdrop {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--transition-base);
+}
+
+/* ---- Sidebar navigation ----------------------------------------------- */
+.sidebar-nav,
+.sidebar-group__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-group + .sidebar-group {
+  margin-top: var(--space-1);
+}
+
+.sidebar-group__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+  text-align: left;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar-group__toggle:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.sidebar-group__icon {
+  flex-shrink: 0;
+  width: 1.25em;
+  font-size: var(--icon-size-md);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.sidebar-group__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.sidebar-group__chevron {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+  transition: transform var(--transition-fast);
+}
+
+/* Child combinators: an open parent must not rotate a closed subgroup's chevron */
+.sidebar-group.is-open > .sidebar-group__toggle .sidebar-group__chevron,
+.sidebar-subgroup.is-open > .sidebar-subgroup__toggle .sidebar-group__chevron {
+  transform: rotate(180deg);
+}
+
+/* Top-level page link (Dashboard, Announcements): styled like a group header */
+.sidebar-toplink {
+  text-decoration: none;
+}
+
+.sidebar-toplink:hover {
+  color: var(--color-text);
+}
+
+/* Current page: tinted background + bold navy text + teal bar (not colour alone) */
+.sidebar-toplink.active {
+  color: var(--color-secondary);
+  background-color: var(--color-primary-50);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.sidebar-toplink.active .sidebar-group__icon {
+  color: var(--color-primary-600);
+}
+
+/* Section containing the current page: navy label + teal icon */
+.sidebar-group.is-active > .sidebar-group__toggle {
+  color: var(--color-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sidebar-group.is-active .sidebar-group__icon {
+  color: var(--color-primary-600);
+}
+
+/* Animated expand/collapse; visibility keeps closed links out of the tab order */
+.sidebar-group__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--transition-base),
+    visibility 0s linear var(--transition-base);
+}
+
+.sidebar-group.is-open > .sidebar-group__panel,
+.sidebar-subgroup.is-open > .sidebar-group__panel {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows var(--transition-base);
+}
+
+/* Nested submenu (e.g. Sales Management › Reports): a toggle row that looks
+   like a page link, plus a chevron; its pages are indented one more level */
+.sidebar-subgroup__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.35;
+  text-align: left;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar-subgroup__toggle:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.sidebar-subgroup__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sidebar-subgroup.is-active > .sidebar-subgroup__toggle {
+  color: var(--color-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sidebar-subgroup .sidebar-group__list {
+  margin-left: var(--space-3);
+}
+
+/* No vertical padding here: padding can't collapse to 0fr, so the closed
+   panel would leave a gap. Vertical spacing lives on the first/last items. */
+.sidebar-group__list {
+  min-height: 0;
+  overflow: hidden;
+  margin-left: 1.35rem;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--color-border);
+}
+
+.sidebar-group__list > li:first-child {
+  margin-top: var(--space-1);
+}
+
+.sidebar-group__list > li:last-child {
+  margin-bottom: var(--space-2);
+}
+
+.sidebar-link {
+  position: relative;
+  display: block;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.35;
+  text-decoration: none;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar-link:hover {
+  color: var(--color-text);
+  background-color: var(--color-surface-hover);
+}
+
+/* Current page: tinted background + bold text + teal bar (not colour alone) */
+.sidebar-link.active {
+  color: var(--color-primary-800);
+  background-color: var(--color-primary-50);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sidebar-link.active::before {
+  content: "";
+  position: absolute;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  left: calc(var(--space-3) * -1);
+  width: 3px;
+  border-radius: 3px;
+  background-color: var(--color-primary);
+}
+
+/* Keep focus rings inside the scrollable nav so they are never clipped */
+.sidebar-group__toggle:focus-visible,
+.sidebar-subgroup__toggle:focus-visible,
+.sidebar-link:focus-visible {
+  outline-offset: -2px;
+}
+
+/* ---- Top bar ----------------------------------------------------------- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Thin brand stripe — teal into navy, echoing the two logo colours */
+.app-header::before {
+  content: "";
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+}
+
+.app-header__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--header-height);
+  padding-inline: var(--container-padding);
+}
+
+/* Current section + page; truncates instead of pushing the actions off-screen */
+.app-header__context {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.app-header__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-heading);
+}
+
+.app-header__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-user-menu {
+  --bs-btn-padding-x: 0.75rem;
+}
+
+.app-user-menu .bi {
+  font-size: var(--icon-size-md);
+}
+
+.app-user-menu__label {
+  max-width: 12rem;
+}
+
+.app-user-menu__menu {
+  min-width: 15rem;
+  max-width: calc(100vw - 2rem);
+}
+
+.app-user-menu__identity {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  padding: var(--space-2) var(--space-4);
+}
+
+.app-user-menu__name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.app-user-menu__email {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Brand (logo + product name) -------------------------------------- */
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-brand:hover {
+  color: inherit;
+}
+
+/* Logo keeps its intrinsic 792x365 ratio: fixed height, auto width */
+.app-brand__logo {
+  height: var(--logo-height);
+  width: auto;
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.app-brand__divider {
+  width: 1px;
+  height: 28px;
+  background-color: var(--color-border-strong);
+  flex-shrink: 0;
+}
+
+.app-brand__name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-secondary);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* ---- Main content ----------------------------------------------------- */
+.app-main {
+  flex: 1 0 auto;
+  padding-block: var(--space-6);
+}
+
+.app-container {
+  width: 100%;
+  max-width: var(--container-max-width);
+  margin-inline: auto;
+  padding-inline: var(--container-padding);
+}
+
+/* ---- Footer ----------------------------------------------------------- */
+.app-footer {
+  flex-shrink: 0;
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.app-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+/* ---- Sign-in & auth status pages (outside the ERP shell) -------------- */
+.auth-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-4);
+  background:
+    linear-gradient(180deg, rgba(var(--color-primary-rgb), 0.08), transparent 45%),
+    var(--color-background);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 26rem;
+  padding: var(--space-8) var(--space-6);
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.auth-card--status {
+  text-align: center;
+}
+
+/* Logo keeps its 792x365 ratio: fixed height, auto width */
+.auth-card__logo {
+  height: 52px;
+  width: auto;
+  margin: 0 auto var(--space-6);
+}
+
+.auth-card__title {
+  font-size: var(--font-size-xl);
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+
+.auth-card__subtitle {
+  text-align: center;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-6);
+}
+
+.auth-card__status-icon {
+  display: block;
+  margin-bottom: var(--space-3);
+  font-size: var(--icon-size-lg);
+  color: var(--color-text-muted);
+}
+
+.auth-card__footnote {
+  margin: var(--space-6) 0 0;
+  font-size: var(--font-size-xs);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.auth-page__legal {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---- Page header ------------------------------------------------------ */
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.page-header__title {
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--space-1);
+}
+
+.page-header__subtitle {
+  margin-bottom: 0;
+  color: var(--color-text-muted);
+}
+
+.page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.page-header .breadcrumb {
+  margin-bottom: var(--space-2);
+}
+
+/* ---- Content sections ------------------------------------------------- */
+.page-section + .page-section {
+  margin-top: var(--space-8);
+}
+
+.page-section__title {
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-4);
+}
+
+/* ==========================================================================
+   4. Components — Yorilife styling for Bootstrap 5 components plus a few
+   ERP-specific patterns (search field, empty state, loading state).
+   Bootstrap components are themed by overriding their CSS variables, so
+   there is exactly one style per component and Bootstrap markup is unchanged.
+   ========================================================================== */
+
+/* ==== Buttons ========================================================== */
+.btn {
+  --bs-btn-font-family: var(--font-family-base);
+  --bs-btn-font-size: var(--font-size-base);
+  --bs-btn-font-weight: var(--font-weight-medium);
+  --bs-btn-padding-x: 1rem;
+  --bs-btn-padding-y: 0.5rem;
+  --bs-btn-border-radius: var(--radius-sm);
+  --bs-btn-focus-box-shadow: var(--focus-ring);
+  --bs-btn-disabled-opacity: 0.55;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.btn-sm {
+  --bs-btn-font-size: var(--font-size-sm);
+  --bs-btn-padding-x: 0.75rem;
+  --bs-btn-padding-y: 0.3rem;
+}
+
+.btn-lg {
+  --bs-btn-font-size: var(--font-size-md);
+  --bs-btn-padding-x: 1.25rem;
+  --bs-btn-padding-y: 0.65rem;
+  --bs-btn-border-radius: var(--radius-md);
+}
+
+.btn-primary {
+  --bs-btn-color: var(--color-text-inverse);
+  --bs-btn-bg: var(--color-primary-600);
+  --bs-btn-border-color: var(--color-primary-600);
+  --bs-btn-hover-color: var(--color-text-inverse);
+  --bs-btn-hover-bg: var(--color-primary-700);
+  --bs-btn-hover-border-color: var(--color-primary-700);
+  --bs-btn-active-color: var(--color-text-inverse);
+  --bs-btn-active-bg: var(--color-primary-800);
+  --bs-btn-active-border-color: var(--color-primary-800);
+  --bs-btn-disabled-color: var(--color-text-inverse);
+  --bs-btn-disabled-bg: var(--color-primary-600);
+  --bs-btn-disabled-border-color: var(--color-primary-600);
+}
+
+.btn-secondary {
+  --bs-btn-color: var(--color-text-inverse);
+  --bs-btn-bg: var(--color-secondary);
+  --bs-btn-border-color: var(--color-secondary);
+  --bs-btn-hover-color: var(--color-text-inverse);
+  --bs-btn-hover-bg: var(--color-secondary-700);
+  --bs-btn-hover-border-color: var(--color-secondary-700);
+  --bs-btn-active-color: var(--color-text-inverse);
+  --bs-btn-active-bg: var(--color-secondary-800);
+  --bs-btn-active-border-color: var(--color-secondary-800);
+  --bs-btn-disabled-color: var(--color-text-inverse);
+  --bs-btn-disabled-bg: var(--color-secondary);
+  --bs-btn-disabled-border-color: var(--color-secondary);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--color-primary-600);
+  --bs-btn-border-color: var(--color-primary-600);
+  --bs-btn-hover-color: var(--color-text-inverse);
+  --bs-btn-hover-bg: var(--color-primary-600);
+  --bs-btn-hover-border-color: var(--color-primary-600);
+  --bs-btn-active-color: var(--color-text-inverse);
+  --bs-btn-active-bg: var(--color-primary-700);
+  --bs-btn-active-border-color: var(--color-primary-700);
+  --bs-btn-disabled-color: var(--color-primary-600);
+  --bs-btn-disabled-border-color: var(--color-primary-600);
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--color-secondary);
+  --bs-btn-border-color: var(--color-border-strong);
+  --bs-btn-bg: var(--color-surface);
+  --bs-btn-hover-color: var(--color-secondary);
+  --bs-btn-hover-bg: var(--color-secondary-50);
+  --bs-btn-hover-border-color: var(--color-secondary-100);
+  --bs-btn-active-color: var(--color-secondary);
+  --bs-btn-active-bg: var(--color-secondary-100);
+  --bs-btn-active-border-color: var(--color-secondary-100);
+  --bs-btn-disabled-color: var(--color-text-subtle);
+  --bs-btn-disabled-border-color: var(--color-border);
+}
+
+.btn-danger {
+  --bs-btn-color: var(--color-text-inverse);
+  --bs-btn-bg: var(--color-danger);
+  --bs-btn-border-color: var(--color-danger);
+  --bs-btn-hover-color: var(--color-text-inverse);
+  --bs-btn-hover-bg: var(--color-danger-text);
+  --bs-btn-hover-border-color: var(--color-danger-text);
+  --bs-btn-active-color: var(--color-text-inverse);
+  --bs-btn-active-bg: var(--color-danger-text);
+  --bs-btn-active-border-color: var(--color-danger-text);
+  --bs-btn-disabled-bg: var(--color-danger);
+  --bs-btn-disabled-border-color: var(--color-danger);
+}
+
+.btn-link {
+  --bs-btn-color: var(--color-primary-600);
+  --bs-btn-hover-color: var(--color-primary-700);
+  --bs-btn-active-color: var(--color-primary-800);
+}
+
+/* Square icon-only button — always pair with aria-label */
+.btn-icon {
+  --bs-btn-padding-x: 0;
+  width: 2.375rem;
+  height: 2.375rem;
+}
+
+/* ==== Forms ============================================================ */
+.form-label {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.form-label .required {
+  color: var(--color-danger);
+  margin-left: 2px;
+}
+
+.form-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.form-control,
+.form-select {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  min-height: 2.5rem;
+}
+
+.form-select {
+  padding-right: 2.25rem;
+}
+
+.form-control::placeholder {
+  color: var(--color-text-subtle);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text-subtle);
+}
+
+.form-check-input {
+  border-color: var(--color-border-strong);
+}
+
+.form-check-input:checked {
+  background-color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+}
+
+.form-check-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.form-check-label {
+  color: var(--color-text);
+}
+
+/* Validation — keep Bootstrap's icons, use Yorilife status colours */
+.form-control.is-valid,
+.form-select.is-valid {
+  border-color: var(--color-success);
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid {
+  border-color: var(--color-danger);
+}
+
+.form-control.is-valid:focus,
+.form-select.is-valid:focus {
+  box-shadow: 0 0 0 0.25rem rgba(var(--color-success-rgb), 0.25);
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+  box-shadow: 0 0 0 0.25rem rgba(var(--color-danger-rgb), 0.25);
+}
+
+.valid-feedback,
+.invalid-feedback {
+  font-size: var(--font-size-xs);
+}
+
+/* Password field + show/hide button */
+.password-input > .form-control {
+  border-right: 0;
+}
+
+.password-input__toggle {
+  --bs-btn-border-color: var(--color-border-strong);
+  width: 2.75rem;
+}
+
+.password-input > .form-control.is-invalid + .password-input__toggle {
+  --bs-btn-border-color: var(--color-danger);
+}
+
+/* The show/hide button sits where Bootstrap's invalid icon would; the error text explains instead */
+.password-input > .form-control.is-invalid {
+  background-image: none;
+  padding-right: 0.75rem;
+}
+
+/* Read-only details (label / value rows) */
+.detail-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.detail-list__row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 35%) 1fr;
+  gap: var(--space-3);
+}
+
+.detail-list dt {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.detail-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ==== Search field ===================================================== */
+.search-field {
+  position: relative;
+  width: 100%;
+}
+
+/* Toolbar-sized search; still fills narrow screens */
+.search-field--compact {
+  flex: 1 1 12rem;
+  max-width: 18rem;
+}
+
+.search-field__icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: var(--color-text-subtle);
+  pointer-events: none;
+}
+
+.search-field .form-control {
+  padding-left: 2.25rem;
+}
+
+/* ==== Cards / panels =================================================== */
+.card {
+  --bs-card-border-color: var(--color-border);
+  --bs-card-border-radius: var(--radius-md);
+  --bs-card-inner-border-radius: calc(var(--radius-md) - 1px);
+  --bs-card-cap-bg: var(--color-surface);
+  --bs-card-bg: var(--color-surface);
+  --bs-card-spacer-x: var(--space-5);
+  --bs-card-spacer-y: var(--space-5);
+  --bs-card-cap-padding-x: var(--space-5);
+  --bs-card-cap-padding-y: var(--space-4);
+  box-shadow: var(--shadow-xs);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 0;
+}
+
+/* ==== Tables =========================================================== */
+/* Wrap every data table in .table-container for card styling + scrolling */
+.table-container {
+  /* position: relative keeps absolutely positioned children (e.g. .visually-hidden
+     header labels) inside the scroll box instead of widening the page */
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.table {
+  --bs-table-color: var(--color-text);
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--color-border);
+  --bs-table-hover-bg: var(--color-surface-hover);
+  --bs-table-hover-color: var(--color-text);
+  --bs-table-striped-bg: var(--color-surface-muted);
+  margin-bottom: 0;
+  font-size: var(--font-size-base);
+  vertical-align: middle;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.75rem 1rem;
+}
+
+.table > thead th {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom-color: var(--color-border);
+}
+
+.table > tbody > tr:last-child > * {
+  border-bottom: 0;
+}
+
+.table .text-end,
+.table .numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==== Badges & status labels ========================================== */
+.badge {
+  --bs-badge-font-size: var(--font-size-xs);
+  --bs-badge-font-weight: var(--font-weight-medium);
+  --bs-badge-padding-x: 0.6em;
+  --bs-badge-padding-y: 0.35em;
+  --bs-badge-border-radius: var(--radius-pill);
+}
+
+/* Status label: pair with Bootstrap subtle utilities, e.g.
+   <span class="badge status-badge text-success-emphasis bg-success-subtle"> */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.status-badge::before {
+  content: "";
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+/* ==== Alerts =========================================================== */
+.alert {
+  --bs-alert-border-radius: var(--radius-md);
+  --bs-alert-padding-x: var(--space-4);
+  --bs-alert-padding-y: var(--space-3);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--font-size-base);
+}
+
+.alert > .bi {
+  flex-shrink: 0;
+  font-size: var(--icon-size-md);
+  line-height: 1.3;
+}
+
+.alert-primary {
+  --bs-alert-color: var(--color-primary-800);
+  --bs-alert-bg: var(--color-primary-50);
+  --bs-alert-border-color: var(--color-primary-100);
+}
+
+.alert-success {
+  --bs-alert-color: var(--color-success-text);
+  --bs-alert-bg: var(--color-success-bg);
+  --bs-alert-border-color: rgba(var(--color-success-rgb), 0.25);
+}
+
+.alert-warning {
+  --bs-alert-color: var(--color-warning-text);
+  --bs-alert-bg: var(--color-warning-bg);
+  --bs-alert-border-color: rgba(var(--color-warning-rgb), 0.3);
+}
+
+.alert-danger {
+  --bs-alert-color: var(--color-danger-text);
+  --bs-alert-bg: var(--color-danger-bg);
+  --bs-alert-border-color: rgba(var(--color-danger-rgb), 0.25);
+}
+
+.alert-info {
+  --bs-alert-color: var(--color-info-text);
+  --bs-alert-bg: var(--color-info-bg);
+  --bs-alert-border-color: rgba(var(--color-info-rgb), 0.25);
+}
+
+/* ==== Dropdowns ======================================================== */
+.dropdown-menu {
+  --bs-dropdown-font-size: var(--font-size-base);
+  --bs-dropdown-color: var(--color-text);
+  --bs-dropdown-border-color: var(--color-border);
+  --bs-dropdown-border-radius: var(--radius-md);
+  --bs-dropdown-box-shadow: var(--shadow-md);
+  --bs-dropdown-link-color: var(--color-text);
+  --bs-dropdown-link-hover-bg: var(--color-surface-hover);
+  --bs-dropdown-link-hover-color: var(--color-text);
+  --bs-dropdown-link-active-bg: var(--color-primary-50);
+  --bs-dropdown-link-active-color: var(--color-primary-800);
+  --bs-dropdown-item-padding-y: 0.45rem;
+  box-shadow: var(--bs-dropdown-box-shadow);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ==== Modals =========================================================== */
+.modal {
+  --bs-modal-border-color: var(--color-border);
+  --bs-modal-border-radius: var(--radius-lg);
+  --bs-modal-inner-border-radius: calc(var(--radius-lg) - 1px);
+  --bs-modal-box-shadow: var(--shadow-lg);
+  --bs-modal-header-padding: var(--space-4) var(--space-5);
+  --bs-modal-padding: var(--space-5);
+  --bs-modal-footer-gap: var(--space-2);
+}
+
+.modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.modal-footer {
+  background-color: var(--color-surface-muted);
+}
+
+/* ==== Pagination ======================================================= */
+.pagination {
+  --bs-pagination-font-size: var(--font-size-sm);
+  --bs-pagination-color: var(--color-text);
+  --bs-pagination-border-color: var(--color-border);
+  --bs-pagination-border-radius: var(--radius-sm);
+  --bs-pagination-hover-color: var(--color-primary-700);
+  --bs-pagination-hover-bg: var(--color-primary-50);
+  --bs-pagination-hover-border-color: var(--color-border);
+  --bs-pagination-focus-color: var(--color-primary-700);
+  --bs-pagination-focus-bg: var(--color-primary-50);
+  --bs-pagination-focus-box-shadow: var(--focus-ring);
+  --bs-pagination-active-bg: var(--color-primary-600);
+  --bs-pagination-active-border-color: var(--color-primary-600);
+  --bs-pagination-disabled-color: var(--color-text-subtle);
+  --bs-pagination-disabled-border-color: var(--color-border);
+  margin-bottom: 0;
+}
+
+/* ==== Breadcrumbs ====================================================== */
+.breadcrumb {
+  --bs-breadcrumb-font-size: var(--font-size-sm);
+  --bs-breadcrumb-divider-color: var(--color-text-subtle);
+  --bs-breadcrumb-item-active-color: var(--color-text-muted);
+  --bs-breadcrumb-margin-bottom: 0;
+}
+
+.breadcrumb a {
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+/* ==== Tooltips ========================================================= */
+.tooltip {
+  --bs-tooltip-bg: var(--color-secondary-800);
+  --bs-tooltip-font-size: var(--font-size-xs);
+  --bs-tooltip-border-radius: var(--radius-sm);
+  --bs-tooltip-padding-x: 0.6rem;
+  --bs-tooltip-padding-y: 0.35rem;
+}
+
+/* ==== Empty state ====================================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-10) var(--space-4);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: var(--space-2);
+  border-radius: 50%;
+  background-color: var(--color-primary-50);
+  color: var(--color-primary-600);
+  font-size: var(--icon-size-lg);
+}
+
+.empty-state__title {
+  font-size: var(--font-size-md);
+  margin-bottom: 0;
+}
+
+.empty-state__text {
+  max-width: 36ch;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+/* ==== Loading indicator =============================================== */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+}
+
+.loading-state .spinner-border {
+  color: var(--color-primary);
+}
+
+/* Skeleton placeholder block for content that is still loading */
+.skeleton {
+  display: block;
+  height: 0.875rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-muted) 25%,
+    var(--color-border) 37%,
+    var(--color-surface-muted) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ==== List cards & toolbars ============================================ */
+/* Card holding a data table: the table sits flush inside the card */
+.table-card > .table-container {
+  border: 0;
+  border-radius: 0 0 var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius);
+}
+
+.table-card > .card-body + .table-container,
+.table-card > .card-header + .card-body {
+  border-top: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.toolbar__select {
+  width: auto;
+  max-width: 100%;
+  min-width: 11rem;
+}
+
+.toolbar__field {
+  min-width: 0;
+}
+
+.table-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+}
+
+.table-empty {
+  padding-block: var(--space-6) !important;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.segmented-control__count {
+  margin-left: var(--space-2);
+  padding: 0 0.45em;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.btn-check:checked + .btn .segmented-control__count {
+  background-color: var(--color-surface);
+}
+
+/* ==== Tabs ============================================================= */
+.nav-tabs {
+  --bs-nav-link-font-size: var(--font-size-sm);
+  --bs-nav-link-font-weight: var(--font-weight-medium);
+  --bs-nav-link-color: var(--color-text-muted);
+  --bs-nav-link-hover-color: var(--color-text);
+  --bs-nav-tabs-border-color: var(--color-border);
+  --bs-nav-tabs-link-active-color: var(--color-primary-800);
+  --bs-nav-tabs-link-active-bg: var(--color-surface);
+  --bs-nav-tabs-link-active-border-color: var(--color-border) var(--color-border) var(--color-surface);
+}
+
+.nav-tabs .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Active tab: teal top bar + colour (not colour alone) */
+.nav-tabs .nav-link.active {
+  box-shadow: inset 0 3px 0 var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ==== Form choice groups =============================================== */
+.choice-group {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.choice-group--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+}
+
+/* Long checkbox lists scroll inside the form instead of growing the modal */
+.choice-group--scroll {
+  max-height: 12rem;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+legend.form-label {
+  font-size: var(--font-size-sm);
+}
+
+.pill-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* ==== Change history (old → new) ====================================== */
+.change-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.change-value__old {
+  color: var(--color-danger-text);
+  text-decoration: line-through;
+}
+
+.change-value__new {
+  color: var(--color-success-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.change-value__arrow {
+  color: var(--color-text-subtle);
+}
+
+.change-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.change-list__field {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ==== Sales Office hierarchy ========================================== */
+/* "1st Line Manager <name> › Headquarters <name>" */
+.reporting-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reporting-chain li + li::before {
+  content: "›";
+  margin-right: var(--space-2);
+  color: var(--color-text-subtle);
+}
+
+.reporting-chain__type {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.hierarchy-tree,
+.hierarchy-tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hierarchy-tree ul {
+  margin-left: var(--space-4);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.hierarchy-tree li {
+  position: relative;
+  padding-top: var(--space-2);
+}
+
+/* Connector from the vertical guide to each node */
+.hierarchy-tree ul > li::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-2) + 1.1em);
+  left: calc(var(--space-4) * -1);
+  width: var(--space-3);
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.hierarchy-tree__node {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+}
+
+.hierarchy-tree__node--root {
+  border-color: var(--color-primary-200);
+  background-color: var(--color-primary-50);
+}
+
+.hierarchy-tree__type {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hierarchy-tree__name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.hierarchy-tree__code {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.hierarchy-tree__empty {
+  margin: var(--space-2) 0 0 var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.hierarchy-stockists {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hierarchy-stockists li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.hierarchy-stockists li.is-highlighted {
+  border-color: var(--color-primary);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* ==== File upload summary & stats ===================================== */
+.file-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-muted);
+}
+
+.file-summary__icon {
+  flex-shrink: 0;
+  font-size: var(--icon-size-lg);
+  color: var(--color-primary-600);
+}
+
+.file-summary > .badge {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.file-summary__name {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.file-summary__meta {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.stat-tile {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.stat-tile dt {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.stat-tile dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ==== Design-system preview helpers (Sprint 1 only) ==================== */
+.swatch {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.swatch__color {
+  height: 64px;
+}
+
+.swatch__meta {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.swatch__name {
+  display: block;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.swatch__value {
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   5. Utilities — only helpers Bootstrap does not already provide.
+   Prefer Bootstrap utilities (.d-flex, .gap-*, .mb-*, .text-*) first.
+   ========================================================================== */
+
+.text-brand-primary { color: var(--color-primary) !important; }
+.text-brand-secondary { color: var(--color-secondary) !important; }
+
+.bg-surface { background-color: var(--color-surface) !important; }
+.bg-surface-muted { background-color: var(--color-surface-muted) !important; }
+
+.border-brand { border-color: var(--color-primary) !important; }
+
+.shadow-card { box-shadow: var(--shadow-sm) !important; }
+
+.rounded-md { border-radius: var(--radius-md) !important; }
+.rounded-lg { border-radius: var(--radius-lg) !important; }
+
+.font-mono { font-family: var(--font-family-mono) !important; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Allow flex/grid children to shrink below their content width */
+.min-w-0 { min-width: 0 !important; }
+
+/* Single-line truncation with ellipsis */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Applied to <body> while the mobile navigation is open */
+.is-scroll-locked {
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   6. Responsive — mobile-first structural overrides (layout, visibility,
+   spacing). Breakpoints mirror Bootstrap 5 (see --breakpoint-* in
+   variable.css): sm 576, md 768, lg 992, xl 1200.
+   Font sizes are fluid tokens — never change font-size in a media query.
+   ========================================================================== */
+
+/* ---- Small phones (< 576px) ------------------------------------------- */
+@media (max-width: 575.98px) {
+  :root {
+    --header-height: 56px;
+  }
+
+  /* Icon-only account button to leave room for the page title */
+  .app-user-menu__label {
+    display: none;
+  }
+
+  .page-header__actions > .btn {
+    flex: 1 1 auto;
+  }
+
+  /* Toolbar controls stack full-width on phones */
+  .toolbar,
+  .toolbar > *,
+  .toolbar__select,
+  .search-field--compact {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* Segmented filters wrap into a grid of separate buttons instead of one
+     row that can't shrink (e.g. All / Included / Excluded / Not set) */
+  .segmented-control {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+    gap: var(--space-1);
+  }
+
+  .segmented-control > .btn {
+    margin-left: 0 !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  .modal-footer > .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---- sm and up (>= 576px) --------------------------------------------- */
+@media (min-width: 576px) {
+  :root {
+    --container-padding: var(--space-5);
+  }
+}
+
+/* ---- md and up (>= 768px) --------------------------------------------- */
+@media (min-width: 768px) {
+  .app-main {
+    padding-block: var(--space-8);
+  }
+
+  .page-header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .page-header__actions {
+    flex-shrink: 0;
+  }
+}
+
+/* ---- lg and up (>= 992px): persistent sidebar ------------------------- */
+/* Keep in sync with DESKTOP_QUERY in layouts/AppLayout.jsx */
+@media (min-width: 992px) {
+  :root {
+    --container-padding: var(--space-8);
+    --header-height: 72px;
+  }
+
+  .is-sidebar-collapsed {
+    --sidebar-current-width: var(--sidebar-collapsed-width);
+  }
+
+  .app-sidebar {
+    width: var(--sidebar-current-width);
+    transform: none;
+    visibility: visible;
+    transition: width var(--transition-base);
+  }
+
+  .app-sidebar__close,
+  .app-sidebar-backdrop {
+    display: none;
+  }
+
+  .app-body {
+    padding-left: var(--sidebar-current-width);
+    transition: padding-left var(--transition-base);
+  }
+
+  /* Collapsed icon rail: logo shrinks (ratio kept), labels become screen-reader only */
+  .is-sidebar-collapsed .app-sidebar__header {
+    justify-content: center;
+    padding-inline: var(--space-2);
+  }
+
+  .is-sidebar-collapsed .app-brand__logo {
+    height: var(--logo-height-collapsed);
+  }
+
+  .is-sidebar-collapsed .app-brand__divider,
+  .is-sidebar-collapsed .app-brand__name,
+  .is-sidebar-collapsed .sidebar-group__chevron,
+  .is-sidebar-collapsed .sidebar-group__panel {
+    display: none;
+  }
+
+  .is-sidebar-collapsed .sidebar-group__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .is-sidebar-collapsed .sidebar-group__toggle {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .is-sidebar-collapsed .sidebar-group.is-active > .sidebar-group__toggle,
+  .is-sidebar-collapsed .sidebar-toplink.active {
+    background-color: var(--color-primary-50);
+    box-shadow: inset 3px 0 0 var(--color-primary);
+  }
+}
