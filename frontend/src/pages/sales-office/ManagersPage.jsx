@@ -5,6 +5,7 @@ import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
+import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import FormModal from '../../components/FormModal.jsx'
@@ -12,6 +13,7 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import FormField, { SelectField, TextField } from '../../components/FormField.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
+import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
 import { ALLOWED_PARENT_TYPES, MANAGER_LEVELS, PARENT_TYPES } from '../../data/constants.js'
 import { managerCodePrefix, managerCodeSuffix, nextManagerSequence } from '../../data/managerCode.js'
@@ -254,6 +256,7 @@ export default function ManagersPage({ level }) {
   const editor = useEditor()
   const [query, setQuery] = useState('')
   const [deleting, setDeleting] = useState(null)
+  const [deletingMany, setDeletingMany] = useState(false)
   const [sort, setSort] = useState({ key: 'name', direction: 'asc' })
   const [filters, setFilters] = useState({ stateIds: [], reportIds: [] })
   const meta = MANAGER_LEVELS[level]
@@ -266,6 +269,7 @@ export default function ManagersPage({ level }) {
     filters,
   ))
   const rows = level === 3 ? matched.sort(byName) : sortByField(matched, sort.key, sort.direction)
+  const selection = useRowSelection(rows)
   const toggleSort = (key) => setSort((current) => (
     current.key === key ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }
   ))
@@ -398,12 +402,21 @@ export default function ManagersPage({ level }) {
           </>
         )}
       >
+        {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption={meta.plural}
           columns={columns}
           rows={rows}
           sort={level === 3 ? null : sort}
           onSort={level === 3 ? null : toggleSort}
+          selection={canManage ? {
+            isSelected: (manager) => selection.isSelected(manager.id),
+            onToggle: (manager) => selection.toggle(manager.id),
+            onToggleAll: selection.toggleAll,
+            allSelected: selection.allSelected,
+            indeterminate: selection.indeterminate,
+            label: (manager) => `Select ${manager.name}`,
+          } : null}
           emptyText={managers.length ? 'No managers match your search.' : `No ${meta.plural.toLowerCase()} yet.`}
           empty={state.status === 'ready' && managers.length === 0 && (
             <div className="card-body">
@@ -440,6 +453,19 @@ export default function ManagersPage({ level }) {
         onConfirm={() => actions.deleteManager(deleting.id)}
       >
         Delete {deleting?.name}? A manager who still has people or headquarters reporting to them cannot be deleted.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingMany}
+        onClose={() => setDeletingMany(false)}
+        title={`Delete selected ${meta.plural.toLowerCase()}`}
+        confirmLabel="Delete selected"
+        onConfirm={async () => {
+          await actions.deleteMany('managers', selection.selectedIds)
+          selection.clear()
+        }}
+      >
+        Delete {selection.count} {meta.plural.toLowerCase()}? A manager who still has people or headquarters reporting to them cannot be deleted.
       </ConfirmDialog>
     </PageShell>
   )

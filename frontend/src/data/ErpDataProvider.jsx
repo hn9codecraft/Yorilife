@@ -175,6 +175,39 @@ export default function ErpDataProvider({ children }) {
         return save(`/api/stockists/${id}/delete`, 'POST', {})
       },
 
+      async deleteMany(resource, ids) {
+        const paths = {
+          headquarters: (id) => `/api/headquarters/${id}/delete`,
+          stockists: (id) => `/api/stockists/${id}/delete`,
+          managers: (id) => `/api/managers/${id}/delete`,
+          locations: (id) => `/api/locations/${id}/delete`,
+          locationHeadquarters: (id) => `/api/location-headquarters/${id}/delete`,
+        }
+        const pathFor = paths[resource]
+        if (!pathFor) throw new Error('This record cannot be deleted here.')
+        if (!ids?.length) return
+
+        const failures = []
+        for (const id of ids) {
+          try {
+            await api(pathFor(id), { method: 'POST', body: {} })
+          } catch (error) {
+            failures.push(error)
+          }
+        }
+
+        try {
+          await refresh()
+        } catch (error) {
+          if (failures.length === 0) throw error
+        }
+
+        if (failures.length === 1) throw failures[0]
+        if (failures.length > 1) {
+          throw new Error(`${failures.length} of ${ids.length} could not be deleted. ${failures[0].message}`)
+        }
+      },
+
       softDelete(collection, id) {
         if (collection !== 'terms') return Promise.reject(new Error('This record cannot be deleted here.'))
         return save(`/api/catalogue-terms/${id}/delete`, 'POST', {})

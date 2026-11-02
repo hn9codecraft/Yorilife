@@ -5,6 +5,7 @@ import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
+import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import ListFilter from '../../components/ListFilter.jsx'
@@ -16,6 +17,7 @@ import HierarchyTree from '../../components/HierarchyTree.jsx'
 import FormField, { SelectField, TextField } from '../../components/FormField.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
+import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
 import { nextStSequence, stCodeSuffix } from '../../data/stCode.js'
 import { buildHeadquartersBranch, byName, findById, matchesFilters, matchesSearch } from '../../data/selectors.js'
@@ -111,6 +113,7 @@ export default function StockistsPage() {
   const [filters, setFilters] = useState({ stateIds: [], reportIds: [] })
   const [viewing, setViewing] = useState({ open: false, id: null })
   const [deleting, setDeleting] = useState(null)
+  const [deletingMany, setDeletingMany] = useState(false)
 
   const headquarters = [...state.headquarters].sort(byName)
   const locations = state.locations ?? []
@@ -123,6 +126,7 @@ export default function StockistsPage() {
       return matchesSearch(stockist, query, ['name', 'code', 'address', 'pincode', 'phone', 'email']) && matchesFilters(stateIds, null, filters)
     })
     .sort(byName)
+  const selection = useRowSelection(rows)
   const viewed = findById(state.stockists, viewing.id)
 
   const columns = [
@@ -210,10 +214,19 @@ export default function StockistsPage() {
           </>
         }
       >
+        {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption="Stockists"
           columns={columns}
           rows={rows}
+          selection={canManage ? {
+            isSelected: (stockist) => selection.isSelected(stockist.id),
+            onToggle: (stockist) => selection.toggle(stockist.id),
+            onToggleAll: selection.toggleAll,
+            allSelected: selection.allSelected,
+            indeterminate: selection.indeterminate,
+            label: (stockist) => `Select ${stockist.name}`,
+          } : null}
           emptyText={state.stockists.length ? 'No stockists match these filters.' : 'No stockists yet.'}
           empty={state.status === 'ready' && state.stockists.length === 0 && (
             <div className="card-body">
@@ -250,6 +263,19 @@ export default function StockistsPage() {
         onConfirm={() => actions.deleteStockist(deleting.id)}
       >
         Delete {deleting?.name}? Sales entries for this stockist are removed with it.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingMany}
+        onClose={() => setDeletingMany(false)}
+        title="Delete selected stockists"
+        confirmLabel="Delete selected"
+        onConfirm={async () => {
+          await actions.deleteMany('stockists', selection.selectedIds)
+          selection.clear()
+        }}
+      >
+        Delete {selection.count} stockists? Sales entries for these stockists are removed with them.
       </ConfirmDialog>
 
       <Modal

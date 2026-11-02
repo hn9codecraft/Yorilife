@@ -4,6 +4,7 @@ import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
+import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import ListFilter from '../../components/ListFilter.jsx'
@@ -15,6 +16,7 @@ import { SelectField, TextField } from '../../components/FormField.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
+import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
 import { Link } from 'react-router'
 import { buildHeadquartersBranch, byName, managersAtLevel, matchesFilters, matchesSearch } from '../../data/selectors.js'
@@ -96,6 +98,7 @@ export default function HeadquartersPage() {
   const [filters, setFilters] = useState({ stateIds: [], reportIds: [] })
   const [viewing, setViewing] = useState({ open: false, id: null })
   const [deleting, setDeleting] = useState(null)
+  const [deletingMany, setDeletingMany] = useState(false)
 
   const locations = state.locations ?? []
   const offices = [...locations].sort(byName).flatMap((location) => (location.headquarters ?? []).map((office) => ({
@@ -110,6 +113,7 @@ export default function HeadquartersPage() {
       filters,
     ))
     .sort(byName)
+  const selection = useRowSelection(rows)
   const parents = managersAtLevel(state, 1).sort(byName).map((manager) => ({ value: manager.id, label: manager.name }))
   const viewed = state.headquarters.find((hq) => hq.id === viewing.id)
   const stateName = (hq) => locations.find((location) => location.id === hq.locationId)?.name ?? hq.state ?? '—'
@@ -200,10 +204,19 @@ export default function HeadquartersPage() {
           </>
         }
       >
+        {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption="Headquarters"
           columns={columns}
           rows={rows}
+          selection={canManage ? {
+            isSelected: (hq) => selection.isSelected(hq.id),
+            onToggle: (hq) => selection.toggle(hq.id),
+            onToggleAll: selection.toggleAll,
+            allSelected: selection.allSelected,
+            indeterminate: selection.indeterminate,
+            label: (hq) => `Select ${hq.name}`,
+          } : null}
           emptyText={state.headquarters.length ? 'No headquarters match your search.' : 'No headquarters yet.'}
           empty={ready && state.headquarters.length === 0 && (
             <div className="card-body">
@@ -262,6 +275,19 @@ export default function HeadquartersPage() {
         onConfirm={() => actions.deleteHeadquarters(deleting.id)}
       >
         Delete {deleting?.name}? Stockists and sales entries for this headquarters are removed with it. The location headquarters record stays on the Location page.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingMany}
+        onClose={() => setDeletingMany(false)}
+        title="Delete selected headquarters"
+        confirmLabel="Delete selected"
+        onConfirm={async () => {
+          await actions.deleteMany('headquarters', selection.selectedIds)
+          selection.clear()
+        }}
+      >
+        Delete {selection.count} headquarters? Stockists and sales entries for these headquarters are removed with them. The location headquarters records stay on the Location page.
       </ConfirmDialog>
       </div>
     </PageShell>
