@@ -9,9 +9,9 @@ Yorilife/
 └── docs/       Sprint plan, architecture, data model
 ```
 
-Current status: **Sprint 3 (authentication and user roles) is complete.**
+Current status: **Sprint 4 (persistent business data) is complete.**
 - **Signing in:** every ERP page requires sign-in, with a server-side session and role-based access. Super Admins and Admins can manage users.
-- **Business screens:** the Sprint 2 screens still run on an in-memory **preview only** and are not saved.
+- **Business screens:** Headquarters, managers, stockists, catalogue terms, products, the Master Product Sheet and sales entries are saved in MySQL. Dashboard, Reports, Announcements, Application Details, Audit and CSV Import are still placeholders.
 - **Where the details are:**
   - architecture and security: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md);
   - status and open decisions: [docs/SPRINT_PLAN.md](docs/SPRINT_PLAN.md);
@@ -61,6 +61,11 @@ On this machine PHP is not on `PATH`. Laragon's binary is at
    php bin/create-admin.php --email=… --name="…" --password-stdin < password.txt   # then delete the file
    ```
    No default accounts or passwords exist. Further users are created by an administrator on **System & Audit → Users**.
+5. **Optional demo Sales Office data** (development database only):
+   ```bash
+   php bin/seed-demo.php
+   ```
+   Idempotent. Loads Shyam (`ER-M3-001`), four 2nd line managers, four 1st line managers under Shubham, two headquarters, and five stockists. Refuses production and any database name ending in `_test`.
 
 ## Running locally
 

@@ -7,9 +7,11 @@ import LoginPage from './pages/LoginPage.jsx'
 import ModulePlaceholderPage from './pages/ModulePlaceholderPage.jsx'
 import DesignSystemPreview from './pages/DesignSystemPreview.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
-import HeadquartersPage from './pages/sales-office/HeadquartersPage.jsx'
+import HierarchyPage from './pages/sales-office/HierarchyPage.jsx'
 import ManagersPage from './pages/sales-office/ManagersPage.jsx'
 import StockistsPage from './pages/sales-office/StockistsPage.jsx'
+import LocationPage from './pages/sales-office/LocationPage.jsx'
+import HeadquartersPage from './pages/sales-office/HeadquartersPage.jsx'
 import CatalogueTermsPage from './pages/products/CatalogueTermsPage.jsx'
 import ProductsPage from './pages/products/ProductsPage.jsx'
 import ProductHistoryPage from './pages/products/ProductHistoryPage.jsx'
@@ -30,11 +32,12 @@ const PAGE_ELEMENTS = {
   '/products/master-sheet': <MasterSheetPage />,
   '/products/deleted': <ProductsPage deleted />,
   '/products/change-history': <ProductHistoryPage />,
-  '/sales-office/headquarters': <HeadquartersPage />,
   '/sales-office/first-line-managers': <ManagersPage level={1} />,
   '/sales-office/second-line-managers': <ManagersPage level={2} />,
   '/sales-office/third-line-managers': <ManagersPage level={3} />,
   '/sales-office/stockists': <StockistsPage />,
+  '/sales-office/headquarters': <HeadquartersPage />,
+  '/sales-office/locations': <LocationPage />,
   '/sales/stockist-sales': <SalesPage variant="entry" />,
   '/sales/monthly': <SalesPage variant="monthly" />,
   '/sales/by-headquarters': <SalesPage variant="byHeadquarters" />,
@@ -88,6 +91,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to={HOME_PATH} replace /> },
       ...moduleRoutes,
       ...groupRedirects,
+      { path: '/sales-office/hierarchy', element: <HierarchyPage /> },
       { path: '/design-system', element: <DesignSystemPreview /> },
       { path: '*', element: <NotFoundPage /> },
     ],

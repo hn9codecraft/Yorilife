@@ -23,6 +23,7 @@ export const initialErpState = {
   headquarters: [],
   managers: [],
   stockists: [],
+  locations: [],
   terms: [],
   products: [],
   productHistory: [],

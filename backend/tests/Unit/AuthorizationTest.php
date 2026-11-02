@@ -16,16 +16,34 @@ final class AuthorizationTest extends TestCase
 
     public function testSuperAdminHasEveryDefinedPermission(): void
     {
-        self::assertSame(
-            ['users.view', 'users.create', 'users.update', 'users.change_status', 'users.assign_role'],
-            Authorization::permissionsFor('super_admin'),
-        );
+        $all = array_keys((require dirname(__DIR__, 2) . '/config/permissions.php')['permissions']);
+        self::assertSame($all, Authorization::permissionsFor('super_admin'));
+        self::assertContains('users.assign_role', $all);
+        self::assertContains('sales.update', $all);
     }
 
     public function testSalesRolesHaveNoAdministrativePermissions(): void
     {
         self::assertFalse(Authorization::can(self::user('sales_manager'), 'users.view'));
         self::assertFalse(Authorization::can(self::user('sales_user'), 'users.create'));
+    }
+
+    public function testAdminHasEveryBusinessPermission(): void
+    {
+        foreach (Authorization::permissionsFor('super_admin') as $permission) {
+            self::assertTrue(Authorization::can(self::user('admin'), $permission), $permission);
+        }
+    }
+
+    public function testSalesRolesMayOnlyViewBusinessScreens(): void
+    {
+        $expected = ['sales_office.view', 'catalogue.view', 'products.view', 'master_sheet.view', 'sales.view'];
+        foreach (['sales_manager', 'sales_user'] as $role) {
+            self::assertSame($expected, Authorization::permissionsFor($role), $role);
+            foreach (['sales_office.manage', 'catalogue.manage', 'catalogue.restore', 'products.manage', 'products.delete', 'products.restore', 'financial_years.manage', 'master_sheet.update', 'sales.create', 'sales.update'] as $permission) {
+                self::assertFalse(Authorization::can(self::user($role), $permission), "{$role} {$permission}");
+            }
+        }
     }
 
     public function testDisabledUsersHaveNoPermissions(): void
@@ -36,7 +54,7 @@ final class AuthorizationTest extends TestCase
     public function testUnknownRolesAndPermissionsAreDenied(): void
     {
         self::assertFalse(Authorization::can(self::user('emperor'), 'users.view'));
-        self::assertFalse(Authorization::can(self::user('super_admin'), 'products.delete'));
+        self::assertFalse(Authorization::can(self::user('super_admin'), 'products.purge'));
     }
 
     public function testRoleAssignmentFollowsRank(): void

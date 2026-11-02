@@ -1,0 +1,25 @@
+---
+description: Frontend conventions for pages, navigation, API calls, and styles
+globs: frontend/**/*.{js,jsx,css}
+alwaysApply: false
+---
+
+# Frontend
+
+JavaScript only. New ERP pages go through `src/config/navigation.js` (`NAV_MENU`). That file drives the sidebar, routes, breadcrumbs, `<h1>`, and `document.title`. Add the page there first, then a real component in `router.jsx` when it is built. Unbuilt pages use `ModulePlaceholderPage`.
+
+- Wrap pages in `PageShell`. Call the API with `api()` from `src/api/client.js` (cookie + `X-CSRF-Token`). It returns `data` or throws `ApiError`.
+- Gate menus with `permission` on the nav item and `RequirePermission`. The API must enforce the same permission; hiding UI is not security.
+- Every route except `/login` is behind `RequireAuth`. Return paths go through `safeRedirect`.
+- Business screens use `{ state, actions }` from `useErpData()`. `ErpDataProvider` loads `GET /api/erp` and the actions call the PHP API. Sales Final Value is typed in, never calculated. Soft-delete only where the screen already deletes (`deletedAt`).
+
+## Styles
+
+Tokens live in `src/styles/variable.css`. Use `var(--color-primary)`, `var(--font-size-sm)`, and so on. Do not add raw hex or font sizes outside that file. Do not change font size with a media query.
+
+- Filled teal with white text uses `--color-primary-600`, not `--color-primary` (`#24AEB1` fails contrast).
+- Add styles in the matching numbered section of `theme.css`. Layout media queries go in section 6 only.
+- Prefer Bootstrap markup. Custom blocks are BEM (`.app-brand__logo`); state classes are `is-*`.
+- Wrap tables in `.table-container`. Icons are Bootstrap Icons (`bi-*`) only.
+
+Sidebar: desktop rail at ≥992px (`localStorage` key `yorilife.sidebarCollapsed`); below that, an off-canvas drawer with focus trap. Check `npm run lint` after UI changes.

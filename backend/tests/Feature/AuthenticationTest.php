@@ -122,7 +122,8 @@ final class AuthenticationTest extends FeatureTestCase
 
         self::assertSame(200, $response['status'], $response['raw']);
         self::assertSame('sales_manager', $response['body']['data']['user']['role']['slug']);
-        self::assertSame([], $response['body']['data']['user']['permissions']);
+        // Sprint 4: sales roles may view the business screens (owner-approved).
+        self::assertSame(['sales_office.view', 'catalogue.view', 'products.view', 'master_sheet.view', 'sales.view'], $response['body']['data']['user']['permissions']);
         self::assertSame($client->csrfToken, $response['body']['data']['csrfToken']);
     }
 

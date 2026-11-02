@@ -8,6 +8,7 @@ const ACTION_BADGES = {
   created: { label: 'Created', variant: 'success' },
   updated: { label: 'Updated', variant: 'info' },
   deleted: { label: 'Deleted', variant: 'danger' },
+  restored: { label: 'Restored', variant: 'success' },
 }
 
 // Product audit trail: one row per create / update / delete event, newest first.
@@ -20,7 +21,11 @@ export default function ProductHistoryTable({ entries, showProduct = true, empty
     {
       key: 'action',
       header: 'Action',
-      render: (e) => <StatusBadge variant={ACTION_BADGES[e.action].variant}>{ACTION_BADGES[e.action].label}</StatusBadge>,
+      render: (e) => {
+        const schemeOnly = e.action === 'updated' && e.changes.length > 0 && e.changes.every((change) => change.field === 'Scheme')
+        const badge = ACTION_BADGES[e.action]
+        return <StatusBadge variant={badge.variant}>{schemeOnly ? 'Scheme changed' : badge.label}</StatusBadge>
+      },
     },
     {
       key: 'changes',

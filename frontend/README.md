@@ -120,7 +120,7 @@ Sidebar order (approved):
 | 3 | Sales Management | `/sales/stockist-sales`, `/sales/monthly`, `/sales/by-headquarters`, `/sales/by-stockist`, `/sales/calculation-history` |
 |   | ↳ Reports | `/reports/headquarters`, `/reports/stockists`, `/reports/monthly-sales`, `/reports/product-performance` |
 |   | ↳ CSV Import | `/imports/data`, `/imports/history` |
-| 4 | Sales Office | `/sales-office/headquarters`, `/sales-office/first-line-managers`, `/sales-office/second-line-managers`, `/sales-office/third-line-managers`, `/sales-office/stockists` |
+| 4 | Sales Office | `/sales-office/stockists`, `/sales-office/headquarters`, `/sales-office/first-line-managers`, `/sales-office/second-line-managers`, `/sales-office/third-line-managers`, `/sales-office/locations` (`/sales-office/hierarchy` stays reachable and is not in the menu) |
 | 5 | Application Details | `/sales-app/overview`, `/sales-app/submission-status`, `/sales-app/history` (the former "Sales Application" pages; contents to be confirmed) |
 | 6 | Announcements (link) | `/announcements` (placeholder) |
 | 7 | System & Audit | `/system/users` (permission `users.view`), `/system/audit-logs`, `/system/change-history`, `/system/settings` |

@@ -10,20 +10,61 @@ export const MANAGER_LEVELS = {
   3: { label: '3rd Line Manager', plural: '3rd Line Managers' },
 }
 
-// What a manager can report to. `level` = the parent's manager level.
+// What a record can belong to. `level` is the parent's manager level.
+// Top to bottom: 3rd line → 2nd line → 1st line → headquarters → stockist.
+// A 3rd line manager has no parent. Stockists belong only to a headquarters.
 export const PARENT_TYPES = {
   headquarters: { label: 'Headquarters' },
   manager1: { label: '1st Line Manager', level: 1 },
   manager2: { label: '2nd Line Manager', level: 2 },
+  manager3: { label: '3rd Line Manager', level: 3 },
 }
 
-// Allowed parent types per manager level (from the business requirements):
-// 1st → Headquarters; 2nd → 1st Line Manager; 3rd → any one of the three.
 export const ALLOWED_PARENT_TYPES = {
-  1: ['headquarters'],
-  2: ['manager1'],
-  3: ['headquarters', 'manager1', 'manager2'],
+  1: ['manager2'],
+  2: ['manager3'],
+  3: [],
 }
+
+// 28 states and 8 union territories. The API rejects any other value.
+export const INDIAN_STATES = [
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chhattisgarh',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+  'Andaman and Nicobar Islands',
+  'Chandigarh',
+  'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi',
+  'Jammu and Kashmir',
+  'Ladakh',
+  'Lakshadweep',
+  'Puducherry',
+]
 
 // ---- Products --------------------------------------------------------------
 
@@ -56,5 +97,4 @@ export const CSV_MAX_BYTES = 10 * 1024 * 1024
 
 // ---- Audit -----------------------------------------------------------------
 
-// There is no sign-in yet, so changes cannot be attributed to an administrator.
-export const CHANGED_BY_UNAVAILABLE = 'Not available — sign-in not built yet'
+export const CHANGED_BY_UNAVAILABLE = 'Not recorded'

@@ -43,6 +43,12 @@ final class Request
         return (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
     }
 
+    /** One query-string value, or null when it is absent. Arrays are returned as-is so the caller can reject them. */
+    public function query(string $name): mixed
+    {
+        return $_GET[$name] ?? null;
+    }
+
     public function isStateChanging(): bool
     {
         return !in_array($this->method, ['GET', 'HEAD', 'OPTIONS'], true);

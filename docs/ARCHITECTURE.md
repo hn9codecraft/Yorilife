@@ -127,6 +127,8 @@ backend/
 - **`--status` is read-only:** it shows the target database, its existing tables and any pending files.
 - **MySQL commits DDL immediately:** a failing file stops the run and stays unrecorded, so it can be fixed and re-run.
 
+Fictional Sales Office demo rows are loaded with `php bin/seed-demo.php` from `backend/`. The chain is Shyam (`ER-M3-001`), four 2nd line managers, four 1st line managers under Shubham, two headquarters under Aarav Mehta (`HQ 1` with three stockists and `HQ 2` with two), and no offices under Ali, Mohit, or Raj. `GET /api/erp` includes that tree as `hierarchy`. The seeder updates the current demo codes and deletes only older `DEMO-HQ`, `DEMO-M`, and `DEMO-STK` rows that are no longer in that set, including sales rows that belong only to a removed demo stockist. It refuses `APP_ENV=production` and any database name ending in `_test`. A second run updates the same rows and creates none.
+
 ## Authentication & authorization
 
 ### Why server-side sessions (not JWT)
@@ -149,6 +151,24 @@ The future mobile app (no cookies, no Origin header) will need a token scheme; t
 | `GET /api/users`, `GET /api/users/{id}` | `users.view` | List / view (never includes password hashes) |
 | `POST /api/users` `{name, email, role, password}` | `users.create` + CSRF | Create a user |
 | `PATCH /api/users/{id}` any of `{name, email, role, status}` | per field (below) + CSRF | Edit, change role, activate/disable |
+| `GET /api/erp` | `sales_office.view` | All business records for the screens |
+| `GET /api/search?q=` | signed in | Records the user may view: sales office, catalogue, products, financial years, sales entries. Users only when the caller has `users.view`. Omits password hashes and sales amounts |
+| `GET/POST /api/headquarters`, `PATCH /api/headquarters/{id}`, `POST /api/headquarters/{id}/delete` | view / `sales_office.manage` | Headquarters office: name, state, optional link to a location-headquarters name, 1st line manager, address, pincode, phone, email, unique code. New codes are `HQ-` plus digits. Delete also removes that office's stockists and sales entries. The location headquarters record stays |
+| `POST /api/location-headquarters`, `PATCH /api/location-headquarters/{id}`, `POST /api/location-headquarters/{id}/delete` | `sales_office.manage` | Location headquarters name, `HQ-` code, address, pincode, phone, and email for one state. Saving does not create an office. Delete is refused while an office still links to it |
+| `GET/POST /api/locations`, `PATCH /api/locations/{id}`, `POST /api/locations/{id}/delete` | view / `sales_office.manage` | Location states, codes, and their headquarters names. Delete is refused while a manager or a headquarters is assigned |
+| `GET/POST /api/managers`, `PATCH /api/managers/{id}`, `POST /api/managers/{id}/delete` | view / `sales_office.manage` | Manager hierarchy. A 3rd line manager can store optional email and phone, and location state ids. A 2nd line manager stores a subset of that parent's states. A 1st line manager stores a subset of the 2nd line manager's states, plus an optional email and phone. Delete is refused while a child manager or headquarters still points at the record |
+| `POST /api/sales-office/import` | `sales_office.manage` | Add-only CSV import for one Sales Office list. A preview (`confirm: false`) validates and saves nothing. Confirming writes the valid rows in one transaction. |
+| `GET/POST /api/stockists`, `PATCH /api/stockists/{id}`, `POST /api/stockists/{id}/delete` | view / `sales_office.manage` | Stockists linked only to a headquarters. A new code is `ST-` plus digits. Address, pincode, phone, and email are optional. Delete also removes that stockist's sales entries |
+| `GET/POST /api/catalogue-terms`, `PATCH …/{id}` | view / `catalogue.manage` | Group categories and product categories. A category requires `parentId` |
+| `POST /api/catalogue-terms/{id}/delete` and `/restore` | `catalogue.manage` / `catalogue.restore` | Soft delete is refused while an active category or product still depends on it. Admin restore |
+| `GET/POST /api/products`, `PATCH /api/products/{id}` | view / `products.manage` | Product identity, group, category and current scheme. One history row per save |
+| `POST /api/products/{id}/delete` and `/restore` | `products.delete` / `products.restore` | Soft delete and Admin restore. Restore is refused when the code is used by another active product |
+| `POST /api/financial-years` `{label}` | `financial_years.manage` | April–March year. Starts with no sheet rows |
+| `PUT /api/master-sheet/{year}/{productId}` | `master_sheet.update` | That year’s strip pack, MRP, PTR, PTS and Included/Excluded. A scheme in the same request updates the product once |
+| `GET /api/master-sheet/{year}/scan` | `master_sheet.update` | Lists active products missing from that year. Does not insert |
+| `POST /api/master-sheet/{year}/add-products` | `master_sheet.update` | Adds only the selected missing products. Inclusion starts unset |
+| `POST /api/master-sheet/{year}/update-products` | `master_sheet.update` | Adds every missing active product. Does not change existing year rows |
+| `GET/POST /api/sales-entries`, `PATCH /api/sales-entries/{id}` | view / `sales.create` or `sales.update` | One entry per stockist per month. `finalValue` is stored, never calculated. No delete |
 
 Errors use the standard envelope:
 - **401** `unauthenticated` / `session_expired` / `invalid_credentials`;

@@ -4,7 +4,12 @@
  * With no rows, shows `empty` (if given) or a single "emptyText" row so the
  * column structure stays visible.
  */
-export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', rowKey = (row) => row.id }) {
+function sortLabel(column, sort) {
+  if (!sort || sort.key !== column.key) return `${column.header}, not sorted`
+  return `${column.header}, sorted ${sort.direction === 'asc' ? 'ascending' : 'descending'}`
+}
+
+export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', rowKey = (row) => row.id, sort = null, onSort = null }) {
   if (rows.length === 0 && empty) return empty
 
   const cellClass = (column) =>
@@ -16,11 +21,22 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
         {caption && <caption className="visually-hidden">{caption}</caption>}
         <thead>
           <tr>
-            {columns.map((column) => (
-              <th key={column.key} scope="col" className={cellClass(column)}>
-                {column.srOnlyHeader ? <span className="visually-hidden">{column.header}</span> : column.header}
-              </th>
-            ))}
+            {columns.map((column) => {
+              const active = Boolean(sort && column.sortable && sort.key === column.key)
+              const ariaSort = column.sortable && sort
+                ? (active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none')
+                : undefined
+              return (
+                <th key={column.key} scope="col" className={cellClass(column)} aria-sort={ariaSort}>
+                  {column.srOnlyHeader ? <span className="visually-hidden">{column.header}</span> : column.sortable && onSort ? (
+                    <button type="button" className={`table-sort${active ? ' is-active' : ''}`} aria-label={sortLabel(column, active ? sort : null)} onClick={() => onSort(column.key)}>
+                      {column.header}
+                      <i className={`bi ${active ? (sort.direction === 'asc' ? 'bi-sort-up' : 'bi-sort-down') : 'bi-arrow-down-up'}`} aria-hidden="true" />
+                    </button>
+                  ) : column.header}
+                </th>
+              )
+            })}
           </tr>
         </thead>
         <tbody>

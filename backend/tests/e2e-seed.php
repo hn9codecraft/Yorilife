@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 /*
  * Prepares the TEST database for the frontend end-to-end tests:
- * applies migrations, wipes users + login attempts, and creates fixture users.
+ * applies migrations, wipes business data, users + login attempts, and creates
+ * fixture users.
  *
  *   E2E_PASSWORD=… php tests/e2e-seed.php
  *
@@ -38,6 +39,39 @@ if (!is_string($password) || strlen($password) < 12) {
 
 $pdo = Database::connection();
 (new Migrator($pdo, dirname(__DIR__) . '/database/migrations'))->migrate(static fn () => null);
+// Business rows reference users, so they go first (children before parents).
+$existing = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+foreach ([
+    'sales_entries' => 'DELETE FROM sales_entries',
+    'master_sheet_changes' => 'DELETE FROM master_sheet_changes',
+    'master_sheet_entries' => 'DELETE FROM master_sheet_entries',
+    'financial_years' => 'DELETE FROM financial_years WHERE created_by IS NOT NULL',
+    'product_changes' => 'DELETE FROM product_changes',
+    'product_terms' => 'DELETE FROM product_terms',
+    'products' => 'DELETE FROM products',
+    'manager_states' => 'DELETE FROM manager_states',
+    'location_headquarters' => 'DELETE FROM location_headquarters',
+    'stockists' => 'DELETE FROM stockists',
+    'headquarters' => 'DELETE FROM headquarters',
+    'managers' => 'DELETE FROM managers ORDER BY level ASC',
+] as $table => $sql) {
+    if (in_array($table, $existing, true)) {
+        $pdo->exec($sql);
+    }
+}
+if (in_array('locations', $existing, true)) {
+    $pdo->exec('DELETE FROM locations');
+    $insertLocation = $pdo->prepare('INSERT INTO locations (name, code) VALUES (?, ?)');
+    foreach (require dirname(__DIR__) . '/config/location_states.php' as $location) {
+        $insertLocation->execute([$location['name'], $location['code']]);
+    }
+}
+if (in_array('catalogue_terms', $existing, true)) {
+    if ($pdo->query("SHOW COLUMNS FROM catalogue_terms LIKE 'parent_id'")->fetch()) {
+        $pdo->exec('UPDATE catalogue_terms SET parent_id = NULL');
+    }
+    $pdo->exec('DELETE FROM catalogue_terms');
+}
 $pdo->exec('DELETE FROM login_attempts');
 $pdo->exec('DELETE FROM users');
 

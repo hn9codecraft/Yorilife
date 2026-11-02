@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import PageShell from '../../components/PageShell.jsx'
-import PreviewNotice from '../../components/PreviewNotice.jsx'
+import DataStatusNotice from '../../components/DataStatusNotice.jsx'
+import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
@@ -15,102 +16,221 @@ import useEditor from '../../hooks/useEditor.js'
 import useFormState from '../../hooks/useFormState.js'
 import { byName, findById, formatDateTime, matchesSearch } from '../../data/selectors.js'
 
-// Active terms of a kind, plus any deleted ones the product still references
-// (so editing never silently drops a historical link).
-function termChoices(terms, kind, selectedIds) {
-  return terms
-    .filter((t) => t.kind === kind && (!t.deletedAt || selectedIds.includes(t.id)))
-    .sort(byName)
+function activeTerms(terms, kind) {
+  return terms.filter((term) => term.kind === kind && !term.deletedAt).sort(byName)
 }
 
-function TermCheckboxes({ legend, terms, selected, onChange, idPrefix, emptyHint }) {
-  const toggle = (id) => onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id])
-  return (
-    <fieldset className="col-12 col-md-6">
-      <legend className="form-label">{legend}</legend>
-      {terms.length === 0 ? (
-        <p className="form-text mt-0">{emptyHint}</p>
-      ) : (
-        <div className="choice-group choice-group--scroll">
-          {terms.map((term) => (
-            <div className="form-check" key={term.id}>
-              <input className="form-check-input" type="checkbox" id={`${idPrefix}-${term.id}`} checked={selected.includes(term.id)} onChange={() => toggle(term.id)} />
-              <label className="form-check-label" htmlFor={`${idPrefix}-${term.id}`}>
-                {term.name}
-                {term.deletedAt && <span className="text-muted"> (deleted)</span>}
-              </label>
-            </div>
-          ))}
-        </div>
-      )}
-    </fieldset>
-  )
+function classificationOf(product, terms) {
+  const category = findById(terms, product.categoryId)
+  const group = category?.parentId ? findById(terms, category.parentId) : null
+  return { category, group }
 }
 
 function ProductForm({ formId, record, terms, onSave }) {
+  const category = findById(terms, record?.categoryId)
   const form = useFormState(
     {
       name: record?.name ?? '',
       code: record?.code ?? '',
+      groupCategoryId: category?.parentId ?? '',
       categoryId: record?.categoryId ?? '',
-      tagIds: record?.tagIds ?? [],
-      badgeIds: record?.badgeIds ?? [],
+      scheme: record?.scheme ?? '',
     },
-    (v) => (v.name.trim() ? {} : { name: 'Enter the product name.' }),
+    (values) => {
+      const errors = {}
+      if (!values.name.trim()) errors.name = 'Enter the product name.'
+      if (!values.groupCategoryId) errors.groupCategoryId = 'Choose a group category.'
+      if (!values.categoryId) errors.categoryId = 'Choose a product category.'
+      return errors
+    },
   )
-  const categories = termChoices(terms, 'category', [form.values.categoryId])
+  const groups = activeTerms(terms, 'groupCategory')
+  const categories = terms
+    .filter((term) => term.kind === 'category' && term.parentId === form.values.groupCategoryId && (!term.deletedAt || term.id === form.values.categoryId))
+    .sort(byName)
 
   return (
     <form
       id={formId}
       className="row g-3"
       noValidate
-      onSubmit={form.handleSubmit((v) => onSave({ ...v, name: v.name.trim(), code: v.code.trim(), categoryId: v.categoryId || null }))}
+      onSubmit={form.handleSubmit((values) => onSave({
+        ...values,
+        name: values.name.trim(),
+        code: values.code.trim(),
+        scheme: values.scheme.trim(),
+      }))}
     >
       <TextField id={form.fieldId('name')} label="Product name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-8" />
-      <TextField id={form.fieldId('code')} label="Product code" value={form.values.code} onChange={form.set('code')} help="Optional." className="col-12 col-md-4" />
+      <TextField id={form.fieldId('code')} label="Product code" value={form.values.code} onChange={form.set('code')} help="Optional. Unique among active products." className="col-12 col-md-4" />
+      <SelectField
+        id={form.fieldId('groupCategoryId')}
+        label="Group category"
+        required
+        value={form.values.groupCategoryId}
+        onChange={(value) => {
+          const selected = findById(terms, form.values.categoryId)
+          form.setMany({
+            groupCategoryId: value,
+            categoryId: selected && selected.parentId === value ? form.values.categoryId : '',
+          })
+        }}
+        options={groups.map((group) => ({ value: group.id, label: group.name }))}
+        placeholder="Select a group category"
+        error={form.errors.groupCategoryId}
+      />
       <SelectField
         id={form.fieldId('categoryId')}
         label="Product category"
+        required
         value={form.values.categoryId}
         onChange={form.set('categoryId')}
-        options={categories.map((c) => ({ value: c.id, label: c.deletedAt ? `${c.name} (deleted)` : c.name }))}
-        placeholder="No category"
-        help={categories.length === 0 ? 'No categories yet — create them under Product Categories.' : undefined}
+        options={categories.map((item) => ({ value: item.id, label: item.name }))}
+        placeholder={form.values.groupCategoryId ? 'Select a product category' : 'Select a group category first'}
+        error={form.errors.categoryId}
+        help="Only categories in the selected group are listed."
       />
-      <TermCheckboxes
-        legend="Tags"
-        idPrefix={form.fieldId('tag')}
-        terms={termChoices(terms, 'tag', form.values.tagIds)}
-        selected={form.values.tagIds}
-        onChange={form.set('tagIds')}
-        emptyHint="No tags yet — create them under Product Tags & Badges."
-      />
-      <TermCheckboxes
-        legend="Badges"
-        idPrefix={form.fieldId('badge')}
-        terms={termChoices(terms, 'badge', form.values.badgeIds)}
-        selected={form.values.badgeIds}
-        onChange={form.set('badgeIds')}
-        emptyHint="No badges yet — create them under Product Tags & Badges."
+      <TextField
+        id={form.fieldId('scheme')}
+        label="Scheme"
+        value={form.values.scheme}
+        onChange={form.set('scheme')}
+        placeholder="e.g. 10+5"
+        help="Current scheme for this product. It is not stored separately for each financial year."
       />
     </form>
   )
 }
 
-function TermPills({ ids, terms }) {
-  const items = ids.map((id) => findById(terms, id)).filter(Boolean)
-  if (items.length === 0) return <span className="text-muted">—</span>
+function GroupForm({ formId, onSave }) {
+  const form = useFormState({ name: '' }, (values) => (values.name.trim() ? {} : { name: 'Enter the group category name.' }))
   return (
-    <span className="pill-list">
-      {items.map((t) => (
-        <span key={t.id} className={`badge ${t.deletedAt ? 'text-secondary-emphasis bg-secondary-subtle text-decoration-line-through' : 'text-primary-emphasis bg-primary-subtle'}`}>
-          {t.name}
-          {t.deletedAt && <span className="visually-hidden"> (deleted)</span>}
-        </span>
-      ))}
-    </span>
+    <form id={formId} noValidate onSubmit={form.handleSubmit((values) => onSave(values.name.trim()))}>
+      <TextField id={form.fieldId('name')} label="Group category" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
+    </form>
   )
+}
+
+function CategoryForm({ formId, groups, onSave }) {
+  const form = useFormState(
+    { name: '', parentId: '' },
+    (values) => {
+      const errors = {}
+      if (!values.name.trim()) errors.name = 'Enter the product category name.'
+      if (!values.parentId) errors.parentId = 'Choose a group category.'
+      return errors
+    },
+  )
+  return (
+    <form id={formId} className="row g-3" noValidate onSubmit={form.handleSubmit((values) => onSave({ name: values.name.trim(), parentId: values.parentId }))}>
+      <TextField id={form.fieldId('name')} label="Product category" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
+      <SelectField
+        id={form.fieldId('parentId')}
+        label="Group category"
+        required
+        value={form.values.parentId}
+        onChange={form.set('parentId')}
+        options={groups.map((group) => ({ value: group.id, label: group.name }))}
+        placeholder="Select a group category"
+        error={form.errors.parentId}
+      />
+    </form>
+  )
+}
+
+function ClassificationPanel() {
+  const { state, actions } = useErpData()
+  const canManage = usePermission('catalogue.manage')
+  const groupEditor = useEditor()
+  const categoryEditor = useEditor()
+  const [mapping, setMapping] = useState({})
+  if (!canManage) return null
+
+  const groups = activeTerms(state.terms, 'groupCategory')
+  const categories = activeTerms(state.terms, 'category')
+  const unmapped = categories.filter((term) => !term.parentId)
+
+  return (
+    <div className="card mb-4">
+      <div className="card-body">
+        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h2 className="h5 mb-1">Product classification</h2>
+            <p className="text-muted mb-0">Each product category belongs to one group category. These are fields on the product, not separate menu pages.</p>
+          </div>
+          <div className="d-flex flex-wrap gap-2">
+            <button type="button" className="btn btn-outline-secondary" onClick={groupEditor.openNew}>Add group category</button>
+            <button type="button" className="btn btn-outline-secondary" onClick={categoryEditor.openNew} disabled={groups.length === 0}>Add product category</button>
+          </div>
+        </div>
+        {unmapped.length > 0 && (
+          <div className="alert alert-warning" role="status">
+            <div className="mb-2">These product categories are not mapped to a group. They cannot be used on a product until a group is chosen.</div>
+            {unmapped.map((term) => (
+              <div className="d-flex flex-wrap align-items-center gap-2 mb-2" key={term.id}>
+                <strong>{term.name}</strong>
+                <select
+                  className="form-select form-select-sm w-auto"
+                  aria-label={`Group category for ${term.name}`}
+                  value={mapping[term.id] ?? ''}
+                  onChange={(event) => setMapping((current) => ({ ...current, [term.id]: event.target.value }))}
+                >
+                  <option value="">Select a group category</option>
+                  {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  disabled={!mapping[term.id]}
+                  onClick={() => actions.saveRecord('terms', { id: term.id, name: term.name, kind: 'category', parentId: mapping[term.id] })}
+                >
+                  Save mapping
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <FormModal
+        open={groupEditor.open}
+        onClose={groupEditor.close}
+        title="Add group category"
+        submitLabel="Add group category"
+        renderForm={(formId) => (
+          <GroupForm
+            key={groupEditor.session}
+            formId={formId}
+            onSave={async (name) => {
+              await actions.saveRecord('terms', { name, kind: 'groupCategory' })
+              groupEditor.close()
+            }}
+          />
+        )}
+      />
+      <FormModal
+        open={categoryEditor.open}
+        onClose={categoryEditor.close}
+        title="Add product category"
+        submitLabel="Add product category"
+        renderForm={(formId) => (
+          <CategoryForm
+            key={categoryEditor.session}
+            formId={formId}
+            groups={groups}
+            onSave={async (values) => {
+              await actions.saveRecord('terms', { ...values, kind: 'category' })
+              categoryEditor.close()
+            }}
+          />
+        )}
+      />
+    </div>
+  )
+}
+
+function labelOf(term) {
+  if (!term) return <span className="text-muted">—</span>
+  return term.deletedAt ? <span>{term.name} <span className="text-muted">(deleted)</span></span> : term.name
 }
 
 /**
@@ -120,48 +240,51 @@ function TermPills({ ids, terms }) {
  */
 export default function ProductsPage({ deleted = false }) {
   const { state, actions } = useErpData()
+  const canManage = usePermission('products.manage')
+  const canDelete = usePermission('products.delete')
+  const canRestore = usePermission('products.restore')
   const editor = useEditor()
   const [query, setQuery] = useState('')
-  const [deleting, setDeleting] = useState({ open: false, product: null })
+  const [deleting, setDeleting] = useState({ open: false, product: null, restore: false })
   const [historyOf, setHistoryOf] = useState({ open: false, product: null })
 
-  const products = state.products.filter((p) => Boolean(p.deletedAt) === deleted)
-  const rows = products.filter((p) => matchesSearch(p, query)).sort(byName)
-  const category = (p) => {
-    const term = findById(state.terms, p.categoryId)
-    if (!term) return <span className="text-muted">—</span>
-    return term.deletedAt ? <span>{term.name} <span className="text-muted">(deleted)</span></span> : term.name
-  }
+  const products = state.products.filter((product) => Boolean(product.deletedAt) === deleted)
+  const rows = products.filter((product) => matchesSearch(product, query)).sort(byName)
 
   const columns = [
-    { key: 'name', header: 'Product', render: (p) => <strong className="fw-semibold">{p.name}</strong> },
+    { key: 'name', header: 'Product', render: (product) => <strong className="fw-semibold">{product.name}</strong> },
     { key: 'code', header: 'Code', nowrap: true },
-    { key: 'category', header: 'Category', render: category },
-    { key: 'tags', header: 'Tags', render: (p) => <TermPills ids={p.tagIds} terms={state.terms} /> },
-    { key: 'badges', header: 'Badges', render: (p) => <TermPills ids={p.badgeIds} terms={state.terms} /> },
+    { key: 'group', header: 'Group category', render: (product) => labelOf(classificationOf(product, state.terms).group) },
+    { key: 'category', header: 'Product category', render: (product) => labelOf(classificationOf(product, state.terms).category) },
+    { key: 'scheme', header: 'Scheme', nowrap: true, render: (product) => product.scheme || <span className="text-muted">—</span> },
     deleted
-      ? { key: 'deletedAt', header: 'Deleted on', nowrap: true, render: (p) => formatDateTime(p.deletedAt) }
-      : { key: 'updatedAt', header: 'Last updated', nowrap: true, render: (p) => formatDateTime(p.updatedAt) },
+      ? { key: 'deletedAt', header: 'Deleted on', nowrap: true, render: (product) => formatDateTime(product.deletedAt) }
+      : { key: 'updatedAt', header: 'Last updated', nowrap: true, render: (product) => formatDateTime(product.updatedAt) },
     {
       key: 'actions',
       header: 'Actions',
       srOnlyHeader: true,
       align: 'end',
       nowrap: true,
-      render: (p) => (
+      render: (product) => (
         <div className="table-actions">
-          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setHistoryOf({ open: true, product: p })}>
-            <i className="bi bi-clock-history" aria-hidden="true" /> History<span className="visually-hidden"> of {p.name}</span>
+          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setHistoryOf({ open: true, product })}>
+            <i className="bi bi-clock-history" aria-hidden="true" /> History<span className="visually-hidden"> of {product.name}</span>
           </button>
-          {!deleted && (
-            <>
-              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => editor.openEdit(p)}>
-                <i className="bi bi-pencil" aria-hidden="true" /> Edit<span className="visually-hidden"> {p.name}</span>
-              </button>
-              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDeleting({ open: true, product: p })}>
-                <i className="bi bi-trash3" aria-hidden="true" /> Delete<span className="visually-hidden"> {p.name}</span>
-              </button>
-            </>
+          {!deleted && canManage && (
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => editor.openEdit(product)}>
+              <i className="bi bi-pencil" aria-hidden="true" /> Edit<span className="visually-hidden"> {product.name}</span>
+            </button>
+          )}
+          {!deleted && canDelete && (
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDeleting({ open: true, product })}>
+              <i className="bi bi-trash3" aria-hidden="true" /> Delete<span className="visually-hidden"> {product.name}</span>
+            </button>
+          )}
+          {deleted && canRestore && (
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDeleting({ open: true, product, restore: true })}>
+              <i className="bi bi-arrow-counterclockwise" aria-hidden="true" /> Restore<span className="visually-hidden"> {product.name}</span>
+            </button>
           )}
         </div>
       ),
@@ -171,14 +294,15 @@ export default function ProductsPage({ deleted = false }) {
   return (
     <PageShell
       actions={
-        !deleted && (
+        !deleted && canManage && (
           <button type="button" className="btn btn-primary" onClick={editor.openNew}>
             <i className="bi bi-plus-lg" aria-hidden="true" /> Add product
           </button>
         )
       }
     >
-      <PreviewNotice />
+      <DataStatusNotice />
+      {!deleted && <ClassificationPanel />}
 
       {deleted && (
         <div className="alert alert-info" role="note">
@@ -215,8 +339,8 @@ export default function ProductsPage({ deleted = false }) {
             formId={formId}
             record={editor.record}
             terms={state.terms}
-            onSave={(values) => {
-              actions.saveProduct({ ...editor.record, ...values })
+            onSave={async (values) => {
+              await actions.saveProduct({ ...editor.record, ...values })
               editor.close()
             }}
           />
@@ -225,29 +349,32 @@ export default function ProductsPage({ deleted = false }) {
 
       <ConfirmDialog
         open={deleting.open}
-        onClose={() => setDeleting((d) => ({ ...d, open: false }))}
-        onConfirm={() => actions.deleteProduct(deleting.product.id)}
-        title="Delete product?"
-        confirmLabel="Delete product"
+        onClose={() => setDeleting((current) => ({ ...current, open: false }))}
+        onConfirm={() => (deleting.restore ? actions.restoreProduct(deleting.product.id) : actions.deleteProduct(deleting.product.id))}
+        title={deleting.restore ? 'Restore product?' : 'Delete product?'}
+        confirmLabel={deleting.restore ? 'Restore product' : 'Delete product'}
+        variant={deleting.restore ? 'primary' : 'danger'}
       >
         {deleting.product && (
           <p className="mb-0">
-            <strong>{deleting.product.name}</strong> will be removed from the Product List and moved to
-            Deleted Products. Its record and history are kept.
+            <strong>{deleting.product.name}</strong>{' '}
+            {deleting.restore
+              ? 'will return to the Product List. If another active product already uses its code, restore is refused until that code is changed.'
+              : 'will be removed from the Product List and moved to Deleted Products. Its record and history are kept.'}
           </p>
         )}
       </ConfirmDialog>
 
       <Modal
         open={historyOf.open}
-        onClose={() => setHistoryOf((h) => ({ ...h, open: false }))}
+        onClose={() => setHistoryOf((current) => ({ ...current, open: false }))}
         title={historyOf.product ? `${historyOf.product.name} — change history` : 'Change history'}
         size="xl"
       >
         {historyOf.product && (
           <ProductHistoryTable
             showProduct={false}
-            entries={state.productHistory.filter((e) => e.productId === historyOf.product.id)}
+            entries={state.productHistory.filter((entry) => entry.productId === historyOf.product.id)}
           />
         )}
       </Modal>

@@ -1,0 +1,35 @@
+---
+description: Yorilife ERP stack, status, and boundaries that apply to every task
+alwaysApply: true
+---
+
+# Yorilife ERP
+
+Custom ERP for Yorilife Sciences. React web app and a framework-free PHP REST API. They talk only over JSON at `/api`. The API must stay usable by a future mobile app (no React knowledge in PHP).
+
+```
+frontend/   React 19, Vite 8, React Router 7, Bootstrap 5.3, JS (no TypeScript)
+backend/    PHP 8.3, PDO, MySQL 8. PSR-4 App\ under controllers, services, middleware, repositories, database, utils
+docs/       ARCHITECTURE.md, DATA_MODEL.md, SPRINT_PLAN.md — read these before changing auth, schema, or business rules
+```
+
+## Sprint map
+
+Sprints 1–5 are done. Sprint 4 persists the business modules. Sales Final Value is stored as entered and is never calculated. All signed-in users see all business records. Sales Manager and Sales User are view-only. Only Admin and Super Admin restore catalogue terms and products.
+
+Sprint 5 adds headquarters state, address, pincode, and phone, and fictional Sales Office demo data via `php bin/seed-demo.php` (development database `yorilife_erp` only). The chain reads from the top: 3rd line manager, then 2nd line manager, then 1st line manager, then headquarters, then stockists. A 3rd line manager has no parent. Stockists link only to a headquarters. State is one of the 28 states or 8 union territories in `backend/config/states.php` (`Delhi`, not a longer label).
+
+Do not rebuild those modules. Dashboard, Reports, Announcements, Application Details, a general audit log, settings, and CSV import are still placeholders. Do not invent their formulas, columns, or workflows. Details are in `docs/SPRINT_PLAN.md`.
+
+## Local run
+
+- API: `php -S localhost:8000 -t public public/index.php` from `backend/` (or `composer serve`). PHP is often not on PATH; Laragon: `C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`.
+- Web: `npm run dev` in `frontend/` → `http://localhost:5173`. Vite proxies `/api` to `:8000`.
+- Databases: `yorilife_erp` (dev) and `yorilife_erp_test` (tests only). Tests refuse any database whose name does not end in `_test` and wipe test users. Never point tests at `yorilife_erp`.
+- Migrations: `php bin/migrate.php` (forward-only SQL in `backend/database/migrations/`). No down migrations. First Super Admin: `php bin/create-admin.php` (no default password).
+
+## Do not
+
+- Put secrets, session IDs, password hashes, or CSRF tokens in responses, URLs, logs, or frontend storage.
+- Change the official logo file or crop it. Render it only through `BrandLogo.jsx`.
+- Add a permissions table or JWT until that decision is explicit. Web auth stays cookie sessions.

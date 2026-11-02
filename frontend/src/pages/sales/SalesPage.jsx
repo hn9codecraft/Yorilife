@@ -1,7 +1,8 @@
 import { useId, useState } from 'react'
 import { Link } from 'react-router'
 import PageShell from '../../components/PageShell.jsx'
-import PreviewNotice from '../../components/PreviewNotice.jsx'
+import DataStatusNotice from '../../components/DataStatusNotice.jsx'
+import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import FormModal from '../../components/FormModal.jsx'
@@ -88,8 +89,7 @@ function SalesEntryForm({ formId, record, state, onSave }) {
         <div className="alert alert-info mb-0" role="note">
           <i className="bi bi-info-circle-fill" aria-hidden="true" />
           <div>
-            All values are entered by an administrator and saved as typed. <strong>Final value is not calculated</strong>:
-            the formula, and how bonus and deduction apply, is still to be confirmed.
+            Amounts are stored as entered, in rupees with two decimal places. <strong>Final value is not calculated</strong> from achievement, bonus or deduction.
           </div>
         </div>
       </div>
@@ -127,6 +127,8 @@ const VARIANTS = {
 export default function SalesPage({ variant }) {
   const config = VARIANTS[variant]
   const { state, actions } = useErpData()
+  const canCreate = usePermission('sales.create')
+  const canUpdate = usePermission('sales.update')
   const editor = useEditor()
   const ids = useId()
   const [month, setMonth] = useState(config.defaultMonth ? currentMonth() : '')
@@ -150,7 +152,7 @@ export default function SalesPage({ variant }) {
     { key: 'headquarters', header: 'Headquarters', render: (s) => findById(state.headquarters, s.headquartersId)?.name ?? '—' },
     { key: 'stockist', header: 'Stockist', render: (s) => findById(state.stockists, s.stockistId)?.name ?? '—' },
     ...AMOUNT_FIELDS.map(({ key, label }) => ({ key, header: label, align: 'end', nowrap: true, render: (s) => formatNumber(s[key]) })),
-    config.editable && {
+    config.editable && canUpdate && {
       key: 'actions',
       header: 'Actions',
       srOnlyHeader: true,
@@ -173,7 +175,7 @@ export default function SalesPage({ variant }) {
   return (
     <PageShell
       actions={
-        config.editable && (
+        config.editable && canCreate && (
           <>
             <Link to="/imports/data?type=sales" className="btn btn-outline-secondary">
               <i className="bi bi-filetype-csv" aria-hidden="true" /> Import CSV
@@ -185,9 +187,9 @@ export default function SalesPage({ variant }) {
         )
       }
     >
-      <PreviewNotice />
+      <DataStatusNotice />
 
-      {config.editable && !canEnter && (
+      {config.editable && canCreate && state.status === 'ready' && !canEnter && (
         <div className="alert alert-info" role="note">
           <i className="bi bi-info-circle-fill" aria-hidden="true" />
           <div>
@@ -254,8 +256,8 @@ export default function SalesPage({ variant }) {
               formId={formId}
               record={editor.record}
               state={state}
-              onSave={(values) => {
-                actions.saveRecord('sales', { ...editor.record, ...values })
+              onSave={async (values) => {
+                await actions.saveRecord('sales', { ...editor.record, ...values })
                 editor.close()
               }}
             />

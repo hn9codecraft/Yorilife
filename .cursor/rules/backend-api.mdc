@@ -1,0 +1,25 @@
+---
+description: PHP API layering, JSON envelope, auth, and migrations
+globs: backend/**/*.php
+alwaysApply: false
+---
+
+# Backend API
+
+No framework. Flow: `public/index.php` → `bootstrap.php` → session → CORS → `Router` → `OriginMiddleware` → route guards → controller → service → repository → `JsonResponse`.
+
+Register routes in `routes/api.php`. Guard signed-in routes with `AuthMiddleware::authenticated()` and `AuthMiddleware::can('permission')`.
+
+```php
+$router->post('/api/users', [UserController::class, 'store'], [$auth, AuthMiddleware::can('users.create')]);
+```
+
+- Controllers read `Request`, call a service, and return `JsonResponse::success($data, $status)`. No SQL in controllers.
+- Services own validation and authorization. Repositories own SQL (prepared statements; `EMULATE_PREPARES` stays false).
+- Throw `HttpException` for expected failures. Unknown JSON fields are rejected. Presenters whitelist response fields (never `password_hash`).
+- Envelope: `{ "success": true, "data": {} }` or `{ "success": false, "error": { "code", "message", "details?" } }`. Validation is 422 with `details.fields`.
+- State-changing requests require JSON and `X-CSRF-Token`. Rank rule: a user manages only roles ranked below their own, and cannot change their own role or status.
+- New schema is a new file in `database/migrations/` (name order, forward-only). `DATETIME` is UTC. Soft-delete business rows with `deleted_at`; do not physically delete them.
+- Config comes from `.env` only. `display_errors` stays off. Database errors returned to clients are `database_unavailable`.
+
+PHPUnit lives in `backend/tests` and hits a real server on the test database. Add a feature test when you add an endpoint.

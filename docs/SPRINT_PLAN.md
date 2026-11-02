@@ -104,9 +104,9 @@ These are deliberately **not** implemented as rules or calculations until they a
 | 8 | Manager rules | Can a manager move to a different parent, and should that change be kept in history? Can one person hold two levels? |
 | 9 | Record fields | Required fields and unique codes for headquarters, managers, stockists and products (address, phone, GST, pack size, MRP…). |
 | 10 | Deleting org records | Can headquarters, managers or stockists be deleted or deactivated? What happens to linked records? |
-| 11 | Categories | Does each category belong to a group category? Can a product have several categories? |
+| 11 | Categories | Resolved: a product category belongs to one group category, and a product has one category. Unmapped legacy categories are not assigned automatically. |
 | 12 | Deleting terms in use | May a tag, badge or category used by products be deleted? (The preview allows it and shows it as deleted on those products.) Should deleted records be restorable? |
-| 13 | Master Sheet scheme | What is the scheme field (e.g. "10+5" = buy 10 get 5 free)? Which other per-year fields are needed (price, PTR, MRP…)? How are new years opened, and can past years be edited? |
+| 13 | Master Sheet scheme | Resolved: the scheme is the product’s current value (`10+5` stores buy 10 and free 5). Strip pack, MRP, PTR and PTS are per financial year. Past years stay editable. |
 | 14 | Permissions | Which roles may create, edit, delete or enter sales? "Administrator" attribution needs authentication. |
 | 15 | CSV imports | Which datasets can be imported, the column template for each, duplicate handling, all-or-nothing vs partial imports, and the file size limit (preview uses 10 MB). |
 
@@ -183,10 +183,59 @@ Verification: lint, build, unit tests, and 38/38 browser tests (12 new sidebar t
 | N2 | **CSV Import placement:** it now sits inside Sales Management. Should Products also get its own "Import products (CSV)" entry? The import screen only offers "Sales entries" today, and the product import columns aren't defined. |
 | N3 | **Announcements:** what should the feature do (who posts, who sees, delivery)? It is a placeholder until defined. |
 
-## Sprint 4 — to be planned (pending approval)
+## Sprint 4 — Database and persistent business data ✅
 
-Suggested: approve A1–A4 and the business data model, then build the Sales Office and Products APIs with persistence and permissions.
+**Goal:** connect the existing screens to MySQL so business records survive refresh and re-login.
 
-## Later sprints (to be planned)
+Verified on 28 Oct 2026 against MySQL (`yorilife_erp` migration applied; PHPUnit and Playwright used `yorilife_erp_test`):
 
-Authentication & roles · Product master & categories · Sales office hierarchy · Stockist entry · Sales & monthly sales · Incentives & deductions · Announcements & notifications · Dashboard · Mobile app API hardening.
+- PHPUnit: 52 tests, 348 assertions, all passed (includes the new `BusinessDataTest`).
+- Playwright: 38 passed, including a headquarters that remains after reload and is visible to a Sales User.
+- Frontend: oxlint clean, 8 unit tests passed, production build succeeded.
+- Sprint 3 sign-in and user management still pass in those suites.
+
+In scope:
+
+1. Foundation: permissions, shared validation, and safe test-database handling.
+2. Sales Office: Headquarters, 1st/2nd/3rd Line Managers, and Stockists.
+3. Catalogue: group categories, categories, tags, and badges.
+4. Products: create/edit, soft delete, Admin restore, and change history.
+5. Master Product Sheet: separate April–March financial years and year-specific product configuration.
+6. Sales entries: persistent records, manually entered Sales Final Value, and validation.
+7. Verification: migrations, API documentation, PHPUnit, and Playwright against the running app.
+
+Out of scope until requirements exist: Dashboard, Reports, Announcements, Application Details, Audit, and CSV Import.
+
+Done when: migrations run safely; Sprint 3 auth still works; data is saved and loaded through the API; backend validation and authorization are tested; PHPUnit and Playwright pass; MySQL is actually connected; docs and test results are updated.
+
+## Sprint 5 — Sales Office hierarchy and demo data ✅
+
+The Sprint 4 APIs already stored headquarters, the three manager levels, and stockists. The chain now reads from the top: 3rd line manager, then 2nd line manager, then 1st line manager, then headquarters, then stockists. A 3rd line manager has no parent. Several records can share the parent directly above them. Stockists still link only to a headquarters. State is chosen from the 28 states and 8 union territories, with the territory labelled Delhi.
+
+- `php bin/seed-demo.php` loads fictional demo rows into `yorilife_erp`: Shyam (`ER-M3-001`), four 2nd line managers, four 1st line managers under Shubham, two headquarters under Aarav Mehta, and five stockists. Older demo rows are removed only when their code starts with `DEMO-HQ`, `DEMO-M`, or `DEMO-STK` and is not in this set. Other business rows are left as they are. Users and roles are not changed. The combined view is Sales Office Hierarchy.
+- Migration `2026_10_29_000006_sales_office_top_down_hierarchy` adds `headquarters.parent_manager_id` and reverses only a complete one-to-one chain (one 3rd line, one 2nd line, one 1st line, one headquarters). Any other existing chain is left untouched; the new check then stops the migration instead of guessing a parent.
+
+Added on 29 Oct 2026:
+
+- Headquarters now store state, address, pincode, and phone (`2026_10_29_000005_add_headquarters_contact_columns`). Name stays required. Code stays optional and unique when set. Names are not unique. There is still no delete. State must be one of the 28 states or 8 union territories.
+- Verified on 29 Oct 2026. PHPUnit on MySQL `yorilife_erp_test`: 56 tests, 407 assertions, all passed. Frontend lint clean, 8 unit tests passed, production build succeeded. Playwright: 39 passed and the route-render test timed out at 60 seconds; that test passed in 41 seconds after its limit was raised to 120 seconds. The state dropdown shows 37 options (placeholder plus 36 regions, including Delhi). On `yorilife_erp` the migration reversed the five existing one-to-one demo chains. There were no non-demo headquarters, no sales rows, and the one user was unchanged. The first seed created 25 rows and the second updated those 25 and created none. Two 2nd line managers sit under 3rd line manager 01, two headquarters sit under 1st line manager 01, and two stockists sit under headquarters 01.
+
+## Product management — year commercials and product scheme
+
+The product menu is Product List, Master Product Sheet, Deleted Products and Product Change History. Group category and product category stay on the product. A product category belongs to one group category; categories that have no group are left unmapped.
+
+Strip pack, MRP, PTR and PTS, and Included / Excluded, are stored on `master_sheet_entries` for one financial year. Included / Excluded means eligibility for that year’s Extra Bonus / Incentive Scheme. A new sheet row starts as Not set. The scheme is the product’s current value. `10+5` still records buy and free quantities. Year-wise scheme columns are no longer written. Where every stored year scheme for a product is the same, that value is copied onto the product. Where years disagree, the product scheme is left empty and the year values stay for review. Scheme changes are one `product_changes` row and are what the Master Sheet Info button shows.
+
+Update Products adds missing active products for the selected year and does not replace prices. Scan and Update lists missing products and inserts only after the admin confirms a selection.
+
+## Later sprints
+
+Sprint 5 added headquarters contact fields and fictional Sales Office demo data. The manager and stockist APIs were already in place.
+
+| Sprint | Status | Notes |
+| --- | --- | --- |
+| 6 Dashboard and reports | Blocked | No approved metric definitions. Do not sum a field until the report says which value (achievement, bonus, deduction or final value) and whether totals are required. Headquarters-wise price means sales amount by headquarters, not a price list. Sales rows have no product, so a product-performance report cannot be built from sales entries. |
+| 7 CSV import | Blocked | Scope is Products and Sales only. Still undecided: column templates, duplicate handling, and whether a file is all-or-nothing or partial. The import screen still checks a file in the browser and does not save it. |
+| 8 Announcements and Application Details | Blocked | Routes are placeholders. Recipient rules, announcement fields and application metadata are not specified. |
+| 9 Audit and settings | Partial | Product and Master Sheet history record the user and time. A general audit log and settings screen are not specified, so they stay placeholders. |
+| 10 Final QA and deployment | Not started as a release | Automated tests and the production frontend build passed on 28 Oct 2026. There is no production host, backup drill, or deployment sign-off. |

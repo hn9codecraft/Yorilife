@@ -128,7 +128,7 @@
   --sidebar-width: 264px;
   --sidebar-collapsed-width: 76px;   /* Desktop icon rail */
   --sidebar-current-width: var(--sidebar-width);
-  --container-max-width: 1320px;
+  --container-max-width: calc(100% - 100px);
   --container-padding: var(--space-4);
   --logo-height: 36px;
   --logo-height-collapsed: 22px;     /* Logo inside the collapsed rail */

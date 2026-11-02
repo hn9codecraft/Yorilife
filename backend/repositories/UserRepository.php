@@ -55,6 +55,25 @@ final class UserRepository
             ->fetchAll();
     }
 
+    /**
+     * Name or email match. Uses the public column list, so the password hash
+     * is never selected. $like is a bound pattern, never interpolated.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function search(string $like): array
+    {
+        $stmt = $this->pdo()->prepare(
+            'SELECT ' . self::PUBLIC_COLUMNS . ' FROM users u JOIN roles r ON r.id = u.role_id
+             WHERE u.name LIKE ? ESCAPE \'\\\\\' OR u.email LIKE ? ESCAPE \'\\\\\'
+             ORDER BY u.name, u.id
+             LIMIT 6'
+        );
+        $stmt->execute([$like, $like]);
+
+        return $stmt->fetchAll();
+    }
+
     public function countByRole(string $roleSlug): int
     {
         $stmt = $this->pdo()->prepare('SELECT COUNT(*) FROM users u JOIN roles r ON r.id = u.role_id WHERE r.slug = ?');

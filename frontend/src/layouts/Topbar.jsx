@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import useRouteMeta from '../hooks/useRouteMeta.js'
 import useAuth from '../auth/useAuth.js'
+import GlobalSearch from '../components/GlobalSearch.jsx'
 
 /**
- * Sticky top bar: sidebar toggle, current page context, a notification
- * placeholder and the account menu (signed-in user + Sign out).
+ * Sticky top bar: sidebar toggle on the left, global search in the center,
+ * notification placeholder and account menu on the right.
  */
 export default function Topbar({ sidebarId, toggleRef, toggleLabel, toggleExpanded, onToggle }) {
-  const { title, group } = useRouteMeta()
   const { user, logout } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
 
@@ -19,23 +18,22 @@ export default function Topbar({ sidebarId, toggleRef, toggleLabel, toggleExpand
   return (
     <header className="app-header">
       <div className="app-header__inner">
-        <button
-          ref={toggleRef}
-          type="button"
-          className="btn btn-outline-secondary btn-icon"
-          aria-controls={sidebarId}
-          aria-expanded={toggleExpanded}
-          aria-label={toggleLabel}
-          title={toggleLabel}
-          onClick={onToggle}
-        >
-          <i className="bi bi-list" aria-hidden="true" />
-        </button>
-
-        <div className="app-header__context">
-          {group && <span className="eyebrow truncate">{group.label}</span>}
-          <span className="app-header__title truncate">{title}</span>
+        <div className="app-header__start">
+          <button
+            ref={toggleRef}
+            type="button"
+            className="btn btn-outline-secondary btn-icon"
+            aria-controls={sidebarId}
+            aria-expanded={toggleExpanded}
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            onClick={onToggle}
+          >
+            <i className="bi bi-list" aria-hidden="true" />
+          </button>
         </div>
+
+        <GlobalSearch />
 
         <div className="app-header__actions">
           <button

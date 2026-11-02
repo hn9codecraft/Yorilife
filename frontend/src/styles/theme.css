@@ -489,33 +489,101 @@ pre {
 }
 
 .app-header__inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-3);
+  column-gap: var(--space-3);
   min-height: var(--header-height);
   padding-inline: var(--container-padding);
 }
 
-/* Current section + page; truncates instead of pushing the actions off-screen */
-.app-header__context {
+.app-header__start,
+.app-header__actions {
   display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
+  align-items: center;
   min-width: 0;
-  line-height: 1.25;
 }
 
-.app-header__title {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-heading);
+.app-header__start {
+  justify-self: start;
 }
 
 .app-header__actions {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
+  justify-self: end;
   gap: var(--space-2);
+}
+
+/* Global search sits in the center column. Height stays inside the bar. */
+.app-search {
+  position: relative;
+  justify-self: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 36rem;
+}
+
+.app-search__panel {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  width: 100%;
+  max-height: min(24rem, calc(100vh - var(--header-height) - var(--space-4)));
+  overflow: auto;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.app-search__group-label {
+  position: sticky;
+  top: 0;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  background-color: var(--color-surface);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.app-search__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app-search__option {
+  display: grid;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.app-search__option:hover,
+.app-search__option.is-active {
+  background-color: var(--color-primary-50);
+  color: inherit;
+}
+
+.app-search__option-label {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-heading);
+}
+
+.app-search__option-detail {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.app-search__status {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 
 .app-user-menu {
@@ -1080,6 +1148,36 @@ pre {
   border-bottom-color: var(--color-border);
 }
 
+.table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.table-sort:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.table-sort .bi {
+  color: var(--color-text-subtle);
+  font-size: 0.9em;
+}
+
+.table-sort.is-active .bi {
+  color: var(--color-primary-600);
+}
+
 .table > tbody > tr:last-child > * {
   border-bottom: 0;
 }
@@ -1348,6 +1446,178 @@ pre {
   min-width: 0;
 }
 
+.list-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.list-filter > .btn {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.list-filter__inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.list-filter .btn.is-active {
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-600);
+  background-color: var(--color-primary-50);
+}
+
+.list-filter__count {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--color-primary-600);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+  line-height: 1.1rem;
+}
+
+.list-filter__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 16rem;
+}
+
+.list-filter__field .form-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.list-filter__control {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 7.5rem;
+}
+
+.list-filter__field:has(.list-filter__menu) {
+  z-index: 2;
+}
+
+.list-filter__toggle {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-filter__toggle > .truncate {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-filter__toggle.is-placeholder {
+  color: var(--color-text-muted);
+}
+
+.list-filter__toggle:disabled {
+  cursor: not-allowed;
+}
+
+.list-filter__menu {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  left: 0;
+  max-height: min(14rem, calc(100vh - var(--header-height) - 8rem));
+  overflow-y: auto;
+  padding: var(--space-2);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.list-filter__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.list-filter__option:hover {
+  background-color: var(--color-primary-50);
+}
+
+.list-filter__option .form-check-input {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.list-filter__actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.list-filter--panel {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.list-filter--panel .list-filter__panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  width: min(16rem, calc(100vw - 2rem));
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.list-filter--panel .list-filter__fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+.list-filter--panel .list-filter__field {
+  display: block;
+  flex: none;
+  max-width: none;
+}
+
+.list-filter--panel .list-filter__field .form-label {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.list-filter--panel .list-filter__actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  margin-top: var(--space-1);
+}
+
 .table-actions {
   display: inline-flex;
   flex-wrap: nowrap;
@@ -1553,6 +1823,29 @@ legend.form-label {
   color: var(--color-text-muted);
 }
 
+.hierarchy-branch > summary,
+.hierarchy-branch__summary {
+  cursor: pointer;
+}
+
+.hierarchy-branch > summary {
+  display: inline-flex;
+  list-style: none;
+}
+
+.hierarchy-branch > summary::-webkit-details-marker,
+.card > .hierarchy-branch__summary::-webkit-details-marker {
+  display: none;
+}
+
+.hierarchy-branch__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .hierarchy-stockists {
   display: grid;
   gap: var(--space-2);
@@ -1714,9 +2007,17 @@ legend.form-label {
     --header-height: 56px;
   }
 
-  /* Icon-only account button to leave room for the page title */
+  /* Icon-only account button so the search field keeps the remaining width */
   .app-user-menu__label {
     display: none;
+  }
+
+  .app-search__panel {
+    position: fixed;
+    top: calc(var(--header-height) + 3px);
+    right: var(--container-padding);
+    left: var(--container-padding);
+    width: auto;
   }
 
   .page-header__actions > .btn {
@@ -1748,12 +2049,29 @@ legend.form-label {
   .modal-footer > .btn {
     flex: 1 1 auto;
   }
+
+  .list-filter__field {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .toolbar > .list-filter--panel {
+    width: auto;
+  }
 }
 
 /* ---- sm and up (>= 576px) --------------------------------------------- */
 @media (min-width: 576px) {
   :root {
     --container-padding: var(--space-5);
+  }
+
+  .list-filter--panel:has(.list-filter__field + .list-filter__field) .list-filter__panel {
+    width: min(36rem, calc(100vw - 2rem));
+  }
+
+  .list-filter--panel:has(.list-filter__field + .list-filter__field) .list-filter__fields {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
