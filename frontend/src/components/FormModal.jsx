@@ -11,7 +11,7 @@ import { FormModalContext } from './FormModalContext.js'
  * focus keep working); a
  * server error that isn't tied to a field is shown above the form.
  */
-export default function FormModal({ open, onClose, title, submitLabel = 'Save', renderForm, size }) {
+export default function FormModal({ open, onClose, title, submitLabel = 'Save', renderForm, size, variant }) {
   const formId = useId()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -35,10 +35,11 @@ export default function FormModal({ open, onClose, title, submitLabel = 'Save', 
       onClose={onClose}
       title={title}
       size={size}
+      dialogClassName={variant === 'wide' ? 'modal-form-wide' : undefined}
       footer={
         <>
-          <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" form={formId} className="btn btn-primary" aria-disabled={saving || undefined} aria-busy={saving || undefined}>
+          <button type="button" className={`btn btn-outline-secondary${variant === 'wide' ? ' btn-sm' : ''}`} data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" form={formId} className={`btn btn-primary${variant === 'wide' ? ' btn-sm' : ''}`} aria-disabled={saving || undefined} aria-busy={saving || undefined}>
             {saving && <span className="spinner-border spinner-border-sm" aria-hidden="true" />} {saving ? 'Saving…' : submitLabel}
           </button>
         </>

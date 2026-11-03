@@ -4,6 +4,7 @@ import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
+import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import FormModal from '../../components/FormModal.jsx'
@@ -12,6 +13,7 @@ import FormField, { SelectField, TextField } from '../../components/FormField.js
 import { hqCodeSuffix, nextHqSequence } from '../../data/hqCode.js'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
+import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
 import { matchesSearch } from '../../data/selectors.js'
 
@@ -81,8 +83,9 @@ function OfficeNameForm({ formId, record, locations, offices, headquarters, onSa
         placeholder={locations.length ? 'Select a state' : 'No states yet'}
         options={locations.map((location) => ({ value: location.id, label: location.name }))}
         disabled={locations.length === 0}
+        className="col-12 col-md-6"
       />
-      <TextField id={form.fieldId('name')} label="Headquarters name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
+      <TextField id={form.fieldId('name')} label="Headquarters name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
       <FormField id={codeId} label="Headquarters Code" required error={form.errors.code} help="Numbers only. Leading zeros are kept." className="col-12 col-md-6">
         <div className="input-group">
           <span className="input-group-text" id={`${codeId}-prefix`}>HQ-</span>
@@ -99,10 +102,10 @@ function OfficeNameForm({ formId, record, locations, offices, headquarters, onSa
           />
         </div>
       </FormField>
+      <TextField id={form.fieldId('pincode')} label="Pincode" required value={form.values.pincode} onChange={form.set('pincode')} error={form.errors.pincode} inputMode="numeric" className="col-12 col-md-6" />
       <TextField id={form.fieldId('address')} label="Headquarters address" required value={form.values.address} onChange={form.set('address')} error={form.errors.address} />
-      <TextField id={form.fieldId('pincode')} label="Pincode" required value={form.values.pincode} onChange={form.set('pincode')} error={form.errors.pincode} inputMode="numeric" className="col-12 col-md-4" />
-      <TextField id={form.fieldId('phone')} label="Phone number" required value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} help="A country code, spaces, or a leading zero are kept." className="col-12 col-md-8" />
-      <TextField id={form.fieldId('email')} label="Email" type="email" required value={form.values.email} onChange={form.set('email')} error={form.errors.email} />
+      <TextField id={form.fieldId('phone')} label="Phone number" required value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} help="A country code, spaces, or a leading zero are kept." className="col-12 col-md-6" />
+      <TextField id={form.fieldId('email')} label="Email" type="email" required value={form.values.email} onChange={form.set('email')} error={form.errors.email} className="col-12 col-md-6" />
     </form>
   )
 }
@@ -129,8 +132,8 @@ function StateForm({ formId, record, locations, onSave }) {
 
   return (
     <form id={formId} className="row g-3" noValidate onSubmit={form.handleSubmit((values) => onSave({ name: values.name.trim(), code: values.code.trim().toUpperCase() }))}>
-      <TextField id={form.fieldId('name')} label="State Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
-      <TextField id={form.fieldId('code')} label="Location Code" required value={form.values.code} onChange={form.set('code')} error={form.errors.code} help="Stored in uppercase." />
+      <TextField id={form.fieldId('name')} label="State Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
+      <TextField id={form.fieldId('code')} label="Location Code" required value={form.values.code} onChange={form.set('code')} error={form.errors.code} help="Stored in uppercase." className="col-12 col-md-6" />
     </form>
   )
 }
@@ -143,15 +146,19 @@ export default function LocationPage() {
   const [query, setQuery] = useState('')
   const [officeQuery, setOfficeQuery] = useState('')
   const [deleting, setDeleting] = useState(null)
+  const [deletingMany, setDeletingMany] = useState(false)
   const [deletingOffice, setDeletingOffice] = useState(null)
+  const [deletingManyOffices, setDeletingManyOffices] = useState(false)
   const locations = state.locations ?? []
   const rows = locations.filter((location) => matchesSearch(location, query))
+  const selection = useRowSelection(rows)
   const offices = locations.flatMap((location) => (location.headquarters ?? []).map((office) => ({
     ...office,
     state: location.name,
     locationId: location.id,
   })))
   const officeRows = offices.filter((office) => matchesSearch(office, officeQuery, ['name', 'code', 'state', 'address', 'pincode', 'phone', 'email']))
+  const officeSelection = useRowSelection(officeRows)
 
   const columns = [
     { key: 'name', header: 'State Name', render: (location) => <strong className="fw-semibold">{location.name}</strong> },
@@ -192,10 +199,19 @@ export default function LocationPage() {
           </>
         )}
       >
+        {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption="States"
           columns={columns}
           rows={rows}
+          selection={canManage ? {
+            isSelected: (location) => selection.isSelected(location.id),
+            onToggle: (location) => selection.toggle(location.id),
+            onToggleAll: selection.toggleAll,
+            allSelected: selection.allSelected,
+            indeterminate: selection.indeterminate,
+            label: (location) => `Select ${location.name}`,
+          } : null}
           emptyText={locations.length ? 'No states match your search.' : 'No states yet.'}
           empty={state.status === 'ready' && locations.length === 0 && (
             <div className="card-body">
@@ -219,8 +235,17 @@ export default function LocationPage() {
           </>
         )}
       >
+        {canManage && <SelectionBar count={officeSelection.count} onDelete={() => setDeletingManyOffices(true)} onClear={officeSelection.clear} />}
         <DataTable
           caption="Location headquarters"
+          selection={canManage ? {
+            isSelected: (office) => officeSelection.isSelected(office.id),
+            onToggle: (office) => officeSelection.toggle(office.id),
+            onToggleAll: officeSelection.toggleAll,
+            allSelected: officeSelection.allSelected,
+            indeterminate: officeSelection.indeterminate,
+            label: (office) => `Select ${office.name}`,
+          } : null}
           columns={[
             { key: 'name', header: 'Headquarters Name', render: (office) => <strong className="fw-semibold">{office.name}</strong> },
             { key: 'state', header: 'State', render: (office) => office.state },
@@ -252,6 +277,8 @@ export default function LocationPage() {
       </TableCard>
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={officeEditor.open}
         onClose={officeEditor.close}
         title={officeEditor.record?.id ? 'Edit location headquarters' : 'Add location headquarters'}
@@ -272,6 +299,8 @@ export default function LocationPage() {
       />
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={editor.open}
         onClose={editor.close}
         title={editor.record ? 'Edit state' : 'Add State'}
@@ -300,6 +329,19 @@ export default function LocationPage() {
       </ConfirmDialog>
 
       <ConfirmDialog
+        open={deletingMany}
+        onClose={() => setDeletingMany(false)}
+        title="Delete selected states"
+        confirmLabel="Delete selected"
+        onConfirm={async () => {
+          await actions.deleteMany('locations', selection.selectedIds)
+          selection.clear()
+        }}
+      >
+        Delete {selection.count} states? A state that is assigned to a manager or a headquarters cannot be deleted.
+      </ConfirmDialog>
+
+      <ConfirmDialog
         open={Boolean(deletingOffice)}
         onClose={() => setDeletingOffice(null)}
         title="Delete location headquarters"
@@ -307,6 +349,19 @@ export default function LocationPage() {
         onConfirm={() => actions.deleteLocationHeadquarters(deletingOffice.id)}
       >
         Delete {deletingOffice?.name}? A location headquarters that is linked to a headquarters office cannot be deleted.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingManyOffices}
+        onClose={() => setDeletingManyOffices(false)}
+        title="Delete selected location headquarters"
+        confirmLabel="Delete selected"
+        onConfirm={async () => {
+          await actions.deleteMany('locationHeadquarters', officeSelection.selectedIds)
+          officeSelection.clear()
+        }}
+      >
+        Delete {officeSelection.count} location headquarters? A location headquarters that is linked to a headquarters office cannot be deleted.
       </ConfirmDialog>
     </PageShell>
   )

@@ -5,6 +5,7 @@ import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
+import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import ListFilter from '../../components/ListFilter.jsx'
@@ -16,6 +17,7 @@ import HierarchyTree from '../../components/HierarchyTree.jsx'
 import FormField, { SelectField, TextField } from '../../components/FormField.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
+import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
 import { nextStSequence, stCodeSuffix } from '../../data/stCode.js'
 import { buildHeadquartersBranch, byName, findById, matchesFilters, matchesSearch } from '../../data/selectors.js'
@@ -67,7 +69,7 @@ function StockistForm({ formId, record, stockists, headquarters, onSave }) {
         headquartersId: v.headquartersId,
       }))}
     >
-      <TextField id={form.fieldId('name')} label="Stockist name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
+      <TextField id={form.fieldId('name')} label="Stockist name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
       <FormField id={codeId} label="Stockist code" required error={form.errors.code} help="Numbers only. Leading zeros are kept." className="col-12 col-md-6">
         <div className="input-group">
           <span className="input-group-text" id={`${codeId}-prefix`}>ST-</span>
@@ -96,8 +98,8 @@ function StockistForm({ formId, record, stockists, headquarters, onSave }) {
         help="Stockists map directly to a headquarters. Its managers are shown in the stockist’s hierarchy view."
       />
       <TextField id={form.fieldId('address')} label="Address" value={form.values.address} onChange={form.set('address')} error={form.errors.address} help="Optional." />
-      <TextField id={form.fieldId('pincode')} label="Pincode" value={form.values.pincode} onChange={form.set('pincode')} error={form.errors.pincode} inputMode="numeric" help="Optional." className="col-12 col-md-4" />
-      <TextField id={form.fieldId('phone')} label="Phone number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} help="Optional. A country code or a leading zero is kept." className="col-12 col-md-8" />
+      <TextField id={form.fieldId('pincode')} label="Pincode" value={form.values.pincode} onChange={form.set('pincode')} error={form.errors.pincode} inputMode="numeric" help="Optional." className="col-12 col-md-6" />
+      <TextField id={form.fieldId('phone')} label="Phone number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} help="Optional. A country code or a leading zero is kept." className="col-12 col-md-6" />
       <TextField id={form.fieldId('email')} label="Email" type="email" value={form.values.email} onChange={form.set('email')} error={form.errors.email} help="Optional." />
     </form>
   )
@@ -111,6 +113,7 @@ export default function StockistsPage() {
   const [filters, setFilters] = useState({ stateIds: [], reportIds: [] })
   const [viewing, setViewing] = useState({ open: false, id: null })
   const [deleting, setDeleting] = useState(null)
+  const [deletingMany, setDeletingMany] = useState(false)
 
   const headquarters = [...state.headquarters].sort(byName)
   const locations = state.locations ?? []
@@ -123,6 +126,7 @@ export default function StockistsPage() {
       return matchesSearch(stockist, query, ['name', 'code', 'address', 'pincode', 'phone', 'email']) && matchesFilters(stateIds, null, filters)
     })
     .sort(byName)
+  const selection = useRowSelection(rows)
   const viewed = findById(state.stockists, viewing.id)
 
   const columns = [
@@ -210,10 +214,19 @@ export default function StockistsPage() {
           </>
         }
       >
+        {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption="Stockists"
           columns={columns}
           rows={rows}
+          selection={canManage ? {
+            isSelected: (stockist) => selection.isSelected(stockist.id),
+            onToggle: (stockist) => selection.toggle(stockist.id),
+            onToggleAll: selection.toggleAll,
+            allSelected: selection.allSelected,
+            indeterminate: selection.indeterminate,
+            label: (stockist) => `Select ${stockist.name}`,
+          } : null}
           emptyText={state.stockists.length ? 'No stockists match these filters.' : 'No stockists yet.'}
           empty={state.status === 'ready' && state.stockists.length === 0 && (
             <div className="card-body">
@@ -224,6 +237,8 @@ export default function StockistsPage() {
       </TableCard>
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={editor.open}
         onClose={editor.close}
         title={editor.record ? 'Edit stockist' : 'Add stockist'}
@@ -250,6 +265,19 @@ export default function StockistsPage() {
         onConfirm={() => actions.deleteStockist(deleting.id)}
       >
         Delete {deleting?.name}? Sales entries for this stockist are removed with it.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingMany}
+        onClose={() => setDeletingMany(false)}
+        title="Delete selected stockists"
+        confirmLabel="Delete selected"
+        onConfirm={async () => {
+          await actions.deleteMany('stockists', selection.selectedIds)
+          selection.clear()
+        }}
+      >
+        Delete {selection.count} stockists? Sales entries for these stockists are removed with them.
       </ConfirmDialog>
 
       <Modal

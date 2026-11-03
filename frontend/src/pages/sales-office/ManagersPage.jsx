@@ -5,6 +5,7 @@ import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
+import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import FormModal from '../../components/FormModal.jsx'
@@ -12,6 +13,7 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import FormField, { SelectField, TextField } from '../../components/FormField.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
+import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
 import { ALLOWED_PARENT_TYPES, MANAGER_LEVELS, PARENT_TYPES } from '../../data/constants.js'
 import { managerCodePrefix, managerCodeSuffix, nextManagerSequence } from '../../data/managerCode.js'
@@ -82,10 +84,10 @@ function StateListField({ id, locations, value, onChange, error, emptyText = 'No
   )
 }
 
-function EmployeeCodeField({ id, level, value, onChange, error }) {
+function EmployeeCodeField({ id, level, value, onChange, error, className }) {
   const prefix = managerCodePrefix(level)
   return (
-    <FormField id={id} label="Employee Code" required error={error} help="Numbers only. Leading zeros are kept.">
+    <FormField id={id} label="Employee Code" required error={error} help="Numbers only. Leading zeros are kept." className={className}>
       <div className="input-group">
         <span className="input-group-text" id={`${id}-prefix`}>{prefix}</span>
         <input
@@ -172,12 +174,12 @@ function ManagerForm({ formId, level, record, state, onSave }) {
         return onSave(child)
       })}
     >
-      <TextField id={form.fieldId('name')} label="Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
-      <EmployeeCodeField id={form.fieldId('code')} level={level} value={form.values.code} onChange={form.set('code')} error={form.errors.code} />
+      <TextField id={form.fieldId('name')} label="Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
+      <EmployeeCodeField id={form.fieldId('code')} level={level} value={form.values.code} onChange={form.set('code')} error={form.errors.code} className="col-12 col-md-6" />
       {(isRoot || level === 1 || level === 2) && (
         <>
-          <TextField id={form.fieldId('email')} label="Email" type="email" value={form.values.email} onChange={form.set('email')} error={form.errors.email} help="Optional." />
-          <TextField id={form.fieldId('phone')} label="Phone Number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" help="Optional. A leading zero or country code is kept." />
+          <TextField id={form.fieldId('email')} label="Email" type="email" value={form.values.email} onChange={form.set('email')} error={form.errors.email} help="Optional." className="col-12 col-md-6" />
+          <TextField id={form.fieldId('phone')} label="Phone Number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" help="Optional. A leading zero or country code is kept." className="col-12 col-md-6" />
         </>
       )}
       {isRoot && (
@@ -254,6 +256,7 @@ export default function ManagersPage({ level }) {
   const editor = useEditor()
   const [query, setQuery] = useState('')
   const [deleting, setDeleting] = useState(null)
+  const [deletingMany, setDeletingMany] = useState(false)
   const [sort, setSort] = useState({ key: 'name', direction: 'asc' })
   const [filters, setFilters] = useState({ stateIds: [], reportIds: [] })
   const meta = MANAGER_LEVELS[level]
@@ -266,6 +269,7 @@ export default function ManagersPage({ level }) {
     filters,
   ))
   const rows = level === 3 ? matched.sort(byName) : sortByField(matched, sort.key, sort.direction)
+  const selection = useRowSelection(rows)
   const toggleSort = (key) => setSort((current) => (
     current.key === key ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }
   ))
@@ -398,12 +402,21 @@ export default function ManagersPage({ level }) {
           </>
         )}
       >
+        {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption={meta.plural}
           columns={columns}
           rows={rows}
           sort={level === 3 ? null : sort}
           onSort={level === 3 ? null : toggleSort}
+          selection={canManage ? {
+            isSelected: (manager) => selection.isSelected(manager.id),
+            onToggle: (manager) => selection.toggle(manager.id),
+            onToggleAll: selection.toggleAll,
+            allSelected: selection.allSelected,
+            indeterminate: selection.indeterminate,
+            label: (manager) => `Select ${manager.name}`,
+          } : null}
           emptyText={managers.length ? 'No managers match your search.' : `No ${meta.plural.toLowerCase()} yet.`}
           empty={state.status === 'ready' && managers.length === 0 && (
             <div className="card-body">
@@ -414,6 +427,8 @@ export default function ManagersPage({ level }) {
       </TableCard>
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={editor.open}
         onClose={editor.close}
         title={`${editor.record ? 'Edit' : 'Add'} ${meta.label.toLowerCase()}`}
@@ -440,6 +455,19 @@ export default function ManagersPage({ level }) {
         onConfirm={() => actions.deleteManager(deleting.id)}
       >
         Delete {deleting?.name}? A manager who still has people or headquarters reporting to them cannot be deleted.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingMany}
+        onClose={() => setDeletingMany(false)}
+        title={`Delete selected ${meta.plural.toLowerCase()}`}
+        confirmLabel="Delete selected"
+        onConfirm={async () => {
+          await actions.deleteMany('managers', selection.selectedIds)
+          selection.clear()
+        }}
+      >
+        Delete {selection.count} {meta.plural.toLowerCase()}? A manager who still has people or headquarters reporting to them cannot be deleted.
       </ConfirmDialog>
     </PageShell>
   )

@@ -1,6 +1,9 @@
+import { useEffect, useRef } from 'react'
+
 /**
  * Responsive data table inside the standard .table-container.
  * columns: [{ key, header, render?(row), align?: 'end', nowrap?: bool, srOnlyHeader?: bool }]
+ * selection (optional): { isSelected(row), onToggle(row), onToggleAll(), allSelected, indeterminate, label(row) }
  * With no rows, shows `empty` (if given) or a single "emptyText" row so the
  * column structure stays visible.
  */
@@ -9,11 +12,32 @@ function sortLabel(column, sort) {
   return `${column.header}, sorted ${sort.direction === 'asc' ? 'ascending' : 'descending'}`
 }
 
-export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', rowKey = (row) => row.id, sort = null, onSort = null }) {
+function SelectCheckbox({ checked, indeterminate = false, onChange, label, disabled = false }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = Boolean(indeterminate) && !checked
+  }, [indeterminate, checked])
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="form-check-input table-select"
+      checked={checked}
+      disabled={disabled}
+      aria-label={label}
+      onChange={onChange}
+    />
+  )
+}
+
+export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', rowKey = (row) => row.id, sort = null, onSort = null, selection = null }) {
   if (rows.length === 0 && empty) return empty
 
   const cellClass = (column) =>
     [column.align === 'end' && 'text-end', column.nowrap && 'text-nowrap'].filter(Boolean).join(' ') || undefined
+  const columnCount = columns.length + (selection ? 1 : 0)
 
   return (
     <div className="table-container">
@@ -21,6 +45,17 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
         {caption && <caption className="visually-hidden">{caption}</caption>}
         <thead>
           <tr>
+            {selection && (
+              <th scope="col" className="table-select-cell">
+                <SelectCheckbox
+                  checked={selection.allSelected}
+                  indeterminate={selection.indeterminate}
+                  disabled={rows.length === 0}
+                  label="Select all"
+                  onChange={selection.onToggleAll}
+                />
+              </th>
+            )}
             {columns.map((column) => {
               const active = Boolean(sort && column.sortable && sort.key === column.key)
               const ariaSort = column.sortable && sort
@@ -42,11 +77,20 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="table-empty">{emptyText}</td>
+              <td colSpan={columnCount} className="table-empty">{emptyText}</td>
             </tr>
           ) : (
             rows.map((row) => (
-              <tr key={rowKey(row)}>
+              <tr key={rowKey(row)} className={selection?.isSelected(row) ? 'is-selected' : undefined}>
+                {selection && (
+                  <td className="table-select-cell">
+                    <SelectCheckbox
+                      checked={selection.isSelected(row)}
+                      label={selection.label(row)}
+                      onChange={() => selection.onToggle(row)}
+                    />
+                  </td>
+                )}
                 {columns.map((column) => (
                   <td key={column.key} className={cellClass(column)}>
                     {column.render ? column.render(row) : (row[column.key] || '—')}
