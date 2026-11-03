@@ -65,6 +65,7 @@ function HeadquartersForm({ formId, record, parents, offices, onSave }) {
           label: office.code ? `${office.name} (${office.state} · ${office.code})` : `${office.name} (${office.state})`,
         }))}
         disabled={offices.length === 0}
+        className="col-12 col-md-6"
       />
       <SelectField
         id={form.fieldId('parentManagerId')}
@@ -76,14 +77,15 @@ function HeadquartersForm({ formId, record, parents, offices, onSave }) {
         placeholder={parents.length ? 'Select a 1st line manager' : 'No 1st line managers yet'}
         options={parents}
         disabled={parents.length === 0}
+        className="col-12 col-md-6"
       />
-      <TextField id={form.fieldId('name')} label="Headquarters name" value={detail(selected?.name)} {...locked} />
+      <TextField id={form.fieldId('name')} label="Headquarters name" value={detail(selected?.name)} {...locked} className="col-12 col-md-6" />
       <TextField id={form.fieldId('state')} label="State" value={detail(selected?.state)} {...locked} className="col-12 col-md-6" />
       <TextField id={form.fieldId('code')} label="Headquarters Code" value={detail(selected?.code)} {...locked} className="col-12 col-md-6" />
+      <TextField id={form.fieldId('pincode')} label="Pincode" value={detail(selected?.pincode)} {...locked} className="col-12 col-md-6" />
       <TextField id={form.fieldId('address')} label="Headquarters address" value={detail(selected?.address)} {...locked} />
-      <TextField id={form.fieldId('pincode')} label="Pincode" value={detail(selected?.pincode)} {...locked} className="col-12 col-md-4" />
-      <TextField id={form.fieldId('phone')} label="Phone number" value={detail(selected?.phone)} {...locked} className="col-12 col-md-8" />
-      <TextField id={form.fieldId('email')} label="Email" value={detail(selected?.email)} {...locked} />
+      <TextField id={form.fieldId('phone')} label="Phone number" value={detail(selected?.phone)} {...locked} className="col-12 col-md-6" />
+      <TextField id={form.fieldId('email')} label="Email" value={detail(selected?.email)} {...locked} className="col-12 col-md-6" />
     </form>
   )
 }
@@ -231,6 +233,8 @@ export default function HeadquartersPage() {
       </TableCard>
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={editor.open}
         onClose={editor.close}
         title={editor.record?.id ? 'Edit headquarters' : 'Add headquarters'}

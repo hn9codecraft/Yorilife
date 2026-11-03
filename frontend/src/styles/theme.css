@@ -1129,12 +1129,12 @@ pre {
   --bs-table-hover-color: var(--color-text);
   --bs-table-striped-bg: var(--color-surface-muted);
   margin-bottom: 0;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   vertical-align: middle;
 }
 
 .table > :not(caption) > * > * {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.625rem;
 }
 
 .table > thead th {
@@ -1142,7 +1142,7 @@ pre {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   white-space: nowrap;
   border-bottom-color: var(--color-border);
@@ -1345,6 +1345,36 @@ pre {
 
 .modal-footer {
   background-color: var(--color-surface-muted);
+}
+
+/* Wide form modals (Sales Office): two fields per row from md up */
+.modal-form-wide {
+  --bs-modal-width: 860px;
+}
+
+.modal-form-wide .modal-header {
+  background-color: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-form-wide .modal-body > form.row {
+  --bs-gutter-x: var(--space-4);
+  --bs-gutter-y: var(--space-3);
+}
+
+.modal-form-wide .form-label {
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.modal-form-wide .modal-footer {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.modal-form-wide .modal-footer > .btn {
+  min-width: 5.5rem;
 }
 
 /* ==== Pagination ======================================================= */

@@ -69,7 +69,7 @@ function StockistForm({ formId, record, stockists, headquarters, onSave }) {
         headquartersId: v.headquartersId,
       }))}
     >
-      <TextField id={form.fieldId('name')} label="Stockist name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
+      <TextField id={form.fieldId('name')} label="Stockist name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
       <FormField id={codeId} label="Stockist code" required error={form.errors.code} help="Numbers only. Leading zeros are kept." className="col-12 col-md-6">
         <div className="input-group">
           <span className="input-group-text" id={`${codeId}-prefix`}>ST-</span>
@@ -98,8 +98,8 @@ function StockistForm({ formId, record, stockists, headquarters, onSave }) {
         help="Stockists map directly to a headquarters. Its managers are shown in the stockist’s hierarchy view."
       />
       <TextField id={form.fieldId('address')} label="Address" value={form.values.address} onChange={form.set('address')} error={form.errors.address} help="Optional." />
-      <TextField id={form.fieldId('pincode')} label="Pincode" value={form.values.pincode} onChange={form.set('pincode')} error={form.errors.pincode} inputMode="numeric" help="Optional." className="col-12 col-md-4" />
-      <TextField id={form.fieldId('phone')} label="Phone number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} help="Optional. A country code or a leading zero is kept." className="col-12 col-md-8" />
+      <TextField id={form.fieldId('pincode')} label="Pincode" value={form.values.pincode} onChange={form.set('pincode')} error={form.errors.pincode} inputMode="numeric" help="Optional." className="col-12 col-md-6" />
+      <TextField id={form.fieldId('phone')} label="Phone number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} help="Optional. A country code or a leading zero is kept." className="col-12 col-md-6" />
       <TextField id={form.fieldId('email')} label="Email" type="email" value={form.values.email} onChange={form.set('email')} error={form.errors.email} help="Optional." />
     </form>
   )
@@ -237,6 +237,8 @@ export default function StockistsPage() {
       </TableCard>
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={editor.open}
         onClose={editor.close}
         title={editor.record ? 'Edit stockist' : 'Add stockist'}

@@ -9,7 +9,7 @@ import { Modal as BootstrapModal } from 'bootstrap'
  * a fresh `key` each time the modal opens to reset them. Keep the <Modal>
  * itself mounted — put such keys on its children, not on the Modal.
  */
-export default function Modal({ open, onClose, title, children, footer, size }) {
+export default function Modal({ open, onClose, title, children, footer, size, dialogClassName }) {
   const elementRef = useRef(null)
   const instanceRef = useRef(null)
   const onCloseRef = useRef(onClose)
@@ -75,7 +75,7 @@ export default function Modal({ open, onClose, title, children, footer, size }) 
 
   return (
     <div ref={elementRef} className="modal fade" tabIndex={-1} aria-labelledby={titleId} aria-hidden="true">
-      <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable${size ? ` modal-${size}` : ''}`}>
+      <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable${size ? ` modal-${size}` : ''}${dialogClassName ? ` ${dialogClassName}` : ''}`}>
         <div className="modal-content">
           <div className="modal-header">
             <h2 className="modal-title" id={titleId}>{title}</h2>

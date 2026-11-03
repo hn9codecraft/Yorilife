@@ -83,8 +83,9 @@ function OfficeNameForm({ formId, record, locations, offices, headquarters, onSa
         placeholder={locations.length ? 'Select a state' : 'No states yet'}
         options={locations.map((location) => ({ value: location.id, label: location.name }))}
         disabled={locations.length === 0}
+        className="col-12 col-md-6"
       />
-      <TextField id={form.fieldId('name')} label="Headquarters name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
+      <TextField id={form.fieldId('name')} label="Headquarters name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
       <FormField id={codeId} label="Headquarters Code" required error={form.errors.code} help="Numbers only. Leading zeros are kept." className="col-12 col-md-6">
         <div className="input-group">
           <span className="input-group-text" id={`${codeId}-prefix`}>HQ-</span>
@@ -101,10 +102,10 @@ function OfficeNameForm({ formId, record, locations, offices, headquarters, onSa
           />
         </div>
       </FormField>
+      <TextField id={form.fieldId('pincode')} label="Pincode" required value={form.values.pincode} onChange={form.set('pincode')} error={form.errors.pincode} inputMode="numeric" className="col-12 col-md-6" />
       <TextField id={form.fieldId('address')} label="Headquarters address" required value={form.values.address} onChange={form.set('address')} error={form.errors.address} />
-      <TextField id={form.fieldId('pincode')} label="Pincode" required value={form.values.pincode} onChange={form.set('pincode')} error={form.errors.pincode} inputMode="numeric" className="col-12 col-md-4" />
-      <TextField id={form.fieldId('phone')} label="Phone number" required value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} help="A country code, spaces, or a leading zero are kept." className="col-12 col-md-8" />
-      <TextField id={form.fieldId('email')} label="Email" type="email" required value={form.values.email} onChange={form.set('email')} error={form.errors.email} />
+      <TextField id={form.fieldId('phone')} label="Phone number" required value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} help="A country code, spaces, or a leading zero are kept." className="col-12 col-md-6" />
+      <TextField id={form.fieldId('email')} label="Email" type="email" required value={form.values.email} onChange={form.set('email')} error={form.errors.email} className="col-12 col-md-6" />
     </form>
   )
 }
@@ -131,8 +132,8 @@ function StateForm({ formId, record, locations, onSave }) {
 
   return (
     <form id={formId} className="row g-3" noValidate onSubmit={form.handleSubmit((values) => onSave({ name: values.name.trim(), code: values.code.trim().toUpperCase() }))}>
-      <TextField id={form.fieldId('name')} label="State Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
-      <TextField id={form.fieldId('code')} label="Location Code" required value={form.values.code} onChange={form.set('code')} error={form.errors.code} help="Stored in uppercase." />
+      <TextField id={form.fieldId('name')} label="State Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
+      <TextField id={form.fieldId('code')} label="Location Code" required value={form.values.code} onChange={form.set('code')} error={form.errors.code} help="Stored in uppercase." className="col-12 col-md-6" />
     </form>
   )
 }
@@ -276,6 +277,8 @@ export default function LocationPage() {
       </TableCard>
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={officeEditor.open}
         onClose={officeEditor.close}
         title={officeEditor.record?.id ? 'Edit location headquarters' : 'Add location headquarters'}
@@ -296,6 +299,8 @@ export default function LocationPage() {
       />
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={editor.open}
         onClose={editor.close}
         title={editor.record ? 'Edit state' : 'Add State'}

@@ -84,10 +84,10 @@ function StateListField({ id, locations, value, onChange, error, emptyText = 'No
   )
 }
 
-function EmployeeCodeField({ id, level, value, onChange, error }) {
+function EmployeeCodeField({ id, level, value, onChange, error, className }) {
   const prefix = managerCodePrefix(level)
   return (
-    <FormField id={id} label="Employee Code" required error={error} help="Numbers only. Leading zeros are kept.">
+    <FormField id={id} label="Employee Code" required error={error} help="Numbers only. Leading zeros are kept." className={className}>
       <div className="input-group">
         <span className="input-group-text" id={`${id}-prefix`}>{prefix}</span>
         <input
@@ -174,12 +174,12 @@ function ManagerForm({ formId, level, record, state, onSave }) {
         return onSave(child)
       })}
     >
-      <TextField id={form.fieldId('name')} label="Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
-      <EmployeeCodeField id={form.fieldId('code')} level={level} value={form.values.code} onChange={form.set('code')} error={form.errors.code} />
+      <TextField id={form.fieldId('name')} label="Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
+      <EmployeeCodeField id={form.fieldId('code')} level={level} value={form.values.code} onChange={form.set('code')} error={form.errors.code} className="col-12 col-md-6" />
       {(isRoot || level === 1 || level === 2) && (
         <>
-          <TextField id={form.fieldId('email')} label="Email" type="email" value={form.values.email} onChange={form.set('email')} error={form.errors.email} help="Optional." />
-          <TextField id={form.fieldId('phone')} label="Phone Number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" help="Optional. A leading zero or country code is kept." />
+          <TextField id={form.fieldId('email')} label="Email" type="email" value={form.values.email} onChange={form.set('email')} error={form.errors.email} help="Optional." className="col-12 col-md-6" />
+          <TextField id={form.fieldId('phone')} label="Phone Number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" help="Optional. A leading zero or country code is kept." className="col-12 col-md-6" />
         </>
       )}
       {isRoot && (
@@ -427,6 +427,8 @@ export default function ManagersPage({ level }) {
       </TableCard>
 
       <FormModal
+        size="lg"
+        variant="wide"
         open={editor.open}
         onClose={editor.close}
         title={`${editor.record ? 'Edit' : 'Add'} ${meta.label.toLowerCase()}`}
