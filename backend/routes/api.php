@@ -6,6 +6,7 @@ use App\Controllers\AuthController;
 use App\Controllers\CatalogueController;
 use App\Controllers\ErpController;
 use App\Controllers\HealthController;
+use App\Controllers\ImportController;
 use App\Controllers\ProductController;
 use App\Controllers\SalesEntryController;
 use App\Controllers\SalesOfficeController;
@@ -58,7 +59,6 @@ $router->post('/api/managers', [SalesOfficeController::class, 'storeManager'], [
 $router->patch('/api/managers/{id}', [SalesOfficeController::class, 'updateManager'], [$auth, AuthMiddleware::can('sales_office.manage')]);
 $router->post('/api/managers/{id}/delete', [SalesOfficeController::class, 'deleteManager'], [$auth, AuthMiddleware::can('sales_office.manage')]);
 
-$router->post('/api/sales-office/import', [SalesOfficeController::class, 'import'], [$auth, AuthMiddleware::can('sales_office.manage')]);
 
 $router->get('/api/stockists', [SalesOfficeController::class, 'stockists'], [$auth, AuthMiddleware::can('sales_office.view')]);
 $router->post('/api/stockists', [SalesOfficeController::class, 'storeStockist'], [$auth, AuthMiddleware::can('sales_office.manage')]);
@@ -86,3 +86,18 @@ $router->put('/api/master-sheet/{year}/{productId}', [ErpController::class, 'sav
 $router->get('/api/sales-entries', [SalesEntryController::class, 'index'], [$auth, AuthMiddleware::can('sales.view')]);
 $router->post('/api/sales-entries', [SalesEntryController::class, 'store'], [$auth, AuthMiddleware::can('sales.create')]);
 $router->patch('/api/sales-entries/{id}', [SalesEntryController::class, 'update'], [$auth, AuthMiddleware::can('sales.update')]);
+
+// Excel data import (Super Admin and Admin). Upload validates and previews; confirm
+// takes a backup and applies the rows; rollback undoes a completed import once.
+$imports = AuthMiddleware::can('imports.manage');
+$router->get('/api/imports/types', [ImportController::class, 'types'], [$auth, $imports]);
+$router->get('/api/imports/template', [ImportController::class, 'template'], [$auth, $imports]);
+$router->get('/api/imports', [ImportController::class, 'index'], [$auth, $imports]);
+$router->post('/api/imports', [ImportController::class, 'store'], [$auth, $imports]);
+$router->get('/api/imports/{id}', [ImportController::class, 'show'], [$auth, $imports]);
+$router->post('/api/imports/{id}/confirm', [ImportController::class, 'confirm'], [$auth, $imports]);
+$router->get('/api/imports/{id}/file', [ImportController::class, 'file'], [$auth, $imports]);
+$router->get('/api/imports/{id}/errors', [ImportController::class, 'errors'], [$auth, $imports]);
+$router->get('/api/imports/{id}/backup', [ImportController::class, 'backup'], [$auth, $imports]);
+$router->post('/api/imports/{id}/rollback/preview', [ImportController::class, 'rollbackPreview'], [$auth, $imports]);
+$router->post('/api/imports/{id}/rollback', [ImportController::class, 'rollback'], [$auth, $imports]);

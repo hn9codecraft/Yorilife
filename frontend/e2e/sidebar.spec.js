@@ -29,29 +29,28 @@ test('Dashboard and Announcements are single links without submenus', async ({ p
   await expect(page.locator('.app-sidebar').getByText('Overview', { exact: true })).toHaveCount(0)
 })
 
-test('Reports and CSV Import are nested inside Sales Management, not top-level', async ({ page }) => {
+test('Reports is nested in Sales Management and Data Import in Sales Office, not top-level', async ({ page }) => {
   const sales = group(page, 'Sales Management')
   await expect(sales.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Reports' })).toHaveCount(1)
-  await expect(sales.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'CSV Import' })).toHaveCount(1)
+  await expect(sales.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Data Import' })).toHaveCount(0)
+  const office = group(page, 'Sales Office')
+  await expect(office.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Data Import' })).toHaveCount(1)
   expect(await topLevelLabels(page)).not.toContain('Reports')
-  expect(await topLevelLabels(page)).not.toContain('CSV Import')
+  expect(await topLevelLabels(page)).not.toContain('Data Import')
 
   const reportLinks = subgroup(page, 'Reports').locator('.sidebar-link')
   await expect(reportLinks).toHaveText(['Headquarters Reports', 'Stockist Reports', 'Monthly Sales Reports', 'Product Performance Reports'])
   await expect(page.locator('.app-sidebar a[href^="/reports/"]')).toHaveCount(4) // no duplicates
 })
 
-test('CSV Export is absent and CSV Import is still reachable', async ({ page }) => {
+test('CSV Export is absent and Data Import is reachable from the Sales Office menu', async ({ page }) => {
   await expect(page.locator('.app-sidebar').getByText(/CSV Export/i)).toHaveCount(0)
   await expect(page.locator('.app-sidebar').getByText(/export/i)).toHaveCount(0)
 
   await page.goto('/imports/data')
   await expect(page.locator('h1.page-header__title')).toHaveText('Import Data')
-  await expect(page.locator('.breadcrumb-item')).toHaveText(['Dashboard', 'Sales Management', 'CSV Import', 'Import Data'])
-  await expect(page.getByLabel('CSV file')).toBeVisible()
-  await page.goto('/sales/stockist-sales')
-  await page.getByRole('link', { name: /Import CSV/ }).click()
-  await expect(page).toHaveURL('/imports/data?type=sales')
+  await expect(page.locator('.breadcrumb-item')).toHaveText(['Dashboard', 'Sales Office', 'Data Import', 'Import Data'])
+  await expect(page.getByLabel('Excel file')).toBeAttached()
 })
 
 test('group contents are preserved (Products, Sales Office, Application Details, System & Audit)', async ({ page }) => {
@@ -98,7 +97,7 @@ test('a nested report page activates and expands Sales Management › Reports, w
   await expect(reports).toHaveClass(/is-active/)
   await expect(reports.locator(':scope > button')).toHaveAttribute('aria-expanded', 'true')
   await expect(page.locator('.app-sidebar [aria-current="page"]')).toHaveText('Stockist Reports')
-  await expect(subgroup(page, 'CSV Import')).not.toHaveClass(/is-open/)
+  await expect(subgroup(page, 'Data Import')).not.toHaveClass(/is-open/)
 })
 
 test('submenus expand and collapse independently, with mouse and keyboard', async ({ page }) => {
@@ -114,7 +113,7 @@ test('submenus expand and collapse independently, with mouse and keyboard', asyn
   await expect(subgroup(page, 'Reports').locator('.sidebar-link').first()).toBeVisible()
   // Closed subgroup's chevron must not rotate just because its parent is open.
   const chevronTransform = (toggle) => toggle.locator('.sidebar-group__chevron').evaluate((el) => getComputedStyle(el).transform)
-  expect(await chevronTransform(subgroup(page, 'CSV Import').locator(':scope > button'))).toBe('none')
+  expect(await chevronTransform(subgroup(page, 'Data Import').locator(':scope > button'))).toBe('none')
 
   await page.keyboard.press('Tab')
   await expect(page.locator(':focus')).toHaveText('Headquarters Reports')
@@ -190,7 +189,8 @@ test('mobile drawer shows the same menu; choosing a nested page navigates and cl
     await page.getByRole('button', { name: 'Open navigation menu' }).click()
     await group(page, 'Sales Management').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
     await subgroup(page, 'Reports').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
-    await subgroup(page, 'CSV Import').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
+    await group(page, 'Sales Office').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
+    await subgroup(page, 'Data Import').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
     await page.waitForTimeout(300)
     const problems = await page.evaluate(() => {
       const clipped = [...document.querySelectorAll('.sidebar-link, .sidebar-group__label, .sidebar-subgroup__label')]
@@ -208,7 +208,6 @@ test('mobile drawer shows the same menu; choosing a nested page navigates and cl
 test('desktop: expanded nested menu has no clipped labels', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('/reports/product-performance')
-  await subgroup(page, 'CSV Import').locator(':scope > button').click()
   await page.waitForTimeout(300)
   const clipped = await page.evaluate(() =>
     [...document.querySelectorAll('.sidebar-link, .sidebar-group__label, .sidebar-subgroup__label')]

@@ -43,6 +43,7 @@ export default defineConfig({
         CORS_ALLOWED_ORIGINS: 'http://localhost:5174',
         SESSION_SECURE_COOKIE: 'false',
         SESSION_SAVE_PATH: `${backend}/storage/e2e-sessions`,
+        IMPORT_STORAGE_PATH: `${backend}/storage/e2e-imports`,
       },
     },
     {

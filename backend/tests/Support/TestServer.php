@@ -35,6 +35,7 @@ final class TestServer
         $env['CORS_ALLOWED_ORIGINS'] = 'http://localhost:5173';
         $env['SESSION_SECURE_COOKIE'] = 'false';
         $env['SESSION_SAVE_PATH'] = self::sessionPath();
+        $env['IMPORT_STORAGE_PATH'] = $root . '/storage/test-imports';
 
         self::$process = proc_open(
             [PHP_BINARY, '-S', '127.0.0.1:8099', '-t', $root . '/public', $root . '/public/index.php'],

@@ -177,9 +177,6 @@ export default function SalesPage({ variant }) {
       actions={
         config.editable && canCreate && (
           <>
-            <Link to="/imports/data?type=sales" className="btn btn-outline-secondary">
-              <i className="bi bi-filetype-csv" aria-hidden="true" /> Import CSV
-            </Link>
             <button type="button" className="btn btn-primary" onClick={editor.openNew} disabled={!canEnter}>
               <i className="bi bi-plus-lg" aria-hidden="true" /> Add sales entry
             </button>

@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 
 /**
  * Responsive data table inside the standard .table-container.
  * columns: [{ key, header, render?(row), align?: 'end', nowrap?: bool, srOnlyHeader?: bool }]
- * selection (optional): { isSelected(row), onToggle(row), onToggleAll(), allSelected, indeterminate, label(row) }
+ * renderAfterRow (optional): (row) => node shown in a full-width row under that row, or null.
+ * selection (optional): { isSelected(row), onToggle(row), onToggleAll(), allSelected, indeterminate, label(row), isDisabled?(row) }
  * With no rows, shows `empty` (if given) or a single "emptyText" row so the
  * column structure stays visible.
  */
@@ -32,7 +33,7 @@ function SelectCheckbox({ checked, indeterminate = false, onChange, label, disab
   )
 }
 
-export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', rowKey = (row) => row.id, sort = null, onSort = null, selection = null }) {
+export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', rowKey = (row) => row.id, sort = null, onSort = null, selection = null, renderAfterRow = null }) {
   if (rows.length === 0 && empty) return empty
 
   const cellClass = (column) =>
@@ -80,13 +81,17 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
               <td colSpan={columnCount} className="table-empty">{emptyText}</td>
             </tr>
           ) : (
-            rows.map((row) => (
-              <tr key={rowKey(row)} className={selection?.isSelected(row) ? 'is-selected' : undefined}>
+            rows.map((row) => {
+              const after = renderAfterRow?.(row)
+              return (
+              <Fragment key={rowKey(row)}>
+              <tr className={selection?.isSelected(row) ? 'is-selected' : undefined}>
                 {selection && (
                   <td className="table-select-cell">
                     <SelectCheckbox
                       checked={selection.isSelected(row)}
                       label={selection.label(row)}
+                      disabled={Boolean(selection.isDisabled?.(row))}
                       onChange={() => selection.onToggle(row)}
                     />
                   </td>
@@ -97,7 +102,14 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
                   </td>
                 ))}
               </tr>
-            ))
+              {after && (
+                <tr className="table-subrow">
+                  <td colSpan={columnCount}>{after}</td>
+                </tr>
+              )}
+              </Fragment>
+              )
+            })
           )}
         </tbody>
       </table>

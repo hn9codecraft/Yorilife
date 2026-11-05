@@ -22,6 +22,7 @@ $business = [
     'financial_years.manage',
     'master_sheet.view', 'master_sheet.update',
     'sales.view', 'sales.create', 'sales.update',
+    'imports.manage',
 ];
 $viewOnly = ['sales_office.view', 'catalogue.view', 'products.view', 'master_sheet.view', 'sales.view'];
 
@@ -47,6 +48,7 @@ return [
         'sales.view' => 'View sales entries',
         'sales.create' => 'Add sales entries',
         'sales.update' => 'Edit sales entries',
+        'imports.manage' => 'Import Sales Office CSV files, download import files and backups, and roll imports back',
     ],
 
     'roles' => [
