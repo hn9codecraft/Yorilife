@@ -193,11 +193,7 @@ export default function LocationPage() {
       <DataStatusNotice />
       <TableCard
         title={`States (${locations.length})`}
-        toolbar={(
-          <>
-            <SearchInput value={query} onChange={setQuery} label="Search states" placeholder="Search state name or code" />
-          </>
-        )}
+        toolbar={<SearchInput value={query} onChange={setQuery} label="Search states" placeholder="Search state name or code" />}
       >
         {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable

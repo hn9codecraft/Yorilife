@@ -6,7 +6,6 @@ namespace App\Controllers;
 
 use App\Services\ErpPresenter;
 use App\Services\Input;
-use App\Services\SalesOfficeImportService;
 use App\Services\SalesOfficeService;
 use App\Repositories\SalesOfficeRepository;
 use App\Utils\JsonResponse;
@@ -100,11 +99,6 @@ final class SalesOfficeController
         $id = Input::pathId($request->params, 'Manager not found.');
         (new SalesOfficeService())->deleteManager($id);
         JsonResponse::success(['deleted' => true]);
-    }
-
-    public function import(Request $request): void
-    {
-        JsonResponse::success(['import' => (new SalesOfficeImportService())->import($request->json())]);
     }
 
     public function stockists(Request $request): void

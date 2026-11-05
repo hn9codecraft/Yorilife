@@ -24,7 +24,8 @@ src/
     ErpDataProvider.jsx    Provides { state, actions }; swap actions for API calls later
     useErpData.js, ErpDataContext.js
     selectors.js           Hierarchy helpers (reporting chain, HQ tree), search, formatting
-  utils/csv.js             CSV parser + structural checks for the import screen
+  utils/csv.js             CSV parser and export helpers
+  utils/imports.js         Data import helpers (file checks, preview summary, status labels)
   hooks/
     useRouteMeta.js        Title, description, group and breadcrumbs for the current URL
     useMediaQuery.js       Live media-query boolean (desktop vs mobile sidebar)
@@ -51,7 +52,7 @@ src/
     products/              CatalogueTermsPage (categories, tags, badges), ProductsPage (list + deleted),
                            ProductHistoryPage, MasterSheetPage
     sales/SalesPage.jsx    Sales entry, Monthly, by Headquarters, by Stockist (one component, 4 variants)
-    imports/               ImportDataPage, ImportHistoryPage
+    imports/               ImportDataPage (upload, preview, confirm), ImportHistoryPage (downloads, rollback)
     ModulePlaceholderPage.jsx  Shared placeholder for modules not built yet
     NotFoundPage.jsx           404 for unknown URLs
     DesignSystemPreview.jsx    Component reference at /design-system (not in the menu)
@@ -119,7 +120,7 @@ Sidebar order (approved):
 | 2 | Products | `/products/group-categories`, `/products/categories`, `/products/tags-badges`, `/products/list`, `/products/master-sheet`, `/products/deleted`, `/products/change-history` |
 | 3 | Sales Management | `/sales/stockist-sales`, `/sales/monthly`, `/sales/by-headquarters`, `/sales/by-stockist`, `/sales/calculation-history` |
 |   | ↳ Reports | `/reports/headquarters`, `/reports/stockists`, `/reports/monthly-sales`, `/reports/product-performance` |
-|   | ↳ CSV Import | `/imports/data`, `/imports/history` |
+|   | Sales Office > Data Import | `/imports/data`, `/imports/history` (Super Admin and Admin) |
 | 4 | Sales Office | `/sales-office/stockists`, `/sales-office/headquarters`, `/sales-office/first-line-managers`, `/sales-office/second-line-managers`, `/sales-office/third-line-managers`, `/sales-office/locations` (`/sales-office/hierarchy` stays reachable and is not in the menu) |
 | 5 | Application Details | `/sales-app/overview`, `/sales-app/submission-status`, `/sales-app/history` (the former "Sales Application" pages; contents to be confirmed) |
 | 6 | Announcements (link) | `/announcements` (placeholder) |

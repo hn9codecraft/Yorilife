@@ -5,7 +5,8 @@ import { loginPathFor, safeRedirect } from './safeRedirect.js'
 
 test('keeps in-app paths, query and hash', () => {
   assert.equal(safeRedirect('/products/list'), '/products/list')
-  assert.equal(safeRedirect('/imports/data?type=sales#top'), '/imports/data?type=sales#top')
+  assert.equal(safeRedirect('/sales/monthly?year=2026#top'), '/sales/monthly?year=2026#top')
+  assert.equal(safeRedirect('/imports/history?page=2#top'), '/imports/history?page=2#top')
 })
 
 test('rejects external, protocol-relative and scheme URLs', () => {

@@ -140,28 +140,6 @@ export const NAV_MENU = [
           },
         ],
       },
-      // CSV Import is not a top-level menu in the approved order; it stays
-      // available here (same URLs) next to the sales data it imports.
-      {
-        id: 'imports',
-        label: 'CSV Import',
-        icon: 'bi-filetype-csv',
-        basePath: '/imports',
-        items: [
-          {
-            path: '/imports/data',
-            label: 'Import Data',
-            icon: 'bi-upload',
-            description: 'Choose a CSV file and check its structure before importing.',
-          },
-          {
-            path: '/imports/history',
-            label: 'Import History',
-            icon: 'bi-clock-history',
-            description: 'A log of past CSV imports.',
-          },
-        ],
-      },
     ],
   },
   {
@@ -205,6 +183,29 @@ export const NAV_MENU = [
         label: 'Location',
         icon: 'bi-geo-alt',
         description: 'States, location codes, and the headquarters names configured for each state.',
+      },
+      // Excel data import for the Sales Office lists (Super Admin and Admin only).
+      {
+        id: 'imports',
+        label: 'Data Import',
+        icon: 'bi-file-earmark-spreadsheet',
+        basePath: '/imports',
+        items: [
+          {
+            path: '/imports/data',
+            label: 'Import Data',
+            icon: 'bi-upload',
+            description: 'Upload one Excel file with the Sales Office lists, review the preview, then confirm the import.',
+            permission: 'imports.manage',
+          },
+          {
+            path: '/imports/history',
+            label: 'Import History',
+            icon: 'bi-clock-history',
+            description: 'Past imports with their files, errors and backups. A completed import can be rolled back once.',
+            permission: 'imports.manage',
+          },
+        ],
       },
     ],
   },

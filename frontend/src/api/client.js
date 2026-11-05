@@ -82,3 +82,72 @@ export async function api(path, { method = 'GET', body, signal, notifyUnauthoriz
   }
   throw error
 }
+
+/**
+ * Upload a multipart form (e.g. a CSV file). The browser sets the multipart
+ * boundary; the CSRF token is sent as for any state-changing request.
+ * @param {string} path
+ * @param {FormData} formData
+ */
+export async function apiUpload(path, formData) {
+  const headers = { Accept: 'application/json' }
+  if (csrfToken) headers['X-CSRF-Token'] = csrfToken
+  let response
+  try {
+    response = await fetch(path, { method: 'POST', headers, body: formData, credentials: 'same-origin' })
+  } catch {
+    throw new ApiError({ status: 0, code: 'network_error', message: NETWORK_MESSAGE })
+  }
+  let payload = null
+  try {
+    payload = await response.json()
+  } catch {
+    // handled below
+  }
+  if (response.ok && payload?.success) return payload.data
+  throw failure(response, payload)
+}
+
+/**
+ * Download a file the API returns as an attachment and hand it to the browser.
+ * @param {string} path
+ * @param {string} fallbackName used when the response has no file name
+ */
+export async function apiDownload(path, fallbackName) {
+  let response
+  try {
+    response = await fetch(path, { headers: { Accept: '*/*' }, credentials: 'same-origin' })
+  } catch {
+    throw new ApiError({ status: 0, code: 'network_error', message: NETWORK_MESSAGE })
+  }
+  if (!response.ok) {
+    let payload = null
+    try {
+      payload = await response.json()
+    } catch {
+      // handled below
+    }
+    throw failure(response, payload)
+  }
+  const blob = await response.blob()
+  const match = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') ?? '')
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = match?.[1] ?? fallbackName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function failure(response, payload) {
+  const error = new ApiError({
+    status: response.status,
+    code: payload?.error?.code ?? (response.status >= 500 ? 'server_error' : 'request_failed'),
+    message: payload?.error?.message ?? (response.status >= 500 ? SERVER_MESSAGE : 'The request could not be completed.'),
+    fields: payload?.error?.details?.fields ?? {},
+  })
+  if (response.status === 401) unauthorizedListeners.forEach((listener) => listener(error))
+  return error
+}

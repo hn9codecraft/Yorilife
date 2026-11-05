@@ -87,14 +87,6 @@ export const INCLUSION_STATUS = {
   unset: { label: 'Not set', variant: 'warning' },
 }
 
-// ---- Imports ---------------------------------------------------------------
-
-// Which datasets can be imported and their column templates: to confirm.
-export const IMPORT_TYPES = [{ value: 'sales', label: 'Sales entries' }]
-
-// Upload size limit: to confirm.
-export const CSV_MAX_BYTES = 10 * 1024 * 1024
-
 // ---- Audit -----------------------------------------------------------------
 
 export const CHANGED_BY_UNAVAILABLE = 'Not recorded'

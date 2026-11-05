@@ -17,9 +17,9 @@ import ProductsPage from './pages/products/ProductsPage.jsx'
 import ProductHistoryPage from './pages/products/ProductHistoryPage.jsx'
 import MasterSheetPage from './pages/products/MasterSheetPage.jsx'
 import SalesPage from './pages/sales/SalesPage.jsx'
+import UsersPage from './pages/system/UsersPage.jsx'
 import ImportDataPage from './pages/imports/ImportDataPage.jsx'
 import ImportHistoryPage from './pages/imports/ImportHistoryPage.jsx'
-import UsersPage from './pages/system/UsersPage.jsx'
 import { HOME_PATH, NAV_GROUPS, NAV_ITEMS } from './config/navigation.js'
 
 // Pages that have a real screen. Every other menu item keeps the shared
