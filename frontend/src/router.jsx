@@ -20,6 +20,12 @@ import SalesPage from './pages/sales/SalesPage.jsx'
 import UsersPage from './pages/system/UsersPage.jsx'
 import ImportDataPage from './pages/imports/ImportDataPage.jsx'
 import ImportHistoryPage from './pages/imports/ImportHistoryPage.jsx'
+import AnnouncementsListPage from './pages/announcements/AnnouncementsListPage.jsx'
+import AnnouncementFormPage from './pages/announcements/AnnouncementFormPage.jsx'
+import AnnouncementDetailPage from './pages/announcements/AnnouncementDetailPage.jsx'
+import AnnouncementPrintPage from './pages/announcements/AnnouncementPrintPage.jsx'
+import AnnouncementTemplatesPage from './pages/announcements/AnnouncementTemplatesPage.jsx'
+import EmployeesPage from './pages/announcements/EmployeesPage.jsx'
 import { HOME_PATH, NAV_GROUPS, NAV_ITEMS } from './config/navigation.js'
 
 // Pages that have a real screen. Every other menu item keeps the shared
@@ -45,6 +51,10 @@ const PAGE_ELEMENTS = {
   '/imports/data': <ImportDataPage />,
   '/imports/history': <ImportHistoryPage />,
   '/system/users': <UsersPage />,
+  '/announcements/list': <AnnouncementsListPage />,
+  '/announcements/new': <AnnouncementFormPage />,
+  '/announcements/templates': <AnnouncementTemplatesPage />,
+  '/announcements/employees': <EmployeesPage />,
 }
 
 const unknownPaths = Object.keys(PAGE_ELEMENTS).filter((path) => !NAV_ITEMS.some((item) => item.path === path))
@@ -63,7 +73,7 @@ const moduleRoutes = NAV_ITEMS.map((item) => {
   }
 })
 
-// Group and subgroup URLs (e.g. /products, /reports) have no page of their
+// Group and subgroup URLs (e.g. /products, /imports) have no page of their
 // own; send them to the first page inside (preferring one without a permission).
 const groupRedirects = NAV_GROUPS
   .filter((group) => !NAV_ITEMS.some((item) => item.path === group.basePath))
@@ -79,6 +89,16 @@ export const router = createBrowserRouter([
   // Public
   { path: '/login', element: <LoginPage /> },
 
+  // Clean A4 print view of one announcement (no sidebar or top bar).
+  {
+    path: '/announcements/:id/print',
+    element: (
+      <RequireAuth>
+        <RequirePermission permission="announcements.view"><AnnouncementPrintPage /></RequirePermission>
+      </RequireAuth>
+    ),
+  },
+
   // Everything else requires a signed-in user (checked with the server on load).
   {
     path: '/',
@@ -92,6 +112,8 @@ export const router = createBrowserRouter([
       ...moduleRoutes,
       ...groupRedirects,
       { path: '/sales-office/hierarchy', element: <HierarchyPage /> },
+      { path: '/announcements/:id', element: <RequirePermission permission="announcements.view"><AnnouncementDetailPage /></RequirePermission> },
+      { path: '/announcements/:id/edit', element: <RequirePermission permission="announcements.manage"><AnnouncementFormPage key="edit" /></RequirePermission> },
       { path: '/design-system', element: <DesignSystemPreview /> },
       { path: '*', element: <NotFoundPage /> },
     ],

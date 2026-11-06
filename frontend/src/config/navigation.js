@@ -108,38 +108,6 @@ export const NAV_MENU = [
         icon: 'bi-calculator',
         description: 'A record of past sales calculation runs.',
       },
-      {
-        id: 'reports',
-        label: 'Reports',
-        icon: 'bi-bar-chart-line',
-        basePath: '/reports',
-        items: [
-          {
-            path: '/reports/headquarters',
-            label: 'Headquarters Reports',
-            icon: 'bi-file-earmark-bar-graph',
-            description: 'Reports grouped by headquarters.',
-          },
-          {
-            path: '/reports/stockists',
-            label: 'Stockist Reports',
-            icon: 'bi-file-earmark-text',
-            description: 'Reports grouped by stockist.',
-          },
-          {
-            path: '/reports/monthly-sales',
-            label: 'Monthly Sales Reports',
-            icon: 'bi-calendar-range',
-            description: 'Reports on sales by month.',
-          },
-          {
-            path: '/reports/product-performance',
-            label: 'Product Performance Reports',
-            icon: 'bi-graph-up',
-            description: 'Reports on how individual products perform.',
-          },
-        ],
-      },
     ],
   },
   {
@@ -236,12 +204,42 @@ export const NAV_MENU = [
       },
     ],
   },
+  // Company announcements (admin side). Super Admin and Admin only; the employee app connects later.
   {
     id: 'announcements',
     label: 'Announcements',
     icon: 'bi-megaphone',
-    path: '/announcements',
-    description: 'Announcements for ERP users.',
+    basePath: '/announcements',
+    items: [
+      {
+        path: '/announcements/list',
+        label: 'All Announcements',
+        icon: 'bi-megaphone',
+        description: 'Drafts, scheduled, published, expired and recalled announcements. Pinned ones are shown first.',
+        permission: 'announcements.view',
+      },
+      {
+        path: '/announcements/new',
+        label: 'New Announcement',
+        icon: 'bi-plus-circle',
+        description: 'Write an announcement, choose who receives it, then save it as a draft. Publish or schedule it from the draft.',
+        permission: 'announcements.manage',
+      },
+      {
+        path: '/announcements/templates',
+        label: 'Templates',
+        icon: 'bi-journal-richtext',
+        description: 'Saved starting points such as a holiday notice. Use a template to open a prefilled draft.',
+        permission: 'announcements.manage',
+      },
+      {
+        path: '/announcements/employees',
+        label: 'Employees',
+        icon: 'bi-person-vcard',
+        description: 'The employee list. Employees receive announcements together with Sales Office managers and ERP users.',
+        permission: 'announcements.view',
+      },
+    ],
   },
   {
     id: 'system',
@@ -290,6 +288,23 @@ export const STANDALONE_PAGES = [
     path: '/sales-office/hierarchy',
     label: 'Sales Office Hierarchy',
     description: 'Shyam, then each 2nd line manager, 1st line manager, headquarters, and stockists.',
+  },
+]
+
+// Routes with an id in the path (not in the sidebar). `parent` is the menu
+// item highlighted while the page is open.
+export const DYNAMIC_PAGES = [
+  {
+    pattern: /^\/announcements\/\d+\/edit$/,
+    label: 'Edit Announcement',
+    description: 'Change the announcement. Changes after publishing are kept in its history.',
+    parent: '/announcements/list',
+  },
+  {
+    pattern: /^\/announcements\/\d+$/,
+    label: 'Announcement',
+    description: 'Content, audience, tracking and history of one announcement.',
+    parent: '/announcements/list',
   },
 ]
 
@@ -352,6 +367,19 @@ export function getRouteMeta(pathname) {
       group: item.group,
       activeIds: [...item.parents.map((parent) => parent.id), ...(item.id ? [item.id] : [])],
       breadcrumbs,
+    }
+  }
+
+  const dynamic = DYNAMIC_PAGES.find((entry) => entry.pattern.test(path))
+  const parent = dynamic && NAV_ITEMS.find((entry) => entry.path === dynamic.parent)
+  if (dynamic && parent) {
+    return {
+      title: dynamic.label,
+      description: dynamic.description,
+      icon: parent.icon,
+      group: parent.group,
+      activeIds: parent.parents.map((group) => group.id),
+      breadcrumbs: [home, ...parent.parents.map((group) => ({ label: group.label })), { label: parent.label, to: parent.path }, { label: dynamic.label }],
     }
   }
 

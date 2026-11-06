@@ -23,6 +23,7 @@ $business = [
     'master_sheet.view', 'master_sheet.update',
     'sales.view', 'sales.create', 'sales.update',
     'imports.manage',
+    'announcements.view', 'announcements.manage', 'announcements.publish', 'announcements.reports',
 ];
 $viewOnly = ['sales_office.view', 'catalogue.view', 'products.view', 'master_sheet.view', 'sales.view'];
 
@@ -49,6 +50,10 @@ return [
         'sales.create' => 'Add sales entries',
         'sales.update' => 'Edit sales entries',
         'imports.manage' => 'Import Sales Office CSV files, download import files and backups, and roll imports back',
+        'announcements.view' => 'See announcements, templates and the employee list',
+        'announcements.manage' => 'Create and edit announcement drafts, templates and the employee list',
+        'announcements.publish' => 'Publish, schedule, pin, edit live and recall announcements',
+        'announcements.reports' => 'See announcement tracking and export recipient lists',
     ],
 
     'roles' => [

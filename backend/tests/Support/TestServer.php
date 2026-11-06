@@ -36,6 +36,7 @@ final class TestServer
         $env['SESSION_SECURE_COOKIE'] = 'false';
         $env['SESSION_SAVE_PATH'] = self::sessionPath();
         $env['IMPORT_STORAGE_PATH'] = $root . '/storage/test-imports';
+        $env['ANNOUNCEMENT_STORAGE_PATH'] = $root . '/storage/test-announcements';
 
         self::$process = proc_open(
             [PHP_BINARY, '-S', '127.0.0.1:8099', '-t', $root . '/public', $root . '/public/index.php'],

@@ -18,29 +18,29 @@ test('top-level menus appear in exactly the approved order', async ({ page }) =>
   expect(await topLevelLabels(page)).toEqual(TOP_LEVEL)
 })
 
-test('Dashboard and Announcements are single links without submenus', async ({ page }) => {
-  for (const [label, path] of [['Dashboard', '/dashboard'], ['Announcements', '/announcements']]) {
-    const link = page.locator('.sidebar-nav > li > a.sidebar-toplink', { hasText: label })
-    await expect(link).toHaveAttribute('href', path)
-    await expect(link).not.toHaveAttribute('aria-expanded', /.*/)
-  }
+test('Dashboard is a single link; Announcements is a menu for admins', async ({ page }) => {
+  const link = page.locator('.sidebar-nav > li > a.sidebar-toplink', { hasText: 'Dashboard' })
+  await expect(link).toHaveAttribute('href', '/dashboard')
+  await expect(link).not.toHaveAttribute('aria-expanded', /.*/)
+  await expect(group(page, 'Announcements').locator('.sidebar-link')).toHaveText(['All Announcements', 'New Announcement', 'Templates', 'Employees'])
   // Headquarters Dashboard was removed.
   await expect(page.locator('.app-sidebar').getByText('Headquarters Dashboard')).toHaveCount(0)
   await expect(page.locator('.app-sidebar').getByText('Overview', { exact: true })).toHaveCount(0)
 })
 
-test('Reports is nested in Sales Management and Data Import in Sales Office, not top-level', async ({ page }) => {
+test('Reports is removed; Data Import stays nested in Sales Office, not top-level', async ({ page }) => {
   const sales = group(page, 'Sales Management')
-  await expect(sales.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Reports' })).toHaveCount(1)
+  await expect(sales.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Reports' })).toHaveCount(0)
   await expect(sales.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Data Import' })).toHaveCount(0)
   const office = group(page, 'Sales Office')
   await expect(office.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Data Import' })).toHaveCount(1)
   expect(await topLevelLabels(page)).not.toContain('Reports')
   expect(await topLevelLabels(page)).not.toContain('Data Import')
 
-  const reportLinks = subgroup(page, 'Reports').locator('.sidebar-link')
-  await expect(reportLinks).toHaveText(['Headquarters Reports', 'Stockist Reports', 'Monthly Sales Reports', 'Product Performance Reports'])
-  await expect(page.locator('.app-sidebar a[href^="/reports/"]')).toHaveCount(4) // no duplicates
+  await expect(page.locator('.app-sidebar').getByText('Reports', { exact: true })).toHaveCount(0)
+  await expect(page.locator('.app-sidebar a[href^="/reports/"]')).toHaveCount(0)
+  const importLinks = subgroup(page, 'Data Import').locator('.sidebar-link')
+  await expect(importLinks).toHaveText(['Import Data', 'Import History'])
 })
 
 test('CSV Export is absent and Data Import is reachable from the Sales Office menu', async ({ page }) => {
@@ -78,82 +78,115 @@ test('group contents are preserved (Products, Sales Office, Application Details,
   await expect(links('System & Audit')).toHaveText(['Users', 'Audit Logs', 'Change History', 'Settings'])
 })
 
-test('a nested report page activates and expands Sales Management › Reports, with matching breadcrumbs', async ({ page }) => {
-  await page.goto('/reports/stockists')
-  await expect(page.locator('h1.page-header__title')).toHaveText('Stockist Reports')
-  await expect(page.locator('.breadcrumb-item')).toHaveText(['Dashboard', 'Sales Management', 'Reports', 'Stockist Reports'])
+test('a nested Data Import page activates and expands Sales Office › Data Import, with matching breadcrumbs', async ({ page }) => {
+  await page.goto('/imports/data')
+  await expect(page.locator('h1.page-header__title')).toHaveText('Import Data')
+  await expect(page.locator('.breadcrumb-item')).toHaveText(['Dashboard', 'Sales Office', 'Data Import', 'Import Data'])
   await expect(page.locator('.app-header__context')).toHaveCount(0)
   await expect(page.getByRole('combobox', { name: 'Search' })).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Search' })).toHaveAttribute('placeholder', 'Search anything...')
   await expect(page.getByRole('button', { name: 'Notifications (coming soon)' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Account menu for/ })).toBeVisible()
 
-  const sales = group(page, 'Sales Management')
-  await expect(sales).toHaveClass(/is-open/)
-  await expect(sales).toHaveClass(/is-active/)
-  await expect(sales.locator(':scope > button')).toHaveAttribute('aria-expanded', 'true')
-  const reports = subgroup(page, 'Reports')
-  await expect(reports).toHaveClass(/is-open/)
-  await expect(reports).toHaveClass(/is-active/)
-  await expect(reports.locator(':scope > button')).toHaveAttribute('aria-expanded', 'true')
-  await expect(page.locator('.app-sidebar [aria-current="page"]')).toHaveText('Stockist Reports')
-  await expect(subgroup(page, 'Data Import')).not.toHaveClass(/is-open/)
+  const office = group(page, 'Sales Office')
+  await expect(office).toHaveClass(/is-open/)
+  await expect(office).toHaveClass(/is-active/)
+  await expect(office.locator(':scope > button')).toHaveAttribute('aria-expanded', 'true')
+  const dataImport = subgroup(page, 'Data Import')
+  await expect(dataImport).toHaveClass(/is-open/)
+  await expect(dataImport).toHaveClass(/is-active/)
+  await expect(dataImport.locator(':scope > button')).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('.app-sidebar [aria-current="page"]')).toHaveText('Import Data')
 })
 
-test('submenus expand and collapse independently, with mouse and keyboard', async ({ page }) => {
-  const salesToggle = group(page, 'Sales Management').locator(':scope > button')
-  await salesToggle.click()
-  await expect(salesToggle).toHaveAttribute('aria-expanded', 'true')
+test('nested Data Import expands and collapses under Sales Office, with mouse and keyboard', async ({ page }) => {
+  const officeToggle = group(page, 'Sales Office').locator(':scope > button')
+  await officeToggle.click()
+  await expect(officeToggle).toHaveAttribute('aria-expanded', 'true')
 
-  const reportsToggle = subgroup(page, 'Reports').locator(':scope > button')
-  await expect(reportsToggle).toHaveAttribute('aria-expanded', 'false')
-  await reportsToggle.focus()
+  const importToggle = subgroup(page, 'Data Import').locator(':scope > button')
+  await expect(importToggle).toHaveAttribute('aria-expanded', 'false')
+  await importToggle.focus()
   await page.keyboard.press('Enter')
-  await expect(reportsToggle).toHaveAttribute('aria-expanded', 'true')
-  await expect(subgroup(page, 'Reports').locator('.sidebar-link').first()).toBeVisible()
-  // Closed subgroup's chevron must not rotate just because its parent is open.
-  const chevronTransform = (toggle) => toggle.locator('.sidebar-group__chevron').evaluate((el) => getComputedStyle(el).transform)
-  expect(await chevronTransform(subgroup(page, 'Data Import').locator(':scope > button'))).toBe('none')
+  await expect(importToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(subgroup(page, 'Data Import').locator('.sidebar-link').first()).toBeVisible()
 
   await page.keyboard.press('Tab')
-  await expect(page.locator(':focus')).toHaveText('Headquarters Reports')
+  await expect(page.locator(':focus')).toHaveText('Import Data')
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL('/reports/headquarters')
+  await expect(page).toHaveURL('/imports/data')
 
-  await reportsToggle.click()
-  await expect(reportsToggle).toHaveAttribute('aria-expanded', 'false')
-  await expect(subgroup(page, 'Reports').locator('.sidebar-link').first()).toBeHidden()
+  await importToggle.click()
+  await expect(importToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(subgroup(page, 'Data Import').locator('.sidebar-link').first()).toBeHidden()
+  await officeToggle.click()
+  await expect(officeToggle).toHaveAttribute('aria-expanded', 'false')
+})
+
+test('opening one top-level group closes the previous; Data Import closes with its parent', async ({ page }) => {
+  const salesToggle = group(page, 'Sales Management').locator(':scope > button')
+  const officeToggle = group(page, 'Sales Office').locator(':scope > button')
+  const importToggle = subgroup(page, 'Data Import').locator(':scope > button')
+
   await salesToggle.click()
+  await expect(salesToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(officeToggle).toHaveAttribute('aria-expanded', 'false')
+
+  await officeToggle.click()
+  await expect(officeToggle).toHaveAttribute('aria-expanded', 'true')
   await expect(salesToggle).toHaveAttribute('aria-expanded', 'false')
+
+  await importToggle.click()
+  await expect(importToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(officeToggle).toHaveAttribute('aria-expanded', 'true')
+
+  await salesToggle.click()
+  await expect(salesToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(officeToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(importToggle).toHaveAttribute('aria-expanded', 'false')
+
+  // Landing on a nested page expands only that branch; navigating away collapses Data Import.
+  await page.goto('/imports/data')
+  await expect(officeToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(importToggle).toHaveAttribute('aria-expanded', 'true')
+  await page.goto('/sales/monthly')
+  await expect(salesToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(officeToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(importToggle).toHaveAttribute('aria-expanded', 'false')
 })
 
 test('Back/Forward update the active item across top-level links and nested pages', async ({ page }) => {
   const active = page.locator('.app-sidebar [aria-current="page"]')
-  await page.locator('.app-sidebar a[href="/announcements"]').click()
-  await expect(active).toHaveText('Announcements')
-  await expect(page.locator('h1.page-header__title')).toHaveText('Announcements')
-  await page.locator('.app-sidebar a[href="/reports/monthly-sales"]').evaluate((a) => a.click())
-  await expect(active).toHaveText('Monthly Sales Reports')
+  await group(page, 'Announcements').locator(':scope > button').click()
+  await page.locator('.app-sidebar a[href="/announcements/list"]').click()
+  await expect(active).toHaveText('All Announcements')
+  await expect(page.locator('h1.page-header__title')).toHaveText('All Announcements')
+  await page.locator('.app-sidebar a[href="/sales/monthly"]').evaluate((a) => a.click())
+  await expect(active).toHaveText('Monthly Sales')
 
   await page.goBack()
-  await expect(page).toHaveURL('/announcements')
-  await expect(active).toHaveText('Announcements')
+  await expect(page).toHaveURL('/announcements/list')
+  await expect(active).toHaveText('All Announcements')
   await page.goBack()
   await expect(page).toHaveURL('/dashboard')
   await expect(active).toHaveText('Dashboard')
   await expect(page.locator('.breadcrumb-item')).toHaveText(['Dashboard'])
   await page.goForward()
   await page.goForward()
-  await expect(active).toHaveText('Monthly Sales Reports')
+  await expect(active).toHaveText('Monthly Sales')
 })
 
 test('group URLs redirect to their first page; removed Headquarters Dashboard is a 404', async ({ page }) => {
-  for (const [from, to] of [['/sales', '/sales/stockist-sales'], ['/reports', '/reports/headquarters'], ['/imports', '/imports/data'], ['/sales-app', '/sales-app/overview'], ['/products', '/products/group-categories']]) {
+  for (const [from, to] of [['/sales', '/sales/stockist-sales'], ['/imports', '/imports/data'], ['/sales-app', '/sales-app/overview'], ['/products', '/products/group-categories'], ['/announcements', '/announcements/list']]) {
     await page.goto(from)
     await expect(page, from).toHaveURL(to)
   }
   await page.goto('/dashboard/headquarters')
   await expect(page.locator('h1.page-header__title')).toHaveText('Page not found')
+  for (const gone of ['/reports', '/reports/headquarters', '/reports/stockists', '/reports/monthly-sales', '/reports/product-performance']) {
+    await page.goto(gone)
+    await expect(page.locator('h1.page-header__title'), gone).toHaveText('Page not found')
+  }
 })
 
 test('collapsed desktop rail shows the 7 top-level icons; top-level links work there', async ({ page }) => {
@@ -163,8 +196,10 @@ test('collapsed desktop rail shows the 7 top-level icons; top-level links work t
   await expect(page.locator('.sidebar-group__panel').first()).toBeHidden()
   await expect(page.locator('.sidebar-toplink.active')).toHaveAttribute('title', 'Dashboard')
 
-  await page.locator('.sidebar-toplink', { hasText: 'Announcements' }).click()
-  await expect(page).toHaveURL('/announcements')
+  await page.goto('/sales/monthly')
+  await expect(page.locator('.app-shell')).toHaveClass(/is-sidebar-collapsed/)
+  await page.locator('.sidebar-toplink', { hasText: 'Dashboard' }).click()
+  await expect(page).toHaveURL('/dashboard')
   await expect(page.locator('.app-shell')).toHaveClass(/is-sidebar-collapsed/)
 
   // Clicking a group icon in the rail expands the sidebar and opens it.
@@ -178,17 +213,16 @@ test('mobile drawer shows the same menu; choosing a nested page navigates and cl
   await page.getByRole('button', { name: 'Open navigation menu' }).click()
   expect(await topLevelLabels(page)).toEqual(TOP_LEVEL)
 
-  await group(page, 'Sales Management').locator(':scope > button').click()
-  await subgroup(page, 'Reports').locator(':scope > button').click()
-  await subgroup(page, 'Reports').getByRole('link', { name: 'Product Performance Reports' }).click()
-  await expect(page).toHaveURL('/reports/product-performance')
+  await group(page, 'Sales Office').locator(':scope > button').click()
+  await subgroup(page, 'Data Import').locator(':scope > button').click()
+  await subgroup(page, 'Data Import').getByRole('link', { name: 'Import History' }).click()
+  await expect(page).toHaveURL('/imports/history')
   await expect(page.locator('.app-shell')).not.toHaveClass(/is-sidebar-open/)
 
   for (const width of [320, 375, 768]) {
     await page.setViewportSize({ width, height: 800 })
     await page.getByRole('button', { name: 'Open navigation menu' }).click()
     await group(page, 'Sales Management').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
-    await subgroup(page, 'Reports').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
     await group(page, 'Sales Office').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
     await subgroup(page, 'Data Import').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
     await page.waitForTimeout(300)
@@ -207,7 +241,7 @@ test('mobile drawer shows the same menu; choosing a nested page navigates and cl
 
 test('desktop: expanded nested menu has no clipped labels', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
-  await page.goto('/reports/product-performance')
+  await page.goto('/imports/history')
   await page.waitForTimeout(300)
   const clipped = await page.evaluate(() =>
     [...document.querySelectorAll('.sidebar-link, .sidebar-group__label, .sidebar-subgroup__label')]
