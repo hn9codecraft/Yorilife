@@ -12,9 +12,21 @@ function visibleEntries(entries, hasPermission) {
     .filter((entry) => (isGroup(entry) ? entry.items.length > 0 : !entry.permission || hasPermission(entry.permission)))
 }
 
+/** Nested subgroup ids under a group (one level deep in practice). */
+function nestedGroupIds(group) {
+  return group.items.filter(isGroup).flatMap((sub) => [sub.id, ...nestedGroupIds(sub)])
+}
+
+/** Every expandable group id in the menu tree (top-level + nested). */
+function allGroupIds(entries) {
+  return entries.filter(isGroup).flatMap((group) => [group.id, ...nestedGroupIds(group)])
+}
+
 /**
  * Main navigation built from NAV_MENU: top-level links, expandable groups and
- * one level of nested subgroups (e.g. Sales Management › Reports).
+ * one level of nested subgroups (e.g. Sales Office → Data Import).
+ * Accordion: only one top-level group open at a time; nested subgroups follow
+ * the same rule among siblings and close when their parent closes.
  * - Desktop: persistent; `collapsed` shrinks it to an icon rail.
  * - Mobile: off-canvas; AppLayout controls visibility and passes `inert` when hidden.
  */
@@ -27,24 +39,70 @@ export default function Sidebar({ id, collapsed, inert, onClose, onNavigate, onR
   const [expanded, setExpanded] = useState(() => new Set(activeIds))
   const [trackedPath, setTrackedPath] = useState(pathname)
 
-  // Open every group containing the active page whenever the route changes
+  // Keep only the active page's ancestor groups open when the route changes
   // (adjusting state during render avoids an extra effect pass).
   if (pathname !== trackedPath) {
     setTrackedPath(pathname)
-    if (activeIds.some((groupId) => !expanded.has(groupId))) {
-      setExpanded(new Set([...expanded, ...activeIds]))
-    }
+    setExpanded(new Set(activeIds))
+  }
+
+  function openOnly(groupId, { keepParentId } = {}) {
+    const next = new Set()
+    if (keepParentId) next.add(keepParentId)
+    next.add(groupId)
+    return next
   }
 
   function toggle(groupId) {
+    const topLevel = menu.find((entry) => isGroup(entry) && entry.id === groupId)
+    const parent = !topLevel
+      ? menu.find((entry) => isGroup(entry) && entry.items.some((item) => isGroup(item) && item.id === groupId))
+      : null
+
     if (collapsed) {
-      // Rail mode has no room for sub-items: expand the sidebar and open the group.
+      // Rail mode has no room for sub-items: expand the sidebar and open only this group.
       onRequestExpand()
-      setExpanded((prev) => new Set(prev).add(groupId))
+      if (topLevel) {
+        setExpanded(openOnly(groupId))
+      } else if (parent) {
+        setExpanded(openOnly(groupId, { keepParentId: parent.id }))
+      } else {
+        setExpanded(new Set([groupId]))
+      }
       return
     }
 
     setExpanded((prev) => {
+      const isOpen = prev.has(groupId)
+
+      if (topLevel) {
+        if (isOpen) {
+          const next = new Set(prev)
+          next.delete(groupId)
+          for (const childId of nestedGroupIds(topLevel)) next.delete(childId)
+          return next
+        }
+        return openOnly(groupId)
+      }
+
+      if (parent) {
+        if (isOpen) {
+          const next = new Set(prev)
+          next.delete(groupId)
+          return next
+        }
+        // Accordion among sibling subgroups; keep the parent open.
+        const next = new Set(prev)
+        for (const siblingId of nestedGroupIds(parent)) next.delete(siblingId)
+        // Drop other top-level groups so only this branch stays expanded.
+        for (const idToClose of allGroupIds(menu)) {
+          if (idToClose !== parent.id) next.delete(idToClose)
+        }
+        next.add(parent.id)
+        next.add(groupId)
+        return next
+      }
+
       const next = new Set(prev)
       if (next.has(groupId)) next.delete(groupId)
       else next.add(groupId)
@@ -66,7 +124,7 @@ export default function Sidebar({ id, collapsed, inert, onClose, onNavigate, onR
     )
   }
 
-  // Nested group inside a group's panel (e.g. Reports under Sales Management).
+  // Nested group inside a group's panel (e.g. Data Import under Sales Office).
   function renderSubgroup(subgroup) {
     const isActive = activeIds.includes(subgroup.id)
     const isOpen = !collapsed && expanded.has(subgroup.id)

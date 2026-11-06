@@ -11,7 +11,7 @@ Yorilife/
 
 Current status: **Sprint 4 (persistent business data) is complete.**
 - **Signing in:** every ERP page requires sign-in, with a server-side session and role-based access. Super Admins and Admins can manage users.
-- **Business screens:** Headquarters, managers, stockists, catalogue terms, products, the Master Product Sheet and sales entries are saved in MySQL. Dashboard, Reports, Announcements, Application Details, Audit and CSV Import are still placeholders.
+- **Business screens:** Headquarters, managers, stockists, catalogue terms, products, the Master Product Sheet and sales entries are saved in MySQL. Dashboard, Application Details and Audit are still placeholders. Announcements (admin) and CSV Import are built; the Sales Management Reports menu was removed.
 - **Where the details are:**
   - architecture and security: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md);
   - status and open decisions: [docs/SPRINT_PLAN.md](docs/SPRINT_PLAN.md);

@@ -105,7 +105,7 @@ Everything navigational comes from `src/config/navigation.js`:
 - **Sidebar** renders `NAV_MENU`, in order. It has top-level links, expandable groups, and one level of nested subgroups.
 - **Router** creates one route per page (`NAV_ITEMS`); pages without a real screen render `ModulePlaceholderPage`. Plus:
   - `/` → redirect to `/dashboard`
-  - group and subgroup URLs such as `/products` or `/reports` → redirect to their first page
+  - group and subgroup URLs such as `/products` or `/imports` → redirect to their first page
   - `/design-system` → Sprint 1 component reference
   - `*` → `NotFoundPage`
 - **Breadcrumbs, `<h1>`, page description, top-bar title and `document.title`** come from `getRouteMeta(pathname)`. The trail is `Dashboard › Group › [Subgroup] › Page`, and on `/dashboard` itself just `Dashboard`. Group crumbs are plain text because groups have no page of their own.
@@ -119,7 +119,6 @@ Sidebar order (approved):
 | 1 | Dashboard (link) | `/dashboard` |
 | 2 | Products | `/products/group-categories`, `/products/categories`, `/products/tags-badges`, `/products/list`, `/products/master-sheet`, `/products/deleted`, `/products/change-history` |
 | 3 | Sales Management | `/sales/stockist-sales`, `/sales/monthly`, `/sales/by-headquarters`, `/sales/by-stockist`, `/sales/calculation-history` |
-|   | ↳ Reports | `/reports/headquarters`, `/reports/stockists`, `/reports/monthly-sales`, `/reports/product-performance` |
 |   | Sales Office > Data Import | `/imports/data`, `/imports/history` (Super Admin and Admin) |
 | 4 | Sales Office | `/sales-office/stockists`, `/sales-office/headquarters`, `/sales-office/first-line-managers`, `/sales-office/second-line-managers`, `/sales-office/third-line-managers`, `/sales-office/locations` (`/sales-office/hierarchy` stays reachable and is not in the menu) |
 | 5 | Application Details | `/sales-app/overview`, `/sales-app/submission-status`, `/sales-app/history` (the former "Sales Application" pages; contents to be confirmed) |

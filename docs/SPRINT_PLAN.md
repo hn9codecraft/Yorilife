@@ -163,10 +163,10 @@ Not in Sprint 3 (unchanged): Sales Office, Products, Master Sheet, Sales, Report
 
 ## Sidebar navigation update ✅
 
-The left sidebar follows the approved order: **Dashboard · Products · Sales Management (with Reports) · Sales Office · Application Details · Announcements · System & Audit.**
+The left sidebar follows the approved order: **Dashboard · Products · Sales Management · Sales Office · Application Details · Announcements · System & Audit.** (The Sales Management → Reports subgroup was removed.)
 
 - **Dashboard:** now a single link to `/dashboard`. The Headquarters Dashboard placeholder (`/dashboard/headquarters`) was removed and its URL now shows the 404 page.
-- **Sales Management:** Reports is nested inside it, with routes unchanged.
+- **Sales Management:** sales entry pages only (Reports subgroup removed).
 - **CSV Import:** nested inside Sales Management as well, with routes unchanged. It isn't in the approved top-level list, but its functionality must stay available.
 - **Application Details:** the renamed "Sales Application" group, with the same three pages and routes.
 - **Announcements:** a new top-level link to `/announcements`, showing the shared placeholder page (no announcements feature exists yet).

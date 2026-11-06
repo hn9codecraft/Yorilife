@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Controllers\AnnouncementController;
 use App\Controllers\AuthController;
 use App\Controllers\CatalogueController;
+use App\Controllers\EmployeeController;
 use App\Controllers\ErpController;
 use App\Controllers\HealthController;
 use App\Controllers\ImportController;
@@ -101,3 +103,37 @@ $router->get('/api/imports/{id}/errors', [ImportController::class, 'errors'], [$
 $router->get('/api/imports/{id}/backup', [ImportController::class, 'backup'], [$auth, $imports]);
 $router->post('/api/imports/{id}/rollback/preview', [ImportController::class, 'rollbackPreview'], [$auth, $imports]);
 $router->post('/api/imports/{id}/rollback', [ImportController::class, 'rollback'], [$auth, $imports]);
+
+// Announcements (admin side; Super Admin and Admin). The employee app connects later.
+// Static paths come before /api/announcements/{id}.
+$annView = AuthMiddleware::can('announcements.view');
+$annManage = AuthMiddleware::can('announcements.manage');
+$annPublish = AuthMiddleware::can('announcements.publish');
+$annReports = AuthMiddleware::can('announcements.reports');
+$router->get('/api/announcements/options', [AnnouncementController::class, 'options'], [$auth, $annView]);
+$router->post('/api/announcements/audience-preview', [AnnouncementController::class, 'audiencePreview'], [$auth, $annManage]);
+$router->get('/api/announcements', [AnnouncementController::class, 'index'], [$auth, $annView]);
+$router->post('/api/announcements', [AnnouncementController::class, 'store'], [$auth, $annManage]);
+$router->get('/api/announcements/{id}', [AnnouncementController::class, 'show'], [$auth, $annView]);
+$router->put('/api/announcements/{id}', [AnnouncementController::class, 'update'], [$auth, $annManage]);
+$router->post('/api/announcements/{id}/delete', [AnnouncementController::class, 'delete'], [$auth, $annManage]);
+$router->post('/api/announcements/{id}/copy', [AnnouncementController::class, 'copy'], [$auth, $annManage]);
+$router->post('/api/announcements/{id}/publish', [AnnouncementController::class, 'publish'], [$auth, $annPublish]);
+$router->post('/api/announcements/{id}/unschedule', [AnnouncementController::class, 'unschedule'], [$auth, $annPublish]);
+$router->post('/api/announcements/{id}/pin', [AnnouncementController::class, 'pin'], [$auth, $annPublish]);
+$router->post('/api/announcements/{id}/recall', [AnnouncementController::class, 'recall'], [$auth, $annPublish]);
+$router->get('/api/announcements/{id}/tracking', [AnnouncementController::class, 'tracking'], [$auth, $annReports]);
+$router->get('/api/announcements/{id}/tracking/export', [AnnouncementController::class, 'trackingExport'], [$auth, $annReports]);
+$router->post('/api/announcements/{id}/attachments', [AnnouncementController::class, 'uploadAttachment'], [$auth, $annManage]);
+$router->get('/api/announcements/{id}/attachments/{attachmentId}', [AnnouncementController::class, 'downloadAttachment'], [$auth, $annView]);
+$router->post('/api/announcements/{id}/attachments/{attachmentId}/delete', [AnnouncementController::class, 'removeAttachment'], [$auth, $annManage]);
+
+$router->get('/api/announcement-templates', [AnnouncementController::class, 'templates'], [$auth, $annView]);
+$router->post('/api/announcement-templates', [AnnouncementController::class, 'storeTemplate'], [$auth, $annManage]);
+$router->patch('/api/announcement-templates/{id}', [AnnouncementController::class, 'updateTemplate'], [$auth, $annManage]);
+$router->post('/api/announcement-templates/{id}/delete', [AnnouncementController::class, 'deleteTemplate'], [$auth, $annManage]);
+
+$router->get('/api/employees', [EmployeeController::class, 'index'], [$auth, $annView]);
+$router->post('/api/employees', [EmployeeController::class, 'store'], [$auth, $annManage]);
+$router->patch('/api/employees/{id}', [EmployeeController::class, 'update'], [$auth, $annManage]);
+$router->post('/api/employees/{id}/delete', [EmployeeController::class, 'delete'], [$auth, $annManage]);

@@ -10,10 +10,10 @@ test('page search is empty until there is a query', () => {
 })
 
 test('page search matches a menu label and keeps the group trail', () => {
-  const [match] = searchPages('stockist reports', allow)
-  assert.equal(match.label, 'Stockist Reports')
-  assert.equal(match.path, '/reports/stockists')
-  assert.equal(match.detail, 'Sales Management · Reports')
+  const [match] = searchPages('stockist sales', allow)
+  assert.equal(match.label, 'Stockist Sales')
+  assert.equal(match.path, '/sales/stockist-sales')
+  assert.equal(match.detail, 'Sales Management')
 })
 
 test('page search matches a group label and skips pages the user cannot open', () => {

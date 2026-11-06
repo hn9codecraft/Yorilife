@@ -44,6 +44,7 @@ export default defineConfig({
         SESSION_SECURE_COOKIE: 'false',
         SESSION_SAVE_PATH: `${backend}/storage/e2e-sessions`,
         IMPORT_STORAGE_PATH: `${backend}/storage/e2e-imports`,
+        ANNOUNCEMENT_STORAGE_PATH: `${backend}/storage/e2e-announcements`,
       },
     },
     {
