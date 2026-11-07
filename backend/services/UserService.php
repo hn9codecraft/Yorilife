@@ -175,13 +175,21 @@ final class UserService
             'Status' => $updated['status'],
         ];
         EntityHistory::recordDiff('user', $id, $updated['name'], $before, $after, (int) $actor['id']);
+        $revoked = null;
+        if (isset($fields['status']) && $fields['status'] !== $target['status'] && in_array($fields['status'], ['locked', 'disabled'], true)) {
+            $revoked = AccessRevoker::revoke($id);
+        }
         AuditLogger::record([
             'module' => 'users',
             'action' => 'update',
             'targetType' => 'user',
             'targetId' => $id,
             'targetLabel' => $updated['name'],
-            'details' => ['fields' => array_keys($fields)],
+            'details' => [
+                'fields' => array_keys($fields),
+                'sessionsRevoked' => $revoked['sessions'] ?? 0,
+                'devicesRevoked' => $revoked['tokens'] ?? 0,
+            ],
         ]);
 
         return $updated;
@@ -213,6 +221,7 @@ final class UserService
         }
 
         $this->users->updatePasswordHash($id, PasswordHasher::hash($password));
+        $revoked = AccessRevoker::revoke($id);
         EntityHistory::recordDiff('user', $id, $target['name'], [
             'Password' => '(hidden)',
         ], [
@@ -224,7 +233,7 @@ final class UserService
             'targetType' => 'user',
             'targetId' => $id,
             'targetLabel' => $target['name'],
-            'details' => ['reset' => true],
+            'details' => ['reset' => true, 'sessionsRevoked' => $revoked['sessions'], 'devicesRevoked' => $revoked['tokens']],
         ]);
 
         return $this->users->find($id) ?? throw HttpException::notFound('User not found.');

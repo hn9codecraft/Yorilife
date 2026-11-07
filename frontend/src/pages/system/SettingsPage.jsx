@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(null)
   const [notice, setNotice] = useState(null)
   const [history, setHistory] = useState({ open: false, key: '', label: '', status: 'idle', items: [], error: null })
+  const [applying, setApplying] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -55,6 +56,24 @@ export default function SettingsPage() {
     }
   }
 
+  async function applyRetention() {
+    setApplying(true)
+    setNotice(null)
+    try {
+      const data = await api('/api/retention/apply', { method: 'POST', body: {} })
+      const archived = data.archived ?? {}
+      const total = Object.values(archived).reduce((sum, count) => sum + Number(count || 0), 0)
+      setNotice({
+        variant: 'success',
+        text: `Retention applied. ${total} old row${total === 1 ? '' : 's'} marked archived. No records were deleted.`,
+      })
+    } catch (error) {
+      setNotice({ variant: 'danger', text: error.message })
+    } finally {
+      setApplying(false)
+    }
+  }
+
   async function openHistory(item) {
     setHistory({ open: true, key: item.key, label: item.label, status: 'loading', items: [], error: null })
     try {
@@ -85,9 +104,16 @@ export default function SettingsPage() {
               key={group.id}
               title={group.label}
               toolbar={group.editable ? (
-                <button type="button" className="btn btn-sm btn-primary" disabled={saving === group.id} onClick={() => saveGroup(group)}>
-                  {saving === group.id ? 'Saving…' : 'Save'}
-                </button>
+                <div className="d-flex gap-2">
+                  {group.id === 'retention' && (
+                    <button type="button" className="btn btn-sm btn-outline-secondary" disabled={applying} onClick={applyRetention}>
+                      {applying ? 'Applying…' : 'Apply retention'}
+                    </button>
+                  )}
+                  <button type="button" className="btn btn-sm btn-primary" disabled={saving === group.id} onClick={() => saveGroup(group)}>
+                    {saving === group.id ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
               ) : (
                 <span className="small text-muted">View only</span>
               )}

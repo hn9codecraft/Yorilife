@@ -49,6 +49,19 @@ final class SecurityPolicy
         return self::int('security.lockout_window_minutes', (int) (self::fileConfig()['throttle']['window_minutes'] ?? 15), 1, 1440);
     }
 
+    public static function totpRequiredFor(string $roleSlug): bool
+    {
+        $key = match ($roleSlug) {
+            'super_admin' => 'security.totp_required_super_admin',
+            'admin' => 'security.totp_required_admin',
+            'sales_manager' => 'security.totp_required_sales_manager',
+            'sales_user' => 'security.totp_required_sales_user',
+            default => null,
+        };
+
+        return $key !== null && self::stored($key) === '1';
+    }
+
     public static function recordsPerPage(): int
     {
         $value = self::int('general.records_per_page', 50, 25, 100);

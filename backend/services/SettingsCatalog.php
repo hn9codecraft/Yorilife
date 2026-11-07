@@ -51,8 +51,15 @@ final class SettingsCatalog
             'security.session_absolute_hours' => self::number('security', 'Absolute session lifetime (hours)', '12', 1, 168, 'Sign-in ends after this many hours even if the user is active.'),
             'security.lockout_max_failures' => self::number('security', 'Failed attempts before lockout', '5', 3, 20, 'Wrong passwords for one account inside the lockout window.'),
             'security.lockout_window_minutes' => self::number('security', 'Lockout window (minutes)', '15', 1, 1440, 'How long failed attempts are counted, and how long the lockout lasts.'),
+            'security.totp_required_super_admin' => self::bool('security', 'Require an authenticator app for Super Admin', '0', 'When yes, a Super Admin must finish authenticator setup before using the ERP.'),
+            'security.totp_required_admin' => self::bool('security', 'Require an authenticator app for Admin', '0', 'When yes, an Admin must finish authenticator setup before using the ERP.'),
+            'security.totp_required_sales_manager' => self::bool('security', 'Require an authenticator app for Sales Manager', '0', 'When yes, a Sales Manager must finish authenticator setup before using the ERP.'),
+            'security.totp_required_sales_user' => self::bool('security', 'Require an authenticator app for Sales User', '0', 'When yes, a Sales User must finish authenticator setup before using the ERP.'),
             'retention.audit_log_days' => self::number('retention', 'Archive audit logs older than (days)', '365', 30, 3650, 'Archive marks rows. It never deletes them.'),
             'retention.change_history_days' => self::number('retention', 'Archive change history older than (days)', '365', 30, 3650, 'Archive marks rows. It never deletes them.'),
+            'retention.import_audit_days' => self::number('retention', 'Archive import audit logs older than (days)', '365', 30, 3650, 'Archive marks rows. It never deletes them.'),
+            'retention.login_attempt_days' => self::number('retention', 'Archive sign-in attempts older than (days)', '365', 30, 3650, 'Archive marks rows. It never deletes them.'),
+            'retention.privacy_record_days' => self::number('retention', 'Archive privacy records older than (days)', '365', 30, 3650, 'Consent and privacy-request rows are marked, never deleted.'),
         ];
     }
 
@@ -223,14 +230,14 @@ final class SettingsCatalog
     }
 
     /** @return array<string, mixed> */
-    private static function bool(string $group, string $label, string $default): array
+    private static function bool(string $group, string $label, string $default, ?string $help = null): array
     {
         return [
             'group' => $group,
             'label' => $label,
             'input' => 'bool',
             'default' => $default,
-            'help' => 'Applies the next time a password is set. Existing passwords stay valid until they are changed.',
+            'help' => $help ?? 'Applies the next time a password is set. Existing passwords stay valid until they are changed.',
         ];
     }
 

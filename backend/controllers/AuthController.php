@@ -19,6 +19,7 @@ final class AuthController
         JsonResponse::success([
             'user' => UserPresenter::presentSelf($result['user']),
             'csrfToken' => $result['csrfToken'],
+            'twoFactor' => $result['twoFactor'],
         ]);
     }
 
@@ -36,6 +37,7 @@ final class AuthController
         JsonResponse::success([
             'user' => UserPresenter::presentSelf($request->user),
             'csrfToken' => $request->csrfToken,
+            'twoFactor' => $request->twoFactor,
         ]);
     }
 }

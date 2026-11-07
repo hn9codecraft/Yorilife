@@ -18,8 +18,11 @@ final class Request
     /** Signed-in user (set by AuthMiddleware), shaped by UserRepository::find(). */
     public ?array $user = null;
 
-    /** The session's CSRF token (set by AuthMiddleware). */
+    /** The session's CSRF token (set by AuthMiddleware). Empty for device-token calls. */
     public ?string $csrfToken = null;
+
+    /** ok, pending (code required) or enroll (authenticator setup required). */
+    public string $twoFactor = 'ok';
 
     private ?array $json = null;
 

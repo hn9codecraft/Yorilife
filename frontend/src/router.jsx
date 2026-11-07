@@ -20,6 +20,8 @@ import UsersPage from './pages/system/UsersPage.jsx'
 import AuditLogsPage from './pages/system/AuditLogsPage.jsx'
 import ChangeHistoryPage from './pages/system/ChangeHistoryPage.jsx'
 import SettingsPage from './pages/system/SettingsPage.jsx'
+import PrivacyPage from './pages/system/PrivacyPage.jsx'
+import SecurityPage from './pages/account/SecurityPage.jsx'
 import ImportDataPage from './pages/imports/ImportDataPage.jsx'
 import ImportHistoryPage from './pages/imports/ImportHistoryPage.jsx'
 import AnnouncementsListPage from './pages/announcements/AnnouncementsListPage.jsx'
@@ -56,6 +58,7 @@ const PAGE_ELEMENTS = {
   '/system/audit-logs': <AuditLogsPage />,
   '/system/change-history': <ChangeHistoryPage />,
   '/system/settings': <SettingsPage />,
+  '/system/privacy': <PrivacyPage />,
   '/announcements/list': <AnnouncementsListPage />,
   '/announcements/new': <AnnouncementFormPage />,
   '/announcements/templates': <AnnouncementTemplatesPage />,
@@ -116,6 +119,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to={HOME_PATH} replace /> },
       ...moduleRoutes,
       ...groupRedirects,
+      { path: '/account/security', element: <SecurityPage /> },
       { path: '/sales-office/hierarchy', element: <HierarchyPage /> },
       { path: '/announcements/:id', element: <RequirePermission permission="announcements.view"><AnnouncementDetailPage /></RequirePermission> },
       { path: '/announcements/:id/edit', element: <RequirePermission permission="announcements.manage"><AnnouncementFormPage key="edit" /></RequirePermission> },
