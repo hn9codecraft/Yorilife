@@ -48,6 +48,13 @@ final class Authorization
     public static function authorize(array $user, string $permission): void
     {
         if (!self::can($user, $permission)) {
+            RequestContext::setActor($user);
+            AuditLogger::record([
+                'module' => 'system',
+                'action' => 'permission_denied',
+                'result' => 'denied',
+                'details' => ['permission' => $permission],
+            ]);
             throw HttpException::forbidden();
         }
     }

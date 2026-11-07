@@ -55,7 +55,7 @@ test('CSV Export is absent and Data Import is reachable from the Sales Office me
 
 test('group contents are preserved (Products, Sales Office, Application Details, System & Audit)', async ({ page }) => {
   const links = (label) => group(page, label).locator(':scope > .sidebar-group__panel > .sidebar-group__list > li > .sidebar-link')
-  await expect(links('Products')).toHaveText(['Product Group Categories', 'Product Categories', 'Product Tags & Badges', 'Product List', 'Master Product Sheet', 'Deleted Products', 'Product Change History'])
+  await expect(links('Products')).toHaveText(['Group Categories', 'Categories', 'Tags & Badges', 'Product List', 'Master Product Sheet', 'Deleted Products', 'Change History'])
   await expect(links('Sales Management')).toHaveText(['Stockist Sales', 'Monthly Sales', 'Sales by Headquarters', 'Sales by Stockist', 'Sales Calculation History'])
   await expect(links('Sales Office')).toHaveText(['Stockist Entry', 'Headquarters', '1st Line Manager', '2nd Line Manager', '3rd Line Manager', 'Location'])
   await expect(group(page, 'Sales Office').getByRole('link', { name: 'Sales Office Hierarchy' })).toHaveCount(0)

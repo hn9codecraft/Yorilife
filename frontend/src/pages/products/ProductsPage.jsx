@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import PageShell from '../../components/PageShell.jsx'
 import DataStatusNotice from '../../components/DataStatusNotice.jsx'
@@ -9,11 +9,13 @@ import SearchInput from '../../components/SearchInput.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import Modal from '../../components/Modal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
+import SelectionBar from '../../components/SelectionBar.jsx'
 import ProductHistoryTable from '../../components/ProductHistoryTable.jsx'
 import { SelectField, TextField } from '../../components/FormField.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
 import useFormState from '../../hooks/useFormState.js'
+import useRowSelection from '../../hooks/useRowSelection.js'
 import { byName, findById, formatDateTime, matchesSearch } from '../../data/selectors.js'
 
 function activeTerms(terms, kind) {
@@ -26,28 +28,49 @@ function classificationOf(product, terms) {
   return { category, group }
 }
 
+function moneyDisplay(value) {
+  if (value == null || value === '') return <span className="text-muted">—</span>
+  return `₹ ${value}`
+}
+
+function StatCards({ items }) {
+  return (
+    <div className="row g-3 mb-4">
+      {items.map((item) => (
+        <div className="col-12 col-md-4" key={item.label}>
+          <div className="card h-100">
+            <div className="card-body">
+              <div className="text-muted small mb-1">{item.label}</div>
+              <div className="fs-3 fw-semibold">{item.value}</div>
+              {item.note && <div className="small text-success mt-1">{item.note}</div>}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ProductForm({ formId, record, terms, onSave }) {
-  const category = findById(terms, record?.categoryId)
   const form = useFormState(
     {
       name: record?.name ?? '',
       code: record?.code ?? '',
-      groupCategoryId: category?.parentId ?? '',
       categoryId: record?.categoryId ?? '',
+      strip: record?.strip ?? '',
+      pack: record?.pack ?? '',
+      mrp: record?.mrp ?? '',
+      ptr: record?.ptr ?? '',
+      pts: record?.pts ?? '',
       scheme: record?.scheme ?? '',
     },
     (values) => {
       const errors = {}
       if (!values.name.trim()) errors.name = 'Enter the product name.'
-      if (!values.groupCategoryId) errors.groupCategoryId = 'Choose a group category.'
-      if (!values.categoryId) errors.categoryId = 'Choose a product category.'
       return errors
     },
   )
-  const groups = activeTerms(terms, 'groupCategory')
-  const categories = terms
-    .filter((term) => term.kind === 'category' && term.parentId === form.values.groupCategoryId && (!term.deletedAt || term.id === form.values.categoryId))
-    .sort(byName)
+  const categories = activeTerms(terms, 'category')
 
   return (
     <form
@@ -55,176 +78,47 @@ function ProductForm({ formId, record, terms, onSave }) {
       className="row g-3"
       noValidate
       onSubmit={form.handleSubmit((values) => onSave({
-        ...values,
         name: values.name.trim(),
         code: values.code.trim(),
+        categoryId: values.categoryId || null,
+        strip: values.strip.trim(),
+        pack: values.pack.trim(),
+        mrp: values.mrp === '' ? null : values.mrp,
+        ptr: values.ptr === '' ? null : values.ptr,
+        pts: values.pts === '' ? null : values.pts,
         scheme: values.scheme.trim(),
       }))}
     >
       <TextField id={form.fieldId('name')} label="Product name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-8" />
       <TextField id={form.fieldId('code')} label="Product code" value={form.values.code} onChange={form.set('code')} help="Optional. Unique among active products." className="col-12 col-md-4" />
       <SelectField
-        id={form.fieldId('groupCategoryId')}
-        label="Group category"
-        required
-        value={form.values.groupCategoryId}
-        onChange={(value) => {
-          const selected = findById(terms, form.values.categoryId)
-          form.setMany({
-            groupCategoryId: value,
-            categoryId: selected && selected.parentId === value ? form.values.categoryId : '',
-          })
-        }}
-        options={groups.map((group) => ({ value: group.id, label: group.name }))}
-        placeholder="Select a group category"
-        error={form.errors.groupCategoryId}
-      />
-      <SelectField
         id={form.fieldId('categoryId')}
         label="Product category"
-        required
         value={form.values.categoryId}
         onChange={form.set('categoryId')}
-        options={categories.map((item) => ({ value: item.id, label: item.name }))}
-        placeholder={form.values.groupCategoryId ? 'Select a product category' : 'Select a group category first'}
+        options={categories.map((item) => {
+          const group = item.parentId ? findById(terms, item.parentId) : null
+          return { value: item.id, label: group ? `${item.name} (${group.name})` : item.name }
+        })}
+        placeholder="No category (optional)"
         error={form.errors.categoryId}
-        help="Only categories in the selected group are listed."
+        help="Optional. The category’s group is shown when one is linked."
+        className="col-12"
       />
+      <TextField id={form.fieldId('strip')} label="Strip" value={form.values.strip} onChange={form.set('strip')} className="col-12 col-md-6" />
+      <TextField id={form.fieldId('pack')} label="Pack" value={form.values.pack} onChange={form.set('pack')} className="col-12 col-md-6" />
+      <TextField id={form.fieldId('mrp')} label="MRP (₹)" value={form.values.mrp} onChange={form.set('mrp')} error={form.errors.mrp} className="col-12 col-md-4" />
+      <TextField id={form.fieldId('ptr')} label="PTR (₹)" value={form.values.ptr} onChange={form.set('ptr')} error={form.errors.ptr} className="col-12 col-md-4" />
+      <TextField id={form.fieldId('pts')} label="PTS (₹)" value={form.values.pts} onChange={form.set('pts')} error={form.errors.pts} className="col-12 col-md-4" />
       <TextField
         id={form.fieldId('scheme')}
         label="Scheme"
         value={form.values.scheme}
         onChange={form.set('scheme')}
         placeholder="e.g. 10+5"
-        help="Current scheme for this product. It is not stored separately for each financial year."
+        help="Current scheme for this product."
       />
     </form>
-  )
-}
-
-function GroupForm({ formId, onSave }) {
-  const form = useFormState({ name: '' }, (values) => (values.name.trim() ? {} : { name: 'Enter the group category name.' }))
-  return (
-    <form id={formId} noValidate onSubmit={form.handleSubmit((values) => onSave(values.name.trim()))}>
-      <TextField id={form.fieldId('name')} label="Group category" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
-    </form>
-  )
-}
-
-function CategoryForm({ formId, groups, onSave }) {
-  const form = useFormState(
-    { name: '', parentId: '' },
-    (values) => {
-      const errors = {}
-      if (!values.name.trim()) errors.name = 'Enter the product category name.'
-      if (!values.parentId) errors.parentId = 'Choose a group category.'
-      return errors
-    },
-  )
-  return (
-    <form id={formId} className="row g-3" noValidate onSubmit={form.handleSubmit((values) => onSave({ name: values.name.trim(), parentId: values.parentId }))}>
-      <TextField id={form.fieldId('name')} label="Product category" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} />
-      <SelectField
-        id={form.fieldId('parentId')}
-        label="Group category"
-        required
-        value={form.values.parentId}
-        onChange={form.set('parentId')}
-        options={groups.map((group) => ({ value: group.id, label: group.name }))}
-        placeholder="Select a group category"
-        error={form.errors.parentId}
-      />
-    </form>
-  )
-}
-
-function ClassificationPanel() {
-  const { state, actions } = useErpData()
-  const canManage = usePermission('catalogue.manage')
-  const groupEditor = useEditor()
-  const categoryEditor = useEditor()
-  const [mapping, setMapping] = useState({})
-  if (!canManage) return null
-
-  const groups = activeTerms(state.terms, 'groupCategory')
-  const categories = activeTerms(state.terms, 'category')
-  const unmapped = categories.filter((term) => !term.parentId)
-
-  return (
-    <div className="card mb-4">
-      <div className="card-body">
-        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
-          <div>
-            <h2 className="h5 mb-1">Product classification</h2>
-            <p className="text-muted mb-0">Each product category belongs to one group category. These are fields on the product, not separate menu pages.</p>
-          </div>
-          <div className="d-flex flex-wrap gap-2">
-            <button type="button" className="btn btn-outline-secondary" onClick={groupEditor.openNew}>Add group category</button>
-            <button type="button" className="btn btn-outline-secondary" onClick={categoryEditor.openNew} disabled={groups.length === 0}>Add product category</button>
-          </div>
-        </div>
-        {unmapped.length > 0 && (
-          <div className="alert alert-warning" role="status">
-            <div className="mb-2">These product categories are not mapped to a group. They cannot be used on a product until a group is chosen.</div>
-            {unmapped.map((term) => (
-              <div className="d-flex flex-wrap align-items-center gap-2 mb-2" key={term.id}>
-                <strong>{term.name}</strong>
-                <select
-                  className="form-select form-select-sm w-auto"
-                  aria-label={`Group category for ${term.name}`}
-                  value={mapping[term.id] ?? ''}
-                  onChange={(event) => setMapping((current) => ({ ...current, [term.id]: event.target.value }))}
-                >
-                  <option value="">Select a group category</option>
-                  {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
-                  disabled={!mapping[term.id]}
-                  onClick={() => actions.saveRecord('terms', { id: term.id, name: term.name, kind: 'category', parentId: mapping[term.id] })}
-                >
-                  Save mapping
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <FormModal
-        open={groupEditor.open}
-        onClose={groupEditor.close}
-        title="Add group category"
-        submitLabel="Add group category"
-        renderForm={(formId) => (
-          <GroupForm
-            key={groupEditor.session}
-            formId={formId}
-            onSave={async (name) => {
-              await actions.saveRecord('terms', { name, kind: 'groupCategory' })
-              groupEditor.close()
-            }}
-          />
-        )}
-      />
-      <FormModal
-        open={categoryEditor.open}
-        onClose={categoryEditor.close}
-        title="Add product category"
-        submitLabel="Add product category"
-        renderForm={(formId) => (
-          <CategoryForm
-            key={categoryEditor.session}
-            formId={formId}
-            groups={groups}
-            onSave={async (values) => {
-              await actions.saveRecord('terms', { ...values, kind: 'category' })
-              categoryEditor.close()
-            }}
-          />
-        )}
-      />
-    </div>
   )
 }
 
@@ -235,8 +129,6 @@ function labelOf(term) {
 
 /**
  * Product List (deleted = false) and Deleted Products (deleted = true).
- * Deleting is a soft delete: the product leaves the active list but its record
- * and history stay for past master sheets, sales and audit.
  */
 export default function ProductsPage({ deleted = false }) {
   const { state, actions } = useErpData()
@@ -245,18 +137,47 @@ export default function ProductsPage({ deleted = false }) {
   const canRestore = usePermission('products.restore')
   const editor = useEditor()
   const [query, setQuery] = useState('')
-  const [deleting, setDeleting] = useState({ open: false, product: null, restore: false })
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [deleting, setDeleting] = useState({ open: false, product: null, restore: false, many: false })
   const [historyOf, setHistoryOf] = useState({ open: false, product: null })
 
   const products = state.products.filter((product) => Boolean(product.deletedAt) === deleted)
-  const rows = products.filter((product) => matchesSearch(product, query)).sort(byName)
+  const categories = activeTerms(state.terms, 'category')
+
+  const filtered = useMemo(() => {
+    return products.filter((product) => {
+      if (!matchesSearch(product, query, ['name', 'code', 'scheme', 'strip', 'pack'])) return false
+      if (categoryFilter === 'all') return true
+      if (categoryFilter === 'none') return !product.categoryId
+      return String(product.categoryId) === String(categoryFilter)
+    }).sort(byName)
+  }, [products, query, categoryFilter])
+
+  const selection = useRowSelection(!deleted && canDelete ? filtered : [])
+  const usedCategories = new Set(products.filter((p) => p.categoryId).map((p) => p.categoryId)).size
 
   const columns = [
     { key: 'name', header: 'Product', render: (product) => <strong className="fw-semibold">{product.name}</strong> },
-    { key: 'code', header: 'Code', nowrap: true },
-    { key: 'group', header: 'Group category', render: (product) => labelOf(classificationOf(product, state.terms).group) },
-    { key: 'category', header: 'Product category', render: (product) => labelOf(classificationOf(product, state.terms).category) },
+    { key: 'strip', header: 'Strip', nowrap: true, render: (product) => product.strip || <span className="text-muted">—</span> },
+    { key: 'pack', header: 'Pack', nowrap: true, render: (product) => product.pack || <span className="text-muted">—</span> },
+    { key: 'mrp', header: 'MRP', nowrap: true, render: (product) => moneyDisplay(product.mrp) },
+    { key: 'ptr', header: 'PTR', nowrap: true, render: (product) => moneyDisplay(product.ptr) },
+    { key: 'pts', header: 'PTS', nowrap: true, render: (product) => moneyDisplay(product.pts) },
     { key: 'scheme', header: 'Scheme', nowrap: true, render: (product) => product.scheme || <span className="text-muted">—</span> },
+    {
+      key: 'category',
+      header: 'Product category',
+      render: (product) => {
+        const { category, group } = classificationOf(product, state.terms)
+        if (!category) return <span className="text-muted">No category</span>
+        return (
+          <>
+            {labelOf(category)}
+            {group ? <div className="small text-muted">{group.name}</div> : null}
+          </>
+        )
+      },
+    },
     deleted
       ? { key: 'deletedAt', header: 'Deleted on', nowrap: true, render: (product) => formatDateTime(product.deletedAt) }
       : { key: 'updatedAt', header: 'Last updated', nowrap: true, render: (product) => formatDateTime(product.updatedAt) },
@@ -277,12 +198,12 @@ export default function ProductsPage({ deleted = false }) {
             </button>
           )}
           {!deleted && canDelete && (
-            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDeleting({ open: true, product })}>
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDeleting({ open: true, product, many: false })}>
               <i className="bi bi-trash3" aria-hidden="true" /> Delete<span className="visually-hidden"> {product.name}</span>
             </button>
           )}
           {deleted && canRestore && (
-            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDeleting({ open: true, product, restore: true })}>
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDeleting({ open: true, product, restore: true, many: false })}>
               <i className="bi bi-arrow-counterclockwise" aria-hidden="true" /> Restore<span className="visually-hidden"> {product.name}</span>
             </button>
           )}
@@ -302,7 +223,16 @@ export default function ProductsPage({ deleted = false }) {
       }
     >
       <DataStatusNotice />
-      {!deleted && <ClassificationPanel />}
+
+      {!deleted && (
+        <StatCards
+          items={[
+            { label: 'Total products', value: products.length, note: 'Product master records' },
+            { label: 'Product categories used', value: usedCategories, note: 'Linked categories' },
+            { label: 'Without category', value: products.filter((p) => !p.categoryId).length, note: 'Optional link' },
+          ]}
+        />
+      )}
 
       {deleted && (
         <div className="alert alert-info" role="note">
@@ -316,14 +246,47 @@ export default function ProductsPage({ deleted = false }) {
 
       <TableCard
         title={`${deleted ? 'Deleted products' : 'Active products'} (${products.length})`}
-        toolbar={<SearchInput value={query} onChange={setQuery} label="Search products" placeholder="Search name or code" />}
+        toolbar={
+          <>
+            <SearchInput value={query} onChange={setQuery} label="Search products" placeholder="Search name or code" />
+            {!deleted && (
+              <select
+                className="form-select w-auto"
+                aria-label="Filter by product category"
+                value={categoryFilter}
+                onChange={(event) => setCategoryFilter(event.target.value)}
+              >
+                <option value="all">All categories</option>
+                <option value="none">No category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            )}
+          </>
+        }
       >
+        {!deleted && canDelete && (
+          <SelectionBar count={selection.count} onDelete={() => setDeleting({ open: true, product: null, many: true })} onClear={selection.clear} />
+        )}
         <DataTable
           caption={deleted ? 'Deleted products' : 'Active products'}
           columns={columns}
-          rows={rows}
+          rows={filtered}
+          selection={!deleted && canDelete ? {
+            isSelected: (product) => selection.isSelected(product.id),
+            onToggle: (product) => selection.toggle(product.id),
+            onToggleAll: selection.toggleAll,
+            allSelected: selection.allSelected,
+            indeterminate: selection.indeterminate,
+            label: (product) => product.name,
+          } : null}
           emptyText={
-            query ? 'No products match your search.' : deleted ? 'No deleted products.' : 'No products yet. Use “Add product” to create one.'
+            query || categoryFilter !== 'all'
+              ? 'No products match your search.'
+              : deleted
+                ? 'No deleted products.'
+                : 'No products yet. Use “Add product” to create one.'
           }
         />
       </TableCard>
@@ -350,12 +313,22 @@ export default function ProductsPage({ deleted = false }) {
       <ConfirmDialog
         open={deleting.open}
         onClose={() => setDeleting((current) => ({ ...current, open: false }))}
-        onConfirm={() => (deleting.restore ? actions.restoreProduct(deleting.product.id) : actions.deleteProduct(deleting.product.id))}
-        title={deleting.restore ? 'Restore product?' : 'Delete product?'}
-        confirmLabel={deleting.restore ? 'Restore product' : 'Delete product'}
+        onConfirm={async () => {
+          if (deleting.many) {
+            await actions.deleteMany('products', selection.selectedIds)
+            selection.clear()
+            return
+          }
+          if (deleting.restore) await actions.restoreProduct(deleting.product.id)
+          else await actions.deleteProduct(deleting.product.id)
+        }}
+        title={deleting.many ? `Delete ${selection.count} products?` : deleting.restore ? 'Restore product?' : 'Delete product?'}
+        confirmLabel={deleting.restore ? 'Restore product' : 'Delete'}
         variant={deleting.restore ? 'primary' : 'danger'}
       >
-        {deleting.product && (
+        {deleting.many ? (
+          <p className="mb-0">Selected products will move to Deleted Products. Their records and history are kept.</p>
+        ) : deleting.product && (
           <p className="mb-0">
             <strong>{deleting.product.name}</strong>{' '}
             {deleting.restore

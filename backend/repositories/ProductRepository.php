@@ -6,16 +6,18 @@ namespace App\Repositories;
 
 final class ProductRepository extends Repository
 {
+    private const COLUMNS = 'id, name, code, category_id, strip, pack, mrp, ptr, pts, scheme, scheme_buy_qty, scheme_free_qty, deleted_at, created_at, updated_at';
+
     /** @return list<array<string, mixed>> */
     public function all(): array
     {
-        return $this->many('SELECT id, name, code, category_id, scheme, scheme_buy_qty, scheme_free_qty, deleted_at, created_at, updated_at FROM products ORDER BY name, id');
+        return $this->many('SELECT ' . self::COLUMNS . ' FROM products ORDER BY name, id');
     }
 
     /** @return array<string, mixed>|null */
     public function find(int $id): ?array
     {
-        return $this->one('SELECT id, name, code, category_id, scheme, scheme_buy_qty, scheme_free_qty, deleted_at, created_at, updated_at FROM products WHERE id = ?', [$id]);
+        return $this->one('SELECT ' . self::COLUMNS . ' FROM products WHERE id = ?', [$id]);
     }
 
     /** @return array<int, array{tag: list<int>, badge: list<int>}> */

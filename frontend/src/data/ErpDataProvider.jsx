@@ -117,12 +117,21 @@ export default function ErpDataProvider({ children }) {
         }
         if (collection === 'terms') {
           if (values.id) {
-            const body = { name: values.name }
+            const body = {
+              name: values.name,
+              description: values.description ?? '',
+              status: values.status ?? 'active',
+            }
             if (values.parentId !== undefined) body.parentId = values.parentId || null
             return save(`/api/catalogue-terms/${values.id}`, 'PATCH', body)
           }
-          const body = { name: values.name, kind: values.kind }
-          if (values.kind === 'category') body.parentId = values.parentId
+          const body = {
+            name: values.name,
+            kind: values.kind,
+            description: values.description ?? '',
+            status: values.status ?? 'active',
+          }
+          if (values.kind === 'category') body.parentId = values.parentId || null
           return save('/api/catalogue-terms', 'POST', body)
         }
         if (collection === 'sales') {
@@ -182,6 +191,8 @@ export default function ErpDataProvider({ children }) {
           managers: (id) => `/api/managers/${id}/delete`,
           locations: (id) => `/api/locations/${id}/delete`,
           locationHeadquarters: (id) => `/api/location-headquarters/${id}/delete`,
+          terms: (id) => `/api/catalogue-terms/${id}/delete`,
+          products: (id) => `/api/products/${id}/delete`,
         }
         const pathFor = paths[resource]
         if (!pathFor) throw new Error('This record cannot be deleted here.')
@@ -221,10 +232,15 @@ export default function ErpDataProvider({ children }) {
         const body = {
           name: values.name,
           code: values.code ?? '',
-          groupCategoryId: values.groupCategoryId,
-          categoryId: values.categoryId,
+          categoryId: values.categoryId || null,
+          strip: values.strip ?? '',
+          pack: values.pack ?? '',
+          mrp: values.mrp ?? null,
+          ptr: values.ptr ?? null,
+          pts: values.pts ?? null,
           scheme: values.scheme ?? '',
         }
+        if (values.groupCategoryId) body.groupCategoryId = values.groupCategoryId
         return values.id ? save(`/api/products/${values.id}`, 'PATCH', body) : save('/api/products', 'POST', body)
       },
 

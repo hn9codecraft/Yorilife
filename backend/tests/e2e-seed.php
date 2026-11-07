@@ -42,6 +42,8 @@ $pdo = Database::connection();
 // Business rows reference users, so they go first (children before parents).
 $existing = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
 foreach ([
+    'audit_logs' => 'DELETE FROM audit_logs',
+    'entity_changes' => 'DELETE FROM entity_changes',
     'notification_outbox' => 'DELETE FROM notification_outbox',
     'announcement_changes' => 'DELETE FROM announcement_changes',
     'announcement_attachments' => 'DELETE FROM announcement_attachments',

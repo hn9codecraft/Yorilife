@@ -14,10 +14,12 @@ import LocationPage from './pages/sales-office/LocationPage.jsx'
 import HeadquartersPage from './pages/sales-office/HeadquartersPage.jsx'
 import CatalogueTermsPage from './pages/products/CatalogueTermsPage.jsx'
 import ProductsPage from './pages/products/ProductsPage.jsx'
-import ProductHistoryPage from './pages/products/ProductHistoryPage.jsx'
 import MasterSheetPage from './pages/products/MasterSheetPage.jsx'
 import SalesPage from './pages/sales/SalesPage.jsx'
 import UsersPage from './pages/system/UsersPage.jsx'
+import AuditLogsPage from './pages/system/AuditLogsPage.jsx'
+import ChangeHistoryPage from './pages/system/ChangeHistoryPage.jsx'
+import SettingsPage from './pages/system/SettingsPage.jsx'
 import ImportDataPage from './pages/imports/ImportDataPage.jsx'
 import ImportHistoryPage from './pages/imports/ImportHistoryPage.jsx'
 import AnnouncementsListPage from './pages/announcements/AnnouncementsListPage.jsx'
@@ -37,7 +39,7 @@ const PAGE_ELEMENTS = {
   '/products/list': <ProductsPage />,
   '/products/master-sheet': <MasterSheetPage />,
   '/products/deleted': <ProductsPage deleted />,
-  '/products/change-history': <ProductHistoryPage />,
+  '/products/change-history': <ChangeHistoryPage module="products" />,
   '/sales-office/first-line-managers': <ManagersPage level={1} />,
   '/sales-office/second-line-managers': <ManagersPage level={2} />,
   '/sales-office/third-line-managers': <ManagersPage level={3} />,
@@ -51,6 +53,9 @@ const PAGE_ELEMENTS = {
   '/imports/data': <ImportDataPage />,
   '/imports/history': <ImportHistoryPage />,
   '/system/users': <UsersPage />,
+  '/system/audit-logs': <AuditLogsPage />,
+  '/system/change-history': <ChangeHistoryPage />,
+  '/system/settings': <SettingsPage />,
   '/announcements/list': <AnnouncementsListPage />,
   '/announcements/new': <AnnouncementFormPage />,
   '/announcements/templates': <AnnouncementTemplatesPage />,

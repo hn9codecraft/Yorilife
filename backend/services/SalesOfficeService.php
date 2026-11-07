@@ -19,17 +19,24 @@ final class SalesOfficeService
     {
         $fields = $this->headquartersFields($input, null);
         $id = $this->records->insertHeadquarters($fields);
+        $created = $this->records->findHeadquarters($id);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'create', 'targetType' => 'headquarters', 'targetId' => $id, 'targetLabel' => $created['name'] ?? null]);
+        EntityHistory::recordDiff('headquarters', $id, $created['name'] ?? null, [], ['Name' => $created['name'] ?? null, 'Code' => $created['code'] ?? null]);
 
-        return ErpPresenter::headquarters($this->records->findHeadquarters($id));
+        return ErpPresenter::headquarters($created);
     }
 
     /** @param array<string, mixed> $input */
     public function updateHeadquarters(int $id, array $input): array
     {
         $this->requireHeadquarters($id);
+        $before = $this->records->findHeadquarters($id);
         $this->records->updateHeadquarters($id, $this->headquartersFields($input, $id));
+        $updated = $this->records->findHeadquarters($id);
+        EntityHistory::recordDiff('headquarters', $id, $updated['name'] ?? null, ['Name' => $before['name'] ?? null, 'Code' => $before['code'] ?? null], ['Name' => $updated['name'] ?? null, 'Code' => $updated['code'] ?? null]);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'update', 'targetType' => 'headquarters', 'targetId' => $id, 'targetLabel' => $updated['name'] ?? null]);
 
-        return ErpPresenter::headquarters($this->records->findHeadquarters($id));
+        return ErpPresenter::headquarters($updated);
     }
 
     /** @return list<array<string, mixed>> */
@@ -47,7 +54,8 @@ final class SalesOfficeService
     public function createLocationHeadquarters(array $input): array
     {
         $fields = $this->locationHeadquartersFields($input, null);
-        $this->records->insertLocationHeadquarters($fields);
+        $lhId = $this->records->insertLocationHeadquarters($fields);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'create', 'targetType' => 'location_headquarters', 'targetId' => is_int($lhId) ? $lhId : null, 'targetLabel' => $fields['name'] ?? null]);
 
         return $this->listedLocations();
     }
@@ -80,24 +88,32 @@ final class SalesOfficeService
             $message = 'This location headquarters is linked to a headquarters office and cannot be deleted.';
             throw HttpException::validation(['name' => $message], $message);
         }
+        $current = $this->records->findLocationHeadquarters($id);
         $this->records->deleteLocationHeadquarters($id);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'delete', 'targetType' => 'location_headquarters', 'targetId' => $id, 'targetLabel' => $current['name'] ?? null]);
     }
 
     /** @param array<string, mixed> $input */
     public function createLocation(array $input): array
     {
         $id = $this->records->insertLocation($this->locationFields($input, null));
+        $created = $this->records->findLocation($id);
+        EntityHistory::recordDiff('location', $id, $created['name'] ?? null, [], ['Name' => $created['name'] ?? null, 'Code' => $created['code'] ?? null]);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'create', 'targetType' => 'location', 'targetId' => $id, 'targetLabel' => $created['name'] ?? null]);
 
-        return ErpPresenter::location($this->records->findLocation($id));
+        return ErpPresenter::location($created);
     }
 
     /** @param array<string, mixed> $input */
     public function updateLocation(int $id, array $input): array
     {
-        $this->records->findLocation($id) ?? throw HttpException::notFound('State not found.');
+        $before = $this->records->findLocation($id) ?? throw HttpException::notFound('State not found.');
         $this->records->updateLocation($id, $this->locationFields($input, $id));
+        $updated = $this->records->findLocation($id);
+        EntityHistory::recordDiff('location', $id, $updated['name'] ?? null, ['Name' => $before['name'] ?? null, 'Code' => $before['code'] ?? null], ['Name' => $updated['name'] ?? null, 'Code' => $updated['code'] ?? null]);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'update', 'targetType' => 'location', 'targetId' => $id, 'targetLabel' => $updated['name'] ?? null]);
 
-        return ErpPresenter::location($this->records->findLocation($id));
+        return ErpPresenter::location($updated);
     }
 
     public function deleteLocation(int $id): void
@@ -111,13 +127,17 @@ final class SalesOfficeService
             $message = 'This state is assigned to a headquarters and cannot be deleted.';
             throw HttpException::validation(['name' => $message], $message);
         }
+        $current = $this->records->findLocation($id);
         $this->records->deleteLocation($id);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'delete', 'targetType' => 'location', 'targetId' => $id, 'targetLabel' => $current['name'] ?? null]);
     }
 
     public function deleteHeadquarters(int $id): void
     {
         $this->requireHeadquarters($id);
+        $current = $this->records->findHeadquarters($id);
         $this->records->deleteHeadquarters($id);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'delete', 'targetType' => 'headquarters', 'targetId' => $id, 'targetLabel' => $current['name'] ?? null]);
     }
 
     public function deleteStockist(int $id): void
@@ -125,7 +145,9 @@ final class SalesOfficeService
         if ($this->records->findStockist($id) === null) {
             throw HttpException::notFound('Stockist not found.');
         }
+        $current = $this->records->findStockist($id);
         $this->records->deleteStockist($id);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'delete', 'targetType' => 'stockist', 'targetId' => $id, 'targetLabel' => $current['name'] ?? null]);
     }
 
     /** @param array<string, mixed> $input @return array{name: string, code: string} */
@@ -168,6 +190,7 @@ final class SalesOfficeService
             throw HttpException::validation(['manager' => $message], $message);
         }
         $this->records->deleteManager($id);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'delete', 'targetType' => 'manager', 'targetId' => $id, 'targetLabel' => $manager['name'] ?? null]);
     }
 
     /** @return list<array<string, mixed>> */
@@ -193,8 +216,11 @@ final class SalesOfficeService
 
             return $id;
         });
+        $presented = $this->presentManager($id);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'create', 'targetType' => 'manager', 'targetId' => $id, 'targetLabel' => $presented['name'] ?? null, 'details' => ['level' => $presented['level'] ?? null]]);
+        EntityHistory::recordDiff('manager', $id, $presented['name'] ?? null, [], ['Name' => $presented['name'] ?? null, 'Code' => $presented['code'] ?? null, 'Level' => $presented['level'] ?? null]);
 
-        return $this->presentManager($id);
+        return $presented;
     }
 
     /** @param array<string, mixed> $input */
@@ -208,25 +234,33 @@ final class SalesOfficeService
                 $this->records->replaceManagerStates($id, $states);
             }
         });
+        $presented = $this->presentManager($id);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'update', 'targetType' => 'manager', 'targetId' => $id, 'targetLabel' => $presented['name'] ?? null]);
 
-        return $this->presentManager($id);
+        return $presented;
     }
 
     /** @param array<string, mixed> $input */
     public function createStockist(array $input): array
     {
         $id = $this->records->insertStockist($this->stockistFields($input));
+        $created = $this->records->findStockist($id);
+        EntityHistory::recordDiff('stockist', $id, $created['name'] ?? null, [], ['Name' => $created['name'] ?? null, 'Code' => $created['code'] ?? null, 'Headquarters' => $created['headquarters_id'] ?? null]);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'create', 'targetType' => 'stockist', 'targetId' => $id, 'targetLabel' => $created['name'] ?? null]);
 
-        return ErpPresenter::stockist($this->records->findStockist($id));
+        return ErpPresenter::stockist($created);
     }
 
     /** @param array<string, mixed> $input */
     public function updateStockist(int $id, array $input): array
     {
-        $this->records->findStockist($id) ?? throw HttpException::notFound('Stockist not found.');
+        $before = $this->records->findStockist($id) ?? throw HttpException::notFound('Stockist not found.');
         $this->records->updateStockist($id, $this->stockistFields($input));
+        $updated = $this->records->findStockist($id);
+        EntityHistory::recordDiff('stockist', $id, $updated['name'] ?? null, ['Name' => $before['name'] ?? null, 'Code' => $before['code'] ?? null, 'Headquarters' => $before['headquarters_id'] ?? null], ['Name' => $updated['name'] ?? null, 'Code' => $updated['code'] ?? null, 'Headquarters' => $updated['headquarters_id'] ?? null]);
+        AuditLogger::record(['module' => 'sales_office', 'action' => 'update', 'targetType' => 'stockist', 'targetId' => $id, 'targetLabel' => $updated['name'] ?? null]);
 
-        return ErpPresenter::stockist($this->records->findStockist($id));
+        return ErpPresenter::stockist($updated);
     }
 
     /**

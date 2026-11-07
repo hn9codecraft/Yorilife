@@ -51,8 +51,23 @@ final class AuthService
             throw HttpException::validation($errors);
         }
 
+        RequestContext::boot($ip);
         $identifierHash = hash('sha256', $email);
-        $this->guardAgainstBruteForce($identifierHash, $ip);
+        try {
+            $this->guardAgainstBruteForce($identifierHash, $ip);
+        } catch (HttpException $e) {
+            if ($e->errorCode === 'too_many_attempts') {
+                AuditLogger::record([
+                    'module' => 'auth',
+                    'action' => 'login_throttled',
+                    'result' => 'denied',
+                    'actorId' => null,
+                    'actorLabel' => null,
+                    'details' => ['emailDomain' => self::emailDomain($email)],
+                ]);
+            }
+            throw $e;
+        }
 
         $account = $this->users->findForLogin($email);
 
@@ -62,12 +77,31 @@ final class AuthService
 
         if (!$valid) {
             $this->attempts->record($identifierHash, $ip, false);
+            AuditLogger::record([
+                'module' => 'auth',
+                'action' => 'login',
+                'result' => 'failed',
+                'actorId' => null,
+                'actorLabel' => null,
+                'details' => ['reason' => 'invalid_credentials', 'emailDomain' => self::emailDomain($email)],
+            ]);
             throw HttpException::unauthenticated(self::INVALID_CREDENTIALS, 'invalid_credentials');
         }
 
         // Only someone who knows the correct password learns the account is disabled.
         if ($account['status'] !== 'active') {
             $this->attempts->record($identifierHash, $ip, false);
+            AuditLogger::record([
+                'module' => 'auth',
+                'action' => 'login',
+                'result' => 'denied',
+                'actorId' => (int) $account['id'],
+                'actorLabel' => $account['name'] ?? null,
+                'targetType' => 'user',
+                'targetId' => (int) $account['id'],
+                'targetLabel' => $account['name'] ?? null,
+                'details' => ['reason' => 'account_disabled'],
+            ]);
             throw HttpException::forbidden('This account is disabled. Contact an administrator.', 'account_disabled');
         }
 
@@ -94,11 +128,30 @@ final class AuthService
         $csrf = $_SESSION['csrf_token'];
         Session::close();
 
-        return ['user' => $this->users->find($userId), 'csrfToken' => $csrf];
+        $user = $this->users->find($userId);
+        RequestContext::setActor($user);
+        AuditLogger::record([
+            'module' => 'auth',
+            'action' => 'login',
+            'result' => 'ok',
+            'targetType' => 'user',
+            'targetId' => $userId,
+            'targetLabel' => $user['name'] ?? null,
+        ]);
+
+        return ['user' => $user, 'csrfToken' => $csrf];
     }
 
     public function logout(): void
     {
+        AuditLogger::record([
+            'module' => 'auth',
+            'action' => 'logout',
+            'result' => 'ok',
+            'targetType' => 'user',
+            'targetId' => RequestContext::actorId(),
+            'targetLabel' => RequestContext::actorLabel(),
+        ]);
         Session::destroy();
     }
 
@@ -140,6 +193,13 @@ final class AuthService
         Session::close();
 
         return ['user' => $user, 'csrfToken' => $csrf];
+    }
+
+    private static function emailDomain(string $email): string
+    {
+        $at = strrpos($email, '@');
+
+        return $at === false ? 'unknown' : substr($email, $at + 1);
     }
 
     private function guardAgainstBruteForce(string $identifierHash, string $ip): void

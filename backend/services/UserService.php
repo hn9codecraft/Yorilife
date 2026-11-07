@@ -80,8 +80,23 @@ final class UserService
         }
 
         $id = $this->users->create($name, $email, PasswordHasher::hash($password), (int) $role['id']);
+        $created = $this->users->find($id);
+        EntityHistory::recordDiff('user', $id, $created['name'], [], [
+            'Name' => $created['name'],
+            'Email' => $created['email'],
+            'Role' => $created['role_name'] ?? $role['name'] ?? $role['slug'],
+            'Status' => $created['status'],
+        ], (int) $actor['id']);
+        AuditLogger::record([
+            'module' => 'users',
+            'action' => 'create',
+            'targetType' => 'user',
+            'targetId' => $id,
+            'targetLabel' => $created['name'],
+            'details' => ['role' => $role['slug']],
+        ]);
 
-        return $this->users->find($id);
+        return $created;
     }
 
     /** @param array<string, mixed> $input any of { name, email, role, status } */
@@ -145,9 +160,31 @@ final class UserService
             throw HttpException::validation($errors);
         }
 
+        $before = [
+            'Name' => $target['name'],
+            'Email' => $target['email'],
+            'Role' => $target['role_name'] ?? $target['role_slug'] ?? null,
+            'Status' => $target['status'],
+        ];
         $this->users->update($id, $fields);
+        $updated = $this->users->find($id);
+        $after = [
+            'Name' => $updated['name'],
+            'Email' => $updated['email'],
+            'Role' => $updated['role_name'] ?? $updated['role_slug'] ?? null,
+            'Status' => $updated['status'],
+        ];
+        EntityHistory::recordDiff('user', $id, $updated['name'], $before, $after, (int) $actor['id']);
+        AuditLogger::record([
+            'module' => 'users',
+            'action' => 'update',
+            'targetType' => 'user',
+            'targetId' => $id,
+            'targetLabel' => $updated['name'],
+            'details' => ['fields' => array_keys($fields)],
+        ]);
 
-        return $this->users->find($id);
+        return $updated;
     }
 
     /** @param array<string, string> $errors */
