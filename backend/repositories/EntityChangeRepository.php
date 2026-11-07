@@ -24,7 +24,7 @@ final class EntityChangeRepository extends Repository
     public function search(array $filters): array
     {
         [$where, $params] = $this->buildWhere($filters);
-        $limit = max(1, min(200, (int) ($filters['limit'] ?? 50)));
+        $limit = max(1, min(5000, (int) ($filters['limit'] ?? 50)));
         $offset = max(0, (int) ($filters['offset'] ?? 0));
         $sql = 'SELECT c.id, c.entity_type, c.entity_id, c.entity_label, c.field, c.old_value, c.new_value,
                        c.changed_by, u.name AS changed_by_name, c.changed_at, c.source, c.request_id
@@ -93,6 +93,12 @@ final class EntityChangeRepository extends Repository
             $where[] = '(' . $prefix . 'entity_label LIKE ? OR ' . $prefix . 'field LIKE ? OR ' . $prefix . 'old_value LIKE ? OR ' . $prefix . 'new_value LIKE ?)';
             $like = '%' . addcslashes((string) $filters['q'], '%_\\') . '%';
             array_push($params, $like, $like, $like, $like);
+        }
+        $archived = $filters['archived'] ?? 'active';
+        if ($archived === 'only') {
+            $where[] = $prefix . 'archived_at IS NOT NULL';
+        } elseif ($archived !== 'all') {
+            $where[] = $prefix . 'archived_at IS NULL';
         }
 
         return [$where, $params];

@@ -49,6 +49,7 @@ final class AuthorizationTest extends TestCase
     public function testDisabledUsersHaveNoPermissions(): void
     {
         self::assertFalse(Authorization::can(self::user('super_admin', 'disabled'), 'users.view'));
+        self::assertFalse(Authorization::can(self::user('admin', 'locked'), 'settings.edit'));
     }
 
     public function testUnknownRolesAndPermissionsAreDenied(): void

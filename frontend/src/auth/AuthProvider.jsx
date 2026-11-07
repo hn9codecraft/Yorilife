@@ -7,16 +7,26 @@ import { api, onUnauthorized, setCsrfToken } from '../api/client.js'
  * signed in (GET /api/auth/me) instead of trusting anything stored in the
  * browser. Nothing auth-related is written to localStorage.
  *
- * status: 'loading' | 'authenticated' | 'unauthenticated' | 'error'
+ * status: 'loading' | 'authenticated' | 'two_factor' | 'unauthenticated' | 'error'
+ * twoFactor (when status is two_factor): 'pending' | 'enroll'
  * reason (when unauthenticated): null | 'expired' | 'signed_out'
  */
+function needsSecondStep(data) {
+  return data?.twoFactor === 'pending' || data?.twoFactor === 'enroll'
+}
+
 export default function AuthProvider({ children }) {
-  const [state, setState] = useState({ status: 'loading', user: null, reason: null, error: null })
+  const [state, setState] = useState({ status: 'loading', user: null, twoFactor: 'ok', reason: null, error: null })
   const [attempt, setAttempt] = useState(0)
 
   const signedIn = useCallback((data) => {
     setCsrfToken(data.csrfToken)
-    setState({ status: 'authenticated', user: data.user, reason: null, error: null })
+    setState({ status: 'authenticated', user: data.user, twoFactor: 'ok', reason: null, error: null })
+  }, [])
+
+  const holdForSecondStep = useCallback((data) => {
+    setCsrfToken(data.csrfToken)
+    setState({ status: 'two_factor', user: data.user, twoFactor: data.twoFactor, reason: null, error: null })
   }, [])
 
   const signedOut = useCallback((reason) => {
@@ -28,14 +38,14 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     const controller = new AbortController()
     api('/api/auth/me', { signal: controller.signal, notifyUnauthorized: false })
-      .then(signedIn)
+      .then((data) => (needsSecondStep(data) ? holdForSecondStep(data) : signedIn(data)))
       .catch((error) => {
         if (error.name === 'AbortError') return
         if (error.status === 401) signedOut(null)
         else setState({ status: 'error', user: null, reason: null, error })
       })
     return () => controller.abort()
-  }, [attempt, signedIn, signedOut])
+  }, [attempt, signedIn, signedOut, holdForSecondStep])
 
   // Any API call answered with 401 means the session ended (expired, disabled, signed out elsewhere).
   useEffect(() => onUnauthorized(() => signedOut('expired')), [signedOut])
@@ -43,10 +53,11 @@ export default function AuthProvider({ children }) {
   const login = useCallback(
     async (email, password) => {
       const data = await api('/api/auth/login', { method: 'POST', body: { email, password }, notifyUnauthorized: false })
-      signedIn(data)
-      return data.user
+      if (needsSecondStep(data)) holdForSecondStep(data)
+      else signedIn(data)
+      return data
     },
-    [signedIn],
+    [signedIn, holdForSecondStep],
   )
 
   const logout = useCallback(async () => {
@@ -63,14 +74,15 @@ export default function AuthProvider({ children }) {
       ...state,
       login,
       logout,
+      completeSignIn: signedIn,
       retry: () => {
-        setState({ status: 'loading', user: null, reason: null, error: null })
+        setState({ status: 'loading', user: null, twoFactor: 'ok', reason: null, error: null })
         setAttempt((n) => n + 1)
       },
       // UI hint only — the server checks every request.
       hasPermission: (permission) => Boolean(state.user?.permissions?.includes(permission)),
     }),
-    [state, login, logout],
+    [state, login, logout, signedIn],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -13,7 +13,7 @@ use PDO;
  */
 final class UserRepository
 {
-    private const PUBLIC_COLUMNS = 'u.id, u.name, u.email, u.status, u.last_login_at, u.created_at, u.updated_at,
+    private const PUBLIC_COLUMNS = 'u.id, u.name, u.email, u.status, u.auth_epoch, u.last_login_at, u.created_at, u.updated_at,
         r.id AS role_id, r.slug AS role_slug, r.name AS role_name';
 
     private function pdo(): PDO
@@ -33,7 +33,7 @@ final class UserRepository
     /** Only for verifying a password at sign-in. @return array<string, mixed>|null */
     public function findForLogin(string $email): ?array
     {
-        $stmt = $this->pdo()->prepare('SELECT u.id, u.status, u.password_hash FROM users u WHERE u.email = ?');
+        $stmt = $this->pdo()->prepare('SELECT u.id, u.name, u.status, u.password_hash FROM users u WHERE u.email = ?');
         $stmt->execute([$email]);
 
         return $stmt->fetch() ?: null;

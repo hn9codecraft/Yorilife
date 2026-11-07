@@ -3,7 +3,12 @@
 declare(strict_types=1);
 
 use App\Controllers\AnnouncementController;
+use App\Controllers\ApiTokenController;
+use App\Controllers\PrivacyController;
+use App\Controllers\RetentionController;
+use App\Controllers\TwoFactorController;
 use App\Controllers\AuditLogController;
+use App\Controllers\ExportController;
 use App\Controllers\AuthController;
 use App\Controllers\CatalogueController;
 use App\Controllers\ChangeHistoryController;
@@ -31,12 +36,22 @@ $auth = AuthMiddleware::authenticated();
 $router->post('/api/auth/login', [AuthController::class, 'login']);
 $router->post('/api/auth/logout', [AuthController::class, 'logout'], [$auth]);
 $router->get('/api/auth/me', [AuthController::class, 'me'], [$auth]);
+$router->get('/api/auth/2fa', [TwoFactorController::class, 'status'], [$auth]);
+$router->post('/api/auth/2fa/setup', [TwoFactorController::class, 'setup'], [$auth]);
+$router->post('/api/auth/2fa/confirm', [TwoFactorController::class, 'confirm'], [$auth]);
+$router->post('/api/auth/2fa/verify', [TwoFactorController::class, 'verify'], [$auth]);
+$router->post('/api/auth/2fa/recover', [TwoFactorController::class, 'recover'], [$auth]);
+$router->post('/api/auth/2fa/disable', [TwoFactorController::class, 'disable'], [$auth]);
+$router->get('/api/auth/tokens', [ApiTokenController::class, 'index'], [$auth]);
+$router->post('/api/auth/tokens', [ApiTokenController::class, 'store'], [$auth]);
+$router->post('/api/auth/tokens/{id}/revoke', [ApiTokenController::class, 'revoke'], [$auth]);
 
 // User management (Sprint 3 foundation). Fine-grained rules are in UserService.
 $router->get('/api/roles', [UserController::class, 'roles'], [$auth, AuthMiddleware::can('users.view')]);
 $router->get('/api/users', [UserController::class, 'index'], [$auth, AuthMiddleware::can('users.view')]);
 $router->post('/api/users', [UserController::class, 'store'], [$auth, AuthMiddleware::can('users.create')]);
 $router->get('/api/users/{id}', [UserController::class, 'show'], [$auth, AuthMiddleware::can('users.view')]);
+$router->post('/api/users/{id}/password', [UserController::class, 'resetPassword'], [$auth, AuthMiddleware::can('users.update')]);
 $router->patch('/api/users/{id}', [UserController::class, 'update'], [$auth, AuthMiddleware::can('users.view')]);
 
 // Business data (Sprint 4). Viewing is open to every sales role; changes follow
@@ -144,9 +159,26 @@ $router->post('/api/employees/{id}/delete', [EmployeeController::class, 'delete'
 // System & Audit (Super Admin and Admin).
 $auditView = AuthMiddleware::can('audit.view');
 $settingsView = AuthMiddleware::can('settings.view');
+$router->post('/api/exports', [ExportController::class, 'store'], [$auth]);
 $router->get('/api/audit-logs/export', [AuditLogController::class, 'export'], [$auth, $auditView]);
+$router->get('/api/audit-logs/verify', [AuditLogController::class, 'verify'], [$auth, $auditView]);
+$router->post('/api/audit-logs/archive', [AuditLogController::class, 'archive'], [$auth, $auditView]);
 $router->get('/api/audit-logs', [AuditLogController::class, 'index'], [$auth, $auditView]);
 $router->get('/api/audit-logs/{id}', [AuditLogController::class, 'show'], [$auth, $auditView]);
 $router->get('/api/change-history/export', [ChangeHistoryController::class, 'export'], [$auth, $auditView]);
+$router->post('/api/change-history/archive', [ChangeHistoryController::class, 'archive'], [$auth, $auditView]);
 $router->get('/api/change-history', [ChangeHistoryController::class, 'index'], [$auth, $auditView]);
+$router->get('/api/settings/history', [SettingsController::class, 'history'], [$auth, $settingsView]);
+$router->patch('/api/settings', [SettingsController::class, 'update'], [$auth, $settingsView]);
 $router->get('/api/settings', [SettingsController::class, 'index'], [$auth, $settingsView]);
+$router->post('/api/retention/apply', [RetentionController::class, 'apply'], [$auth, AuthMiddleware::can('settings.edit')]);
+
+$privacy = AuthMiddleware::can('privacy.manage');
+$router->get('/api/privacy/me', [PrivacyController::class, 'me'], [$auth]);
+$router->get('/api/privacy/consents', [PrivacyController::class, 'consents'], [$auth, $privacy]);
+$router->post('/api/privacy/consents', [PrivacyController::class, 'storeConsent'], [$auth, $privacy]);
+$router->get('/api/privacy/requests', [PrivacyController::class, 'requests'], [$auth, $privacy]);
+$router->post('/api/privacy/requests', [PrivacyController::class, 'storeRequest'], [$auth, $privacy]);
+$router->patch('/api/privacy/requests/{id}', [PrivacyController::class, 'updateRequest'], [$auth, $privacy]);
+$router->post('/api/privacy/requests/{id}/export', [PrivacyController::class, 'export'], [$auth, $privacy]);
+$router->post('/api/privacy/requests/{id}/anonymize', [PrivacyController::class, 'anonymize'], [$auth, $privacy]);

@@ -26,6 +26,10 @@ export default function RequireAuth({ children }) {
     )
   }
 
+  if (auth.status === 'two_factor') {
+    return <Navigate to="/login" replace />
+  }
+
   if (auth.status === 'unauthenticated') {
     // After an explicit sign-out, don't bounce back to the last page on next sign-in.
     const to = auth.reason === 'signed_out' ? '/login' : loginPathFor(location)

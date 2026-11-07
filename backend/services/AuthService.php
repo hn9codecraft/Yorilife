@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Repositories\LoginAttemptRepository;
+use App\Repositories\TwoFactorRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\UserSessionRepository;
 use App\Utils\HttpException;
 use App\Utils\Session;
 
@@ -34,7 +36,7 @@ final class AuthService
 
     /**
      * @param array<string, mixed> $input { email, password }
-     * @return array{user: array<string, mixed>, csrfToken: string}
+     * @return array{user: array<string, mixed>, csrfToken: string, twoFactor: string}
      */
     public function login(array $input, string $ip): array
     {
@@ -88,8 +90,9 @@ final class AuthService
             throw HttpException::unauthenticated(self::INVALID_CREDENTIALS, 'invalid_credentials');
         }
 
-        // Only someone who knows the correct password learns the account is disabled.
+        // Only someone who knows the correct password learns the account is disabled or locked.
         if ($account['status'] !== 'active') {
+            $locked = $account['status'] === 'locked';
             $this->attempts->record($identifierHash, $ip, false);
             AuditLogger::record([
                 'module' => 'auth',
@@ -100,9 +103,14 @@ final class AuthService
                 'targetType' => 'user',
                 'targetId' => (int) $account['id'],
                 'targetLabel' => $account['name'] ?? null,
-                'details' => ['reason' => 'account_disabled'],
+                'details' => ['reason' => $locked ? 'account_locked' : 'account_disabled'],
             ]);
-            throw HttpException::forbidden('This account is disabled. Contact an administrator.', 'account_disabled');
+            throw HttpException::forbidden(
+                $locked
+                    ? 'This account is locked. Contact an administrator.'
+                    : 'This account is disabled. Contact an administrator.',
+                $locked ? 'account_locked' : 'account_disabled',
+            );
         }
 
         $userId = (int) $account['id'];
@@ -113,9 +121,12 @@ final class AuthService
         $this->attempts->record($identifierHash, $ip, true);
         $this->attempts->clearFailures($identifierHash);
         if (random_int(1, 50) === 1) {
-            $this->attempts->pruneOlderThanDays(30);
+            $this->attempts->pruneOlderThanDays(SecurityPolicy::int('retention.login_attempt_days', 365, 30, 3650));
         }
         $this->users->touchLastLogin($userId);
+
+        $user = $this->users->find($userId);
+        $twoFactor = $this->twoFactorState($userId, (string) ($user['role_slug'] ?? ''), 'pending');
 
         // New session ID on sign-in (session fixation protection).
         Session::regenerate();
@@ -124,11 +135,16 @@ final class AuthService
             'authenticated_at' => time(),
             'last_activity_at' => time(),
             'csrf_token' => bin2hex(random_bytes(32)),
+            'auth_epoch' => (int) ($user['auth_epoch'] ?? 0),
+            'two_factor' => $twoFactor,
         ];
+        $sessionId = session_id();
+        if (is_string($sessionId) && $sessionId !== '') {
+            (new UserSessionRepository())->remember($sessionId, $userId, UtcTime::now());
+        }
         $csrf = $_SESSION['csrf_token'];
         Session::close();
 
-        $user = $this->users->find($userId);
         RequestContext::setActor($user);
         AuditLogger::record([
             'module' => 'auth',
@@ -139,7 +155,7 @@ final class AuthService
             'targetLabel' => $user['name'] ?? null,
         ]);
 
-        return ['user' => $user, 'csrfToken' => $csrf];
+        return ['user' => $user, 'csrfToken' => $csrf, 'twoFactor' => $twoFactor];
     }
 
     public function logout(): void
@@ -152,6 +168,13 @@ final class AuthService
             'targetId' => RequestContext::actorId(),
             'targetLabel' => RequestContext::actorLabel(),
         ]);
+        if (Session::hasCookie() || session_status() === PHP_SESSION_ACTIVE) {
+            Session::start();
+            $sessionId = session_id();
+            if (is_string($sessionId) && $sessionId !== '') {
+                (new UserSessionRepository())->forget($sessionId);
+            }
+        }
         Session::destroy();
     }
 
@@ -159,7 +182,7 @@ final class AuthService
      * Resolve the signed-in user from the session cookie, enforcing idle and
      * absolute expiry and the account's current status.
      *
-     * @return array{user: array<string, mixed>, csrfToken: string}
+     * @return array{user: array<string, mixed>, csrfToken: string, twoFactor: string}
      */
     public function currentSession(): array
     {
@@ -175,8 +198,8 @@ final class AuthService
         }
 
         $now = time();
-        $idleLimit = $this->config['session']['idle_timeout_minutes'] * 60;
-        $absoluteLimit = $this->config['session']['absolute_lifetime_hours'] * 3600;
+        $idleLimit = SecurityPolicy::sessionIdleMinutes() * 60;
+        $absoluteLimit = SecurityPolicy::sessionAbsoluteHours() * 3600;
         if ($now - (int) ($_SESSION['last_activity_at'] ?? 0) > $idleLimit || $now - (int) ($_SESSION['authenticated_at'] ?? 0) > $absoluteLimit) {
             Session::destroy();
             throw HttpException::unauthenticated('Your session has expired. Please sign in again.', 'session_expired');
@@ -187,12 +210,30 @@ final class AuthService
             Session::destroy();
             throw HttpException::unauthenticated('Your session has ended. Please sign in again.', 'session_expired');
         }
+        if ((int) ($_SESSION['auth_epoch'] ?? 0) !== (int) ($user['auth_epoch'] ?? 0)) {
+            Session::destroy();
+            throw HttpException::unauthenticated('Your session has ended. Please sign in again.', 'session_expired');
+        }
 
+        $twoFactor = $this->twoFactorState($userId, (string) ($user['role_slug'] ?? ''), (string) ($_SESSION['two_factor'] ?? 'ok'));
         $_SESSION['last_activity_at'] = $now;
         $csrf = (string) $_SESSION['csrf_token'];
         Session::close();
 
-        return ['user' => $user, 'csrfToken' => $csrf];
+        return ['user' => $user, 'csrfToken' => $csrf, 'twoFactor' => $twoFactor];
+    }
+
+    private function twoFactorState(int $userId, string $roleSlug, string $stored): string
+    {
+        $enabled = (new TwoFactorRepository())->isEnabled($userId);
+        if ($enabled) {
+            return $stored === 'ok' ? 'ok' : 'pending';
+        }
+        if (SecurityPolicy::totpRequiredFor($roleSlug)) {
+            return 'enroll';
+        }
+
+        return 'ok';
     }
 
     private static function emailDomain(string $email): string
@@ -205,11 +246,12 @@ final class AuthService
     private function guardAgainstBruteForce(string $identifierHash, string $ip): void
     {
         $throttle = $this->config['throttle'];
-        $byAccount = $this->attempts->recentFailures('identifier_hash', $identifierHash, $throttle['window_minutes']);
-        $byIp = $this->attempts->recentFailures('ip_address', $ip, $throttle['window_minutes']);
+        $window = SecurityPolicy::lockoutWindowMinutes();
+        $byAccount = $this->attempts->recentFailures('identifier_hash', $identifierHash, $window);
+        $byIp = $this->attempts->recentFailures('ip_address', $ip, $window);
 
         $limited = null;
-        if ($byAccount['failures'] >= $throttle['max_failures_per_account']) {
+        if ($byAccount['failures'] >= SecurityPolicy::lockoutMaxFailures()) {
             $limited = $byAccount['retry_after'];
         } elseif ($byIp['failures'] >= $throttle['max_failures_per_ip']) {
             $limited = $byIp['retry_after'];

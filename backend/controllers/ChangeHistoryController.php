@@ -16,6 +16,12 @@ final class ChangeHistoryController
         JsonResponse::success((new ChangeHistoryService())->list($request->user, $_GET));
     }
 
+    /** POST /api/change-history/archive */
+    public function archive(Request $request): void
+    {
+        JsonResponse::success((new ChangeHistoryService())->archive($request->user, $request->json()));
+    }
+
     /** GET /api/change-history/export */
     public function export(Request $request): void
     {

@@ -38,5 +38,6 @@ spl_autoload_register(static function (string $class): void {
 });
 
 (new Migrator(Database::connection(), dirname(__DIR__) . '/database/migrations'))->migrate(static fn () => null);
+\App\Services\AuditChain::sealUnsealed();
 
 TestServer::start($testDb);

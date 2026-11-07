@@ -90,7 +90,7 @@ final class SystemAuditTest extends FeatureTestCase
 
         $settings = $admin->request('GET', '/api/settings');
         self::assertSame(200, $settings['status'], $settings['raw']);
-        self::assertTrue($settings['body']['data']['readOnly']);
+        self::assertFalse($settings['body']['data']['readOnly']);
         self::assertNotEmpty($settings['body']['data']['groups']);
     }
 

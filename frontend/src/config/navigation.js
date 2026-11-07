@@ -273,8 +273,15 @@ export const NAV_MENU = [
         path: '/system/settings',
         label: 'Settings',
         icon: 'bi-gear',
-        description: 'System-wide configuration (view-only in Phase 1).',
+        description: 'Company, security and retention settings, with a history of each change.',
         permission: 'settings.view',
+      },
+      {
+        path: '/system/privacy',
+        label: 'Privacy',
+        icon: 'bi-person-lock',
+        description: 'Consent, personal-data export, correction requests and anonymising a person without deleting the record.',
+        permission: 'privacy.manage',
       },
     ],
   },
@@ -282,6 +289,11 @@ export const NAV_MENU = [
 
 // Routes that exist but are not in the sidebar.
 export const STANDALONE_PAGES = [
+  {
+    path: '/account/security',
+    label: 'Security',
+    description: 'Authenticator app, recovery codes and device tokens for this account.',
+  },
   {
     path: '/design-system',
     label: 'Design System',

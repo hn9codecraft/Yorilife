@@ -138,7 +138,7 @@ The browser always talks to one origin: in development Vite proxies `/api`, and 
 - **Instant revocation:** signing out, disabling an account or changing a role takes effect on the very next request.
 - **No tokens in JavaScript:** nothing is kept in `localStorage`.
 
-The future mobile app (no cookies, no Origin header) will need a token scheme; that is a separate decision (see SPRINT_PLAN).
+A future mobile app sends `Authorization: Bearer` with a personal device token (see below). It does not use the session cookie or a CSRF token. Web sign-in stays a cookie session.
 
 ### Endpoints
 
@@ -181,7 +181,12 @@ Errors use the standard envelope:
 - **Cookie:** `HttpOnly`, `SameSite=Lax`, `Path=/`. `Secure` plus the `__Host-` name prefix whenever `APP_ENV` isn't `local`.
 - **On sign-in:** `session_regenerate_id(true)`, which prevents session fixation.
 - **Expiry:** 30 minutes idle, and 12 hours absolute regardless of activity (both configurable). An expired session is destroyed on the server.
-- **Re-checked on every request:** the user is reloaded from the database, so a disabled account or changed role takes effect immediately.
+- **Re-checked on every request:** the user is reloaded from the database, so a disabled account or changed role takes effect immediately. A password reset, a lock or a disable also drops that user's other sessions and device tokens (`users.auth_epoch` plus `user_sessions`).
+- **Authenticator app (optional):** TOTP, 6 digits, 30-second step, with one-time recovery codes. A Super Admin can require it per role under Security settings. Until the code is entered, or until setup is finished when the role requires it, only the sign-in completion routes are available. Enable, disable and use are audited. The secret and the recovery codes are not.
+- **Device tokens:** `POST /api/auth/tokens` returns a `ylt_…` token once. Later calls send `Authorization: Bearer`. The hash, prefix, expiry and last use are stored. Create, revoke, first use and a rejected token are audited.
+- **Retention:** each data type has a number of days in Settings. `POST /api/retention/apply` (or `php bin/archive-retention.php`) marks older rows archived. It does not delete them.
+- **Privacy (DPDP):** consent records, a person's own export (`GET /api/privacy/me`), correction-request tracking, and anonymise-on-request. Anonymise masks personal fields on the existing row. It does not delete the row and does not rewrite the audit hash chain.
+- **Audit chain:** each row links to the previous hash. `audit_chain_head` stores the newest hash separately, so deleting the newest rows is reported as `tail_truncated`.
 - **No locking delay:** the session is closed right after reading, so a user's parallel requests aren't serialised.
 
 ### Request forgery protection

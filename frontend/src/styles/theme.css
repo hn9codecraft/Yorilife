@@ -2440,8 +2440,10 @@ legend.form-label {
     display: none;
   }
 
-  .page-header__actions > .btn {
+  .page-header__actions > .btn,
+  .card-body form.row > [class*="col"] > .btn {
     flex: 1 1 auto;
+    width: 100%;
   }
 
   /* Toolbar controls stack full-width on phones */

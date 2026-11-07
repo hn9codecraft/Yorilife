@@ -4,6 +4,7 @@ import BrandLogo from '../components/BrandLogo.jsx'
 import ThemeToggle from '../components/ThemeToggle.jsx'
 import PasswordInput from '../components/PasswordInput.jsx'
 import AuthStatusScreen from '../components/AuthStatusScreen.jsx'
+import TwoFactorStep from './TwoFactorStep.jsx'
 import useAuth from '../auth/useAuth.js'
 import { safeRedirect } from '../auth/safeRedirect.js'
 import { APP_TITLE } from '../config/navigation.js'
@@ -50,6 +51,9 @@ export default function LoginPage() {
   }, [formError])
 
   if (auth.status === 'loading') return <AuthStatusScreen loading title="Checking your session…" />
+  if (auth.status === 'two_factor') {
+    return <TwoFactorStep mode={auth.twoFactor} next={next} onSignedOut={() => {}} />
+  }
   if (auth.status === 'authenticated' && !submitting) return <Navigate to={next} replace />
 
   const set = (field) => (value) => setValues((v) => ({ ...v, [field]: value }))
@@ -66,7 +70,11 @@ export default function LoginPage() {
 
     setSubmitting(true)
     try {
-      await auth.login(values.email.trim(), values.password)
+      const data = await auth.login(values.email.trim(), values.password)
+      if (data?.twoFactor === 'pending' || data?.twoFactor === 'enroll') {
+        setSubmitting(false)
+        return
+      }
       navigate(next, { replace: true })
     } catch (error) {
       setSubmitting(false)
