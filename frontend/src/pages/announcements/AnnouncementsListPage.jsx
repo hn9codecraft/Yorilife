@@ -111,11 +111,11 @@ export default function AnnouncementsListPage() {
         title={`Announcements (${shown.length})`}
         toolbar={(
           <>
-            <select className="form-select form-select-sm w-auto" aria-label="Type" value={type} onChange={(event) => setType(event.target.value)}>
+            <select className="form-select form-select-sm toolbar__select" aria-label="Type" value={type} onChange={(event) => setType(event.target.value)}>
               <option value="">All types</option>
               {TYPES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
-            <select className="form-select form-select-sm w-auto" aria-label="Priority" value={priority} onChange={(event) => setPriority(event.target.value)}>
+            <select className="form-select form-select-sm toolbar__select" aria-label="Priority" value={priority} onChange={(event) => setPriority(event.target.value)}>
               <option value="">All priorities</option>
               {PRIORITIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>

@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 import BrandLogo from '../components/BrandLogo.jsx'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 import useAuth from '../auth/useAuth.js'
 import { api } from '../api/client.js'
 import { APP_TITLE } from '../config/navigation.js'
@@ -79,6 +80,9 @@ export default function TwoFactorStep({ mode, next }) {
 
   return (
     <main className="auth-page">
+      <div className="auth-page__toolbar">
+        <ThemeToggle />
+      </div>
       <div className="auth-card">
         <BrandLogo className="auth-card__logo" />
         <h1 className="auth-card__title">{enroll ? 'Set up an authenticator app' : 'Authenticator code'}</h1>
@@ -101,7 +105,7 @@ export default function TwoFactorStep({ mode, next }) {
               <i className="bi bi-key" aria-hidden="true" />
               <div>Save these recovery codes now. They are shown only this once. Each code works one time.</div>
             </div>
-            <ul className="list-unstyled font-monospace mb-3">
+            <ul className="list-unstyled font-monospace text-break mb-3">
               {recoveryCodes.map((item) => <li key={item}>{item}</li>)}
             </ul>
             <button type="button" className="btn btn-primary w-100" disabled={busy} onClick={continueAfterCodes}>

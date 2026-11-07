@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import useAuth from '../auth/useAuth.js'
 import GlobalSearch from '../components/GlobalSearch.jsx'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 
 /**
  * Sticky top bar: sidebar toggle on the left, global search in the center,
@@ -37,6 +38,7 @@ export default function Topbar({ sidebarId, toggleRef, toggleLabel, toggleExpand
         <GlobalSearch />
 
         <div className="app-header__actions">
+          <ThemeToggle />
           <button
             type="button"
             className="btn btn-outline-secondary btn-icon"

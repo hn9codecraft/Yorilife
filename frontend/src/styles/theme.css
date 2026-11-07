@@ -175,6 +175,20 @@ code,
 kbd,
 pre {
   font-family: var(--font-family-mono);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+code {
+  color: var(--color-heading);
+  background-color: var(--color-surface-muted);
+  padding: 0.05em 0.35em;
+  border-radius: var(--radius-sm);
+}
+
+pre code {
+  padding: 0;
+  background: none;
 }
 
 /* ==========================================================================
@@ -251,7 +265,7 @@ pre {
   position: fixed;
   inset: 0;
   z-index: var(--z-sidebar-backdrop);
-  background-color: rgba(var(--color-text-rgb), 0.45);
+  background-color: var(--color-overlay);
   opacity: 0;
   visibility: hidden;
   transition:
@@ -343,7 +357,7 @@ pre {
 }
 
 .sidebar-toplink.active .sidebar-group__icon {
-  color: var(--color-primary-600);
+  color: var(--color-link);
 }
 
 /* Section containing the current page: navy label + teal icon */
@@ -353,7 +367,7 @@ pre {
 }
 
 .sidebar-group.is-active .sidebar-group__icon {
-  color: var(--color-primary-600);
+  color: var(--color-link);
 }
 
 /* Animated expand/collapse; visibility keeps closed links out of the tab order */
@@ -447,7 +461,7 @@ pre {
 
 /* Current page: tinted background + bold text + teal bar (not colour alone) */
 .sidebar-link.active {
-  color: var(--color-primary-800);
+  color: var(--color-on-subtle);
   background-color: var(--color-primary-50);
   font-weight: var(--font-weight-semibold);
 }
@@ -488,38 +502,43 @@ pre {
   background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
 }
 
+/* Mobile: menu and actions on the first row, search full width underneath.
+   From the md breakpoint (section 6) the search sits between them. */
 .app-header__inner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  column-gap: var(--space-3);
+  column-gap: var(--space-2);
+  row-gap: var(--space-2);
   min-height: var(--header-height);
-  padding-inline: var(--container-padding);
+  padding: var(--space-2) var(--container-padding);
 }
 
 .app-header__start,
 .app-header__actions {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
 .app-header__start {
-  justify-self: start;
+  order: 1;
 }
 
 .app-header__actions {
-  justify-self: end;
+  order: 2;
+  margin-left: auto;
   gap: var(--space-2);
 }
 
-/* Global search sits in the center column. Height stays inside the bar. */
 .app-search {
   position: relative;
-  justify-self: center;
+  order: 3;
+  flex: 1 1 100%;
   width: 100%;
   min-width: 0;
-  max-width: 36rem;
+  max-width: none;
 }
 
 .app-search__panel {
@@ -657,6 +676,16 @@ pre {
   white-space: nowrap;
 }
 
+/* The logo artwork is drawn for a light ground. In dark mode it sits on a white plate. */
+[data-bs-theme="dark"] .app-brand__logo,
+[data-bs-theme="dark"] .auth-card__logo,
+[data-bs-theme="dark"] .print-sheet__logo {
+  background-color: var(--color-logo-plate);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  box-sizing: content-box;
+}
+
 /* ---- Main content ----------------------------------------------------- */
 .app-main {
   flex: 1 0 auto;
@@ -667,7 +696,8 @@ pre {
   width: 100%;
   max-width: var(--container-max-width);
   margin-inline: auto;
-  padding-inline: var(--container-padding);
+  padding-left: max(var(--container-padding), env(safe-area-inset-left));
+  padding-right: max(var(--container-padding), env(safe-area-inset-right));
 }
 
 /* ---- Footer ----------------------------------------------------------- */
@@ -689,19 +719,26 @@ pre {
 
 /* ---- Sign-in & auth status pages (outside the ERP shell) -------------- */
 .auth-page {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
   align-items: center;
-  justify-content: center;
   gap: var(--space-4);
   min-height: 100vh;
-  padding: var(--space-6) var(--space-4);
+  min-height: 100dvh;
+  padding: var(--space-4);
   background:
     linear-gradient(180deg, rgba(var(--color-primary-rgb), 0.08), transparent 45%),
     var(--color-background);
 }
 
+.auth-page__toolbar {
+  justify-self: end;
+  align-self: start;
+}
+
 .auth-card {
+  grid-row: 2;
   width: 100%;
   max-width: 26rem;
   padding: var(--space-8) var(--space-6);
@@ -755,6 +792,8 @@ pre {
 }
 
 .auth-page__legal {
+  grid-row: 3;
+  align-self: end;
   margin: 0;
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
@@ -835,46 +874,46 @@ pre {
 }
 
 .btn-primary {
-  --bs-btn-color: var(--color-text-inverse);
+  --bs-btn-color: var(--color-on-primary);
   --bs-btn-bg: var(--color-primary-600);
   --bs-btn-border-color: var(--color-primary-600);
-  --bs-btn-hover-color: var(--color-text-inverse);
+  --bs-btn-hover-color: var(--color-on-primary);
   --bs-btn-hover-bg: var(--color-primary-700);
   --bs-btn-hover-border-color: var(--color-primary-700);
-  --bs-btn-active-color: var(--color-text-inverse);
+  --bs-btn-active-color: var(--color-on-primary);
   --bs-btn-active-bg: var(--color-primary-800);
   --bs-btn-active-border-color: var(--color-primary-800);
-  --bs-btn-disabled-color: var(--color-text-inverse);
+  --bs-btn-disabled-color: var(--color-on-primary);
   --bs-btn-disabled-bg: var(--color-primary-600);
   --bs-btn-disabled-border-color: var(--color-primary-600);
 }
 
 .btn-secondary {
-  --bs-btn-color: var(--color-text-inverse);
-  --bs-btn-bg: var(--color-secondary);
-  --bs-btn-border-color: var(--color-secondary);
-  --bs-btn-hover-color: var(--color-text-inverse);
+  --bs-btn-color: var(--color-on-secondary);
+  --bs-btn-bg: var(--color-secondary-fill);
+  --bs-btn-border-color: var(--color-secondary-fill);
+  --bs-btn-hover-color: var(--color-on-secondary);
   --bs-btn-hover-bg: var(--color-secondary-700);
   --bs-btn-hover-border-color: var(--color-secondary-700);
-  --bs-btn-active-color: var(--color-text-inverse);
+  --bs-btn-active-color: var(--color-on-secondary);
   --bs-btn-active-bg: var(--color-secondary-800);
   --bs-btn-active-border-color: var(--color-secondary-800);
-  --bs-btn-disabled-color: var(--color-text-inverse);
-  --bs-btn-disabled-bg: var(--color-secondary);
-  --bs-btn-disabled-border-color: var(--color-secondary);
+  --bs-btn-disabled-color: var(--color-on-secondary);
+  --bs-btn-disabled-bg: var(--color-secondary-fill);
+  --bs-btn-disabled-border-color: var(--color-secondary-fill);
 }
 
 .btn-outline-primary {
-  --bs-btn-color: var(--color-primary-600);
-  --bs-btn-border-color: var(--color-primary-600);
-  --bs-btn-hover-color: var(--color-text-inverse);
+  --bs-btn-color: var(--color-link);
+  --bs-btn-border-color: var(--color-link);
+  --bs-btn-hover-color: var(--color-on-primary);
   --bs-btn-hover-bg: var(--color-primary-600);
   --bs-btn-hover-border-color: var(--color-primary-600);
-  --bs-btn-active-color: var(--color-text-inverse);
+  --bs-btn-active-color: var(--color-on-primary);
   --bs-btn-active-bg: var(--color-primary-700);
   --bs-btn-active-border-color: var(--color-primary-700);
-  --bs-btn-disabled-color: var(--color-primary-600);
-  --bs-btn-disabled-border-color: var(--color-primary-600);
+  --bs-btn-disabled-color: var(--color-link);
+  --bs-btn-disabled-border-color: var(--color-link);
 }
 
 .btn-outline-secondary {
@@ -906,9 +945,9 @@ pre {
 }
 
 .btn-link {
-  --bs-btn-color: var(--color-primary-600);
-  --bs-btn-hover-color: var(--color-primary-700);
-  --bs-btn-active-color: var(--color-primary-800);
+  --bs-btn-color: var(--color-link);
+  --bs-btn-hover-color: var(--color-link-hover);
+  --bs-btn-active-color: var(--color-link-hover);
 }
 
 /* Square icon-only button — always pair with aria-label */
@@ -938,13 +977,24 @@ pre {
 
 .form-control,
 .form-select {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-input);
   color: var(--color-text);
   background-color: var(--color-surface);
   border-color: var(--color-border-strong);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.75rem;
   min-height: 2.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.form-control:-webkit-autofill,
+.form-control:-webkit-autofill:hover,
+.form-control:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text);
+  caret-color: var(--color-text);
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  transition: background-color 9999s ease-out;
 }
 
 .form-select {
@@ -1052,6 +1102,30 @@ pre {
 .detail-list dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+/* Dashed upload target (Import Data). Drag state uses Bootstrap subtle utilities. */
+.file-dropzone {
+  border: 2px dashed var(--color-border-strong);
+  cursor: pointer;
+}
+
+.file-dropzone.is-dragging,
+.file-dropzone:hover {
+  border-color: var(--color-link);
+}
+
+/* Header and sign-in colour-mode menu */
+.theme-toggle__menu {
+  min-width: 11rem;
+}
+
+.theme-toggle .dropdown-toggle::after {
+  display: none;
+}
+
+.theme-toggle .dropdown-item.active {
+  font-weight: var(--font-weight-semibold);
 }
 
 /* ==== Search field ===================================================== */
@@ -1175,7 +1249,7 @@ pre {
 }
 
 .table-sort.is-active .bi {
-  color: var(--color-primary-600);
+  color: var(--color-link);
 }
 
 .table-select-cell {
@@ -1221,7 +1295,7 @@ pre {
   margin-right: auto;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-primary-800);
+  color: var(--color-on-subtle);
 }
 
 .table > tbody > tr:last-child > * {
@@ -1276,9 +1350,15 @@ pre {
 }
 
 .alert-primary {
-  --bs-alert-color: var(--color-primary-800);
+  --bs-alert-color: var(--color-on-subtle);
   --bs-alert-bg: var(--color-primary-50);
   --bs-alert-border-color: var(--color-primary-100);
+}
+
+.alert-light {
+  --bs-alert-color: var(--color-text);
+  --bs-alert-bg: var(--color-surface-muted);
+  --bs-alert-border-color: var(--color-border);
 }
 
 .alert-success {
@@ -1316,7 +1396,7 @@ pre {
   --bs-dropdown-link-hover-bg: var(--color-surface-hover);
   --bs-dropdown-link-hover-color: var(--color-text);
   --bs-dropdown-link-active-bg: var(--color-primary-50);
-  --bs-dropdown-link-active-color: var(--color-primary-800);
+  --bs-dropdown-link-active-color: var(--color-on-subtle);
   --bs-dropdown-item-padding-y: 0.45rem;
   box-shadow: var(--bs-dropdown-box-shadow);
 }
@@ -1329,6 +1409,8 @@ pre {
 
 /* ==== Modals =========================================================== */
 .modal {
+  --bs-modal-bg: var(--color-surface);
+  --bs-modal-color: var(--color-text);
   --bs-modal-border-color: var(--color-border);
   --bs-modal-border-radius: var(--radius-lg);
   --bs-modal-inner-border-radius: calc(var(--radius-lg) - 1px);
@@ -1349,7 +1431,7 @@ pre {
 
 /* Wide form modals (Sales Office): two fields per row from md up */
 .modal-form-wide {
-  --bs-modal-width: 860px;
+  --bs-modal-width: min(860px, calc(100vw - 2rem));
 }
 
 .modal-form-wide .modal-header {
@@ -1383,10 +1465,11 @@ pre {
   --bs-pagination-color: var(--color-text);
   --bs-pagination-border-color: var(--color-border);
   --bs-pagination-border-radius: var(--radius-sm);
-  --bs-pagination-hover-color: var(--color-primary-700);
+  --bs-pagination-hover-color: var(--color-link);
   --bs-pagination-hover-bg: var(--color-primary-50);
   --bs-pagination-hover-border-color: var(--color-border);
-  --bs-pagination-focus-color: var(--color-primary-700);
+  --bs-pagination-focus-color: var(--color-link);
+  --bs-pagination-active-color: var(--color-on-primary);
   --bs-pagination-focus-bg: var(--color-primary-50);
   --bs-pagination-focus-box-shadow: var(--focus-ring);
   --bs-pagination-active-bg: var(--color-primary-600);
@@ -1443,7 +1526,7 @@ pre {
   margin-bottom: var(--space-2);
   border-radius: 50%;
   background-color: var(--color-primary-50);
-  color: var(--color-primary-600);
+  color: var(--color-link);
   font-size: var(--icon-size-lg);
 }
 
@@ -1545,8 +1628,8 @@ pre {
 }
 
 .list-filter .btn.is-active {
-  color: var(--color-primary-700);
-  border-color: var(--color-primary-600);
+  color: var(--color-link);
+  border-color: var(--color-link);
   background-color: var(--color-primary-50);
 }
 
@@ -1726,7 +1809,7 @@ pre {
   --bs-nav-link-color: var(--color-text-muted);
   --bs-nav-link-hover-color: var(--color-text);
   --bs-nav-tabs-border-color: var(--color-border);
-  --bs-nav-tabs-link-active-color: var(--color-primary-800);
+  --bs-nav-tabs-link-active-color: var(--color-on-subtle);
   --bs-nav-tabs-link-active-bg: var(--color-surface);
   --bs-nav-tabs-link-active-border-color: var(--color-border) var(--color-border) var(--color-surface);
 }
@@ -1959,7 +2042,7 @@ legend.form-label {
 .file-summary__icon {
   flex-shrink: 0;
   font-size: var(--icon-size-lg);
-  color: var(--color-primary-600);
+  color: var(--color-link);
 }
 
 .file-summary > .badge {
@@ -2119,7 +2202,7 @@ legend.form-label {
 }
 
 .announcement-view__pin {
-  color: var(--color-primary-600);
+  color: var(--color-link);
   font-size: var(--font-size-sm);
 }
 
@@ -2176,7 +2259,7 @@ legend.form-label {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--color-primary-50);
-  color: var(--color-primary-800);
+  color: var(--color-on-subtle);
 }
 
 .tracking-stats {
@@ -2348,21 +2431,19 @@ legend.form-label {
     --header-height: 56px;
   }
 
-  /* Icon-only account button so the search field keeps the remaining width */
+  /* Icon-only account button; search already has its own row */
+  .app-user-menu {
+    --bs-btn-padding-x: 0.5rem;
+  }
+
   .app-user-menu__label {
     display: none;
   }
 
-  .app-search__panel {
-    position: fixed;
-    top: calc(var(--header-height) + 3px);
-    right: var(--container-padding);
-    left: var(--container-padding);
-    width: auto;
-  }
-
-  .page-header__actions > .btn {
+  .page-header__actions > .btn,
+  .card-body form.row > [class*="col"] > .btn {
     flex: 1 1 auto;
+    width: 100%;
   }
 
   /* Toolbar controls stack full-width on phones */
@@ -2399,6 +2480,125 @@ legend.form-label {
   .toolbar > .list-filter--panel {
     width: auto;
   }
+
+  .detail-list__row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .form-control-sm,
+  .form-select-sm,
+  .btn-sm {
+    min-height: 2.5rem;
+  }
+
+  .hierarchy-tree ul {
+    margin-left: var(--space-2);
+    padding-left: var(--space-3);
+  }
+
+  .print-sheet {
+    min-height: 0;
+    padding: var(--space-4);
+  }
+
+  .print-sheet__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .print-page__actions {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+}
+
+/* ---- Below md (< 768px): stack wide tables and toolbars --------------- */
+@media (max-width: 767.98px) {
+  .table-card > .card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar form.row > [class*="col"] {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Label/value rows instead of a sideways scroll, when cells name their column. */
+  .table-container:has(td[data-label]) {
+    overflow-x: visible;
+  }
+
+  .table-container:has(td[data-label]) .table,
+  .table-container:has(td[data-label]) tbody,
+  .table-container:has(td[data-label]) tr {
+    display: block;
+    width: 100%;
+  }
+
+  .table-container:has(td[data-label]) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .table-container:has(td[data-label]) tr {
+    padding-block: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .table-container:has(td[data-label]) tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .table-container:has(td[data-label]) td {
+    display: block;
+    width: auto;
+    border: 0;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .table-container:has(td[data-label]) td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 42%) minmax(0, 1fr);
+    gap: var(--space-2) var(--space-3);
+    align-items: center;
+    overflow-wrap: anywhere;
+  }
+
+  .table-container:has(td[data-label]) td[data-label]::before {
+    content: attr(data-label);
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-medium);
+    text-align: left;
+  }
+
+  .table-container:has(td[data-label]) .table-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .table-container:has(td[data-label]) .table-empty {
+    display: block;
+    text-align: center;
+  }
+
+  .table-container:has(td[data-label]) .table-empty::before {
+    content: none;
+  }
+
+  .table-container:has(td[data-label]) tr.table-subrow td {
+    display: block;
+    text-align: left;
+  }
 }
 
 /* ---- sm and up (>= 576px) --------------------------------------------- */
@@ -2418,6 +2618,23 @@ legend.form-label {
 
 /* ---- md and up (>= 768px) --------------------------------------------- */
 @media (min-width: 768px) {
+  .app-header__inner {
+    flex-wrap: nowrap;
+    column-gap: var(--space-3);
+    padding-block: 0;
+  }
+
+  .app-search {
+    order: 2;
+    flex: 1 1 auto;
+    width: auto;
+    max-width: 36rem;
+  }
+
+  .app-header__actions {
+    order: 3;
+  }
+
   .app-main {
     padding-block: var(--space-8);
   }
@@ -2430,6 +2647,13 @@ legend.form-label {
 
   .page-header__actions {
     flex-shrink: 0;
+  }
+}
+
+/* Phones and tablets use the full content width. The desktop inset stays from lg. */
+@media (max-width: 991.98px) {
+  :root {
+    --container-max-width: 100%;
   }
 }
 
@@ -2514,6 +2738,54 @@ legend.form-label {
 
 /* Printing an announcement: only the A4 sheet */
 @media print {
+  .table-container:has(td[data-label]) {
+    overflow-x: auto;
+  }
+
+  .table-container .table {
+    display: table;
+    width: 100%;
+  }
+
+  .table-container thead {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+
+  .table-container tbody {
+    display: table-row-group;
+  }
+
+  .table-container tr {
+    display: table-row;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .table-container td,
+  .table-container th {
+    display: table-cell;
+    width: auto;
+  }
+
+  .table-container:has(td[data-label]) td {
+    text-align: left;
+  }
+
+  .table-container:has(td[data-label]) td.text-end {
+    text-align: right;
+  }
+
+  .table-container td[data-label]::before {
+    content: none;
+  }
+
   @page {
     size: A4;
     margin: 0;

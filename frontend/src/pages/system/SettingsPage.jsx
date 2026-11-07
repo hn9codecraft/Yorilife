@@ -102,9 +102,10 @@ export default function SettingsPage() {
           {state.data.groups.map((group) => (
             <TableCard
               key={group.id}
+              className="mb-4"
               title={group.label}
               toolbar={group.editable ? (
-                <div className="d-flex gap-2">
+                <div className="d-flex flex-wrap gap-2">
                   {group.id === 'retention' && (
                     <button type="button" className="btn btn-sm btn-outline-secondary" disabled={applying} onClick={applyRetention}>
                       {applying ? 'Applying…' : 'Apply retention'}
@@ -118,7 +119,7 @@ export default function SettingsPage() {
                 <span className="small text-muted">View only</span>
               )}
             >
-              <div className="table-responsive">
+              <div className="table-container">
                 <table className="table table-sm mb-0">
                   <caption className="visually-hidden">{group.label}</caption>
                   <thead>
@@ -135,11 +136,11 @@ export default function SettingsPage() {
                       const id = `setting-${item.key.replaceAll('.', '-')}`
                       return (
                         <tr key={item.key}>
-                          <td>
+                          <td data-label="Setting">
                             <label className="fw-semibold mb-0" htmlFor={id}>{item.label}</label>
                             {item.help && <div className="small text-muted">{item.help}</div>}
                           </td>
-                          <td>
+                          <td data-label="Value">
                             {item.input === 'bool' ? (
                               <div className="form-check">
                                 <input
@@ -167,11 +168,11 @@ export default function SettingsPage() {
                               />
                             )}
                           </td>
-                          <td className="text-nowrap">
+                          <td data-label="Updated">
                             {item.updatedAt ? formatDateTime(item.updatedAt) : '—'}
                             {item.updatedByName && <div className="small text-muted">{item.updatedByName}</div>}
                           </td>
-                          <td className="text-end">
+                          <td data-label="History" className="text-end">
                             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => openHistory(item)}>History</button>
                           </td>
                         </tr>
@@ -190,7 +191,7 @@ export default function SettingsPage() {
         {history.status === 'error' && <div className="alert alert-danger" role="alert">{history.error.message}</div>}
         {history.status === 'ready' && history.items.length === 0 && <p className="mb-0 text-muted">No changes recorded yet.</p>}
         {history.status === 'ready' && history.items.length > 0 && (
-          <div className="table-responsive">
+          <div className="table-container">
             <table className="table table-sm">
               <caption className="visually-hidden">Previous values</caption>
               <thead>
@@ -204,10 +205,10 @@ export default function SettingsPage() {
               <tbody>
                 {history.items.map((item) => (
                   <tr key={item.id}>
-                    <td className="text-nowrap">{formatDateTime(item.changedAt)}</td>
-                    <td>{item.changedByName ?? '—'}</td>
-                    <td><code>{item.oldValue === '' || item.oldValue == null ? '—' : item.oldValue}</code></td>
-                    <td><code>{item.newValue === '' || item.newValue == null ? '—' : item.newValue}</code></td>
+                    <td data-label="When">{formatDateTime(item.changedAt)}</td>
+                    <td data-label="Who">{item.changedByName ?? '—'}</td>
+                    <td data-label="Previous"><code>{item.oldValue === '' || item.oldValue == null ? '—' : item.oldValue}</code></td>
+                    <td data-label="New"><code>{item.newValue === '' || item.newValue == null ? '—' : item.newValue}</code></td>
                   </tr>
                 ))}
               </tbody>

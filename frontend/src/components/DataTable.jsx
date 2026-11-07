@@ -87,7 +87,7 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
               <Fragment key={rowKey(row)}>
               <tr className={selection?.isSelected(row) ? 'is-selected' : undefined}>
                 {selection && (
-                  <td className="table-select-cell">
+                  <td className="table-select-cell" data-label="Select">
                     <SelectCheckbox
                       checked={selection.isSelected(row)}
                       label={selection.label(row)}
@@ -97,7 +97,7 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
                   </td>
                 )}
                 {columns.map((column) => (
-                  <td key={column.key} className={cellClass(column)}>
+                  <td key={column.key} className={cellClass(column)} data-label={column.header}>
                     {column.render ? column.render(row) : (row[column.key] || '—')}
                   </td>
                 ))}

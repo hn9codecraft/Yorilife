@@ -137,7 +137,8 @@ export default function PrivacyPage() {
         Consent, exports and correction requests are kept. Anonymising masks personal details on the existing row. It does not delete the row, and it does not rewrite the audit hash chain.
       </div>
 
-      <TableCard title="Record consent">
+      <TableCard className="mb-4" title="Record consent">
+        <div className="card-body">
         <form onSubmit={saveConsent} className="row g-3">
           <div className="col-md-3">
             <label className="form-label" htmlFor="consent-type">Record</label>
@@ -169,9 +170,11 @@ export default function PrivacyPage() {
             <button type="submit" className="btn btn-primary" disabled={busy}>Save consent</button>
           </div>
         </form>
+        </div>
       </TableCard>
 
-      <TableCard title="Open a request">
+      <TableCard className="mb-4" title="Open a request">
+        <div className="card-body">
         <form onSubmit={openRequest} className="row g-3">
           <div className="col-md-3">
             <label className="form-label" htmlFor="request-type">Record</label>
@@ -199,13 +202,14 @@ export default function PrivacyPage() {
             <button type="submit" className="btn btn-primary" disabled={busy}>Open request</button>
           </div>
         </form>
+        </div>
       </TableCard>
 
-      <TableCard title="Requests">
-        {requests.status === 'loading' && <LoadingIndicator label="Loading requests…" />}
-        {requests.status === 'error' && <div className="alert alert-danger" role="alert">{requests.error.message}</div>}
+      <TableCard className="mb-4" title="Requests">
+        {requests.status === 'loading' && <div className="card-body"><LoadingIndicator label="Loading requests…" /></div>}
+        {requests.status === 'error' && <div className="card-body"><div className="alert alert-danger mb-0" role="alert">{requests.error.message}</div></div>}
         {requests.status === 'ready' && (
-          <div className="table-responsive">
+          <div className="table-container">
             <table className="table table-sm mb-0">
               <caption className="visually-hidden">Privacy requests</caption>
               <thead>
@@ -220,28 +224,30 @@ export default function PrivacyPage() {
               </thead>
               <tbody>
                 {requests.items.length === 0 && (
-                  <tr><td colSpan={6} className="text-muted">No privacy requests yet.</td></tr>
+                  <tr><td colSpan={6} className="table-empty" data-label="">No privacy requests yet.</td></tr>
                 )}
                 {requests.items.map((item) => (
                   <tr key={item.id}>
-                    <td className="text-nowrap">{formatDateTime(item.requestedAt)}</td>
-                    <td>{item.subjectType} {item.subjectId}</td>
-                    <td>{item.kind}</td>
-                    <td>{item.status}</td>
-                    <td>{item.details || item.resolution || '—'}</td>
-                    <td className="text-nowrap">
+                    <td data-label="When">{formatDateTime(item.requestedAt)}</td>
+                    <td data-label="Record">{item.subjectType} {item.subjectId}</td>
+                    <td data-label="Kind">{item.kind}</td>
+                    <td data-label="Status">{item.status}</td>
+                    <td data-label="Details">{item.details || item.resolution || '—'}</td>
+                    <td data-label="Actions">
+                      <div className="d-flex flex-wrap gap-1 justify-content-end">
                       {item.kind === 'correction' && item.status === 'open' && (
-                        <button type="button" className="btn btn-sm btn-outline-secondary me-1" disabled={busy} onClick={() => updateStatus(item, 'in_progress')}>Start</button>
+                        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={busy} onClick={() => updateStatus(item, 'in_progress')}>Start</button>
                       )}
                       {item.kind === 'correction' && item.status !== 'completed' && item.status !== 'rejected' && (
-                        <button type="button" className="btn btn-sm btn-outline-primary me-1" disabled={busy} onClick={() => updateStatus(item, 'completed')}>Complete</button>
+                        <button type="button" className="btn btn-sm btn-outline-primary" disabled={busy} onClick={() => updateStatus(item, 'completed')}>Complete</button>
                       )}
                       {item.kind === 'export' && (
-                        <button type="button" className="btn btn-sm btn-outline-primary me-1" disabled={busy} onClick={() => act(item.id, 'export')}>Export</button>
+                        <button type="button" className="btn btn-sm btn-outline-primary" disabled={busy} onClick={() => act(item.id, 'export')}>Export</button>
                       )}
                       {item.kind === 'anonymize' && item.status !== 'completed' && (
                         <button type="button" className="btn btn-sm btn-outline-danger" disabled={busy} onClick={() => act(item.id, 'anonymize')}>Anonymise</button>
                       )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -252,8 +258,10 @@ export default function PrivacyPage() {
       </TableCard>
 
       {exportText && (
-        <TableCard title="Exported personal data">
+        <TableCard className="mb-4" title="Exported personal data">
+          <div className="card-body">
           <pre className="mb-0 small text-break">{exportText}</pre>
+          </div>
         </TableCard>
       )}
     </PageShell>

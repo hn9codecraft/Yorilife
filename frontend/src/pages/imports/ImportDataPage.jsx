@@ -232,8 +232,7 @@ export default function ImportDataPage() {
                 <form onSubmit={upload} noValidate>
                   <label
                     htmlFor="import-file"
-                    className={`d-block text-center rounded-3 p-4 mb-2 ${dragging ? 'bg-primary-subtle border-primary' : 'bg-body-tertiary'} ${fileError ? 'border-danger' : ''}`}
-                    style={{ border: '2px dashed var(--bs-border-color)', cursor: 'pointer' }}
+                    className={`file-dropzone d-block text-center rounded-3 p-4 mb-2 ${dragging ? 'is-dragging bg-primary-subtle border-primary' : 'bg-body-tertiary'} ${fileError ? 'border-danger' : ''}`}
                     data-testid="import-dropzone"
                     onDragOver={(event) => {
                       event.preventDefault()
@@ -318,12 +317,12 @@ export default function ImportDataPage() {
               <>
                 <SearchInput value={query} onChange={(value) => { setQuery(value); setPage(1) }} label="Search preview" placeholder="Search code, name or error" />
                 <label htmlFor="import-type-filter" className="visually-hidden">Data Type</label>
-                <select id="import-type-filter" className="form-select form-select-sm w-auto" value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value); setPage(1) }}>
+                <select id="import-type-filter" className="form-select form-select-sm toolbar__select" value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value); setPage(1) }}>
                   <option value="">All data types</option>
                   {summary.types.map((group) => <option key={group.key} value={group.key}>{group.label} ({group.total})</option>)}
                 </select>
                 <label htmlFor="import-result-filter" className="visually-hidden">Result</label>
-                <select id="import-result-filter" className="form-select form-select-sm w-auto" value={resultFilter} onChange={(event) => { setResultFilter(event.target.value); setPage(1) }}>
+                <select id="import-result-filter" className="form-select form-select-sm toolbar__select" value={resultFilter} onChange={(event) => { setResultFilter(event.target.value); setPage(1) }}>
                   <option value="">All results</option>
                   {Object.entries(ROW_ACTION).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
                 </select>

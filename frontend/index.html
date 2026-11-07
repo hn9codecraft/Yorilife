@@ -6,6 +6,24 @@
     <meta name="theme-color" content="#24AEB1" />
     <meta name="description" content="Yorilife ERP — Enterprise Resource Planning for Yorilife Sciences Pvt. Ltd." />
     <title>Yorilife ERP</title>
+    <!-- Apply the saved colour mode before CSS so the first paint is not light-then-dark.
+         Keep the key and the light/dark/system values in sync with src/theme/theme.js. -->
+    <script>
+      (function () {
+        var stored = null
+        try { stored = localStorage.getItem('yorilife.theme') } catch (e) { stored = null }
+        var preference = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+        var theme = preference === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : preference
+        var root = document.documentElement
+        root.setAttribute('data-bs-theme', theme)
+        root.setAttribute('data-theme-preference', preference)
+        root.style.colorScheme = theme
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#0e1419' : '#24AEB1')
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

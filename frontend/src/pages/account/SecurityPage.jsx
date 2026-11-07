@@ -129,7 +129,7 @@ export default function SecurityPage() {
         <div className="alert alert-warning" role="status">
           <div>
             <strong>Save these recovery codes.</strong> They are shown only this once. Each code works one time.
-            <ul className="font-monospace mb-0 mt-2">
+            <ul className="font-monospace text-break mb-0 mt-2">
               {recoveryCodes.map((item) => <li key={item}>{item}</li>)}
             </ul>
           </div>
@@ -145,7 +145,8 @@ export default function SecurityPage() {
       )}
 
       {status.data && (
-        <TableCard title="Authenticator app">
+        <TableCard className="mb-4" title="Authenticator app">
+          <div className="card-body">
           <p className="mb-3">
             {status.data.enabled
               ? `On. ${status.data.recoveryCodesRemaining} recovery code${status.data.recoveryCodesRemaining === 1 ? '' : 's'} left.`
@@ -185,12 +186,14 @@ export default function SecurityPage() {
               </div>
             </form>
           )}
+          </div>
         </TableCard>
       )}
 
-      <TableCard title="Device tokens" toolbar={null}>
+      <TableCard className="mb-4" title="Device tokens">
+        <div className="card-body">
         <p className="text-muted">For a future mobile app. The token is shown once. Send it as <code>Authorization: Bearer</code>. A password reset or a locked account revokes these tokens.</p>
-        <form onSubmit={createToken} className="row g-3 mb-3">
+        <form onSubmit={createToken} className="row g-3 mb-0">
           <div className="col-md-6">
             <label className="form-label" htmlFor="device-name">Device name</label>
             <input id="device-name" className="form-control" value={deviceName} onChange={(event) => setDeviceName(event.target.value)} />
@@ -199,11 +202,12 @@ export default function SecurityPage() {
             <label className="form-label" htmlFor="device-days">Expires in (days)</label>
             <input id="device-days" className="form-control" type="number" min="1" max="365" value={expiresInDays} onChange={(event) => setExpiresInDays(event.target.value)} />
           </div>
-          <div className="col-md-3 d-flex align-items-end">
-            <button type="submit" className="btn btn-primary" disabled={busy}>Create token</button>
+          <div className="col-12 col-md-3 d-flex align-items-md-end">
+            <button type="submit" className="btn btn-primary w-100" disabled={busy}>Create token</button>
           </div>
         </form>
-        <div className="table-responsive">
+        </div>
+        <div className="table-container">
           <table className="table table-sm mb-0">
             <caption className="visually-hidden">Device tokens</caption>
             <thead>
@@ -217,15 +221,15 @@ export default function SecurityPage() {
             </thead>
             <tbody>
               {tokens.length === 0 && (
-                <tr><td colSpan={5} className="text-muted">No device tokens yet.</td></tr>
+                <tr><td colSpan={5} className="table-empty" data-label="">No device tokens yet.</td></tr>
               )}
               {tokens.map((token) => (
                 <tr key={token.id}>
-                  <td>{token.name}</td>
-                  <td className="font-monospace">{token.prefix}…</td>
-                  <td>{token.lastUsedAt ? formatDateTime(token.lastUsedAt) : 'Not used'}</td>
-                  <td>{token.revokedAt ? 'Revoked' : formatDateTime(token.expiresAt)}</td>
-                  <td className="text-end">
+                  <td data-label="Name">{token.name}</td>
+                  <td data-label="Prefix" className="font-monospace">{token.prefix}…</td>
+                  <td data-label="Last used">{token.lastUsedAt ? formatDateTime(token.lastUsedAt) : 'Not used'}</td>
+                  <td data-label="Expires">{token.revokedAt ? 'Revoked' : formatDateTime(token.expiresAt)}</td>
+                  <td data-label="Revoke" className="text-end">
                     {!token.revokedAt && (
                       <button type="button" className="btn btn-sm btn-outline-danger" disabled={busy} onClick={() => revoke(token.id)}>Revoke</button>
                     )}
