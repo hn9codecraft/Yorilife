@@ -12,7 +12,9 @@ use Throwable;
  * Tamper-evident hash chain for audit_logs.
  *
  * Each row stores the previous row's hash and its own SHA-256 over a canonical
- * payload. Verification walks every row in id order, including archived rows.
+ * payload. Verification walks every row in id order, including archived rows,
+ * then compares the last row with audit_chain_head. That head is stored apart
+ * from the log, so deleting the newest rows is reported as tail_truncated.
  * Archiving does not change hashed columns. The application never deletes rows.
  */
 final class AuditChain
@@ -180,6 +182,7 @@ final class AuditChain
         );
         $prev = self::GENESIS;
         $checked = 0;
+        $lastId = null;
         while ($row = $stmt->fetch()) {
             $checked++;
             $id = (int) $row['id'];
@@ -193,6 +196,16 @@ final class AuditChain
                 return self::broken($checked, $id, 'hash_mismatch');
             }
             $prev = $row['row_hash'];
+            $lastId = $id;
+        }
+
+        $head = Database::connection()->query('SELECT last_log_id, last_hash FROM audit_chain_head WHERE id = 1')->fetch();
+        if (!is_array($head) || !is_string($head['last_hash']) || strlen($head['last_hash']) !== 64) {
+            return self::broken(max(1, $checked), $lastId ?? 0, 'missing_head');
+        }
+        $headId = $head['last_log_id'] === null || $head['last_log_id'] === '' ? null : (int) $head['last_log_id'];
+        if (!hash_equals($prev, $head['last_hash']) || $headId !== $lastId) {
+            return self::broken(max(1, $checked), $headId ?? $lastId ?? 0, 'tail_truncated');
         }
 
         return ['intact' => true, 'checked' => $checked, 'brokenAt' => null, 'reason' => null];

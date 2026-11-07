@@ -61,7 +61,7 @@ final class SettingsService
         return [
             'readOnly' => !$anyEditable,
             'groups' => $groups,
-            'note' => 'Company, general and retention settings can be changed by an Admin or a Super Admin. Security settings can be changed by a Super Admin only. Each change keeps the previous value.',
+            'note' => 'Company, general and retention settings can be changed by an Admin or a Super Admin. Security settings, including which roles must use an authenticator app, can be changed by a Super Admin only. Retention is applied by archiving old rows. It never deletes them. Each change keeps the previous value.',
         ];
     }
 

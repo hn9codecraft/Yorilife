@@ -26,12 +26,17 @@ Permissions per role are in `backend/config/permissions.php` (keyed by slug), no
 | email | VARCHAR(254) UNIQUE | Sign-in identity, stored trimmed + lower-case |
 | password_hash | VARCHAR(255) | bcrypt (cost 12). Never returned by the API |
 | role_id | FK → roles | One role per user |
-| status | ENUM('active','disabled') | Disabled users can't sign in; existing sessions end on their next request |
+| status | ENUM('active','disabled','locked') | Disabled or locked users can't sign in. Locking an account, and resetting a password, also revokes that user's sessions and device tokens |
+| auth_epoch | INT UNSIGNED | Increased when sessions must end. A session from an older epoch is rejected |
 | last_login_at | DATETIME NULL | |
 | created_at, updated_at | DATETIME | |
 
 ### `login_attempts`
-`identifier_hash` CHAR(64) (SHA-256 of the email typed), `ip_address`, `succeeded`, `attempted_at`. It is used only to throttle failed sign-ins, and rows older than 30 days are pruned.
+`identifier_hash` CHAR(64) (SHA-256 of the email typed), `ip_address`, `succeeded`, `attempted_at`, `archived_at`. It is used only to throttle failed sign-ins. Old rows are archived by the retention setting. They are not deleted.
+
+### Authenticator, device tokens and privacy
+
+`user_totp` stores one authenticator secret per user (`enabled_at` is set only after a valid code). `user_recovery_codes` stores SHA-256 hashes of one-time recovery codes. `api_tokens` stores the SHA-256 hash, a short prefix, name, expiry, last use and revocation time of a personal device token. The plaintext token is returned only when it is created. `user_sessions` records the server session id so a password reset or a lock can remove that user's session files. `privacy_consents` and `privacy_requests` record consent and export, correction and anonymise requests. Anonymising masks personal fields on the existing row. It does not delete the row. `audit_chain_head` stores the latest audit hash separately so deleting the newest audit rows is detected.
 
 ### `schema_migrations`
 `version`, `applied_at`. Maintained by `bin/migrate.php`.

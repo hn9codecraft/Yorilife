@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use App\Services\ApiTokenService;
 use App\Services\AuthService;
 use App\Services\Authorization;
 use App\Services\RequestContext;
@@ -22,8 +23,19 @@ final class AuthMiddleware
     public static function authenticated(): callable
     {
         return static function (Request $request): void {
-            $session = (new AuthService())->currentSession();
             RequestContext::boot($request->ip(), $request->header('User-Agent'));
+            $bearer = self::bearer($request);
+            if ($bearer !== null) {
+                $user = (new ApiTokenService())->authenticate($bearer);
+                RequestContext::setActor($user);
+                $request->user = $user;
+                $request->csrfToken = '';
+                $request->twoFactor = 'ok';
+
+                return;
+            }
+
+            $session = (new AuthService())->currentSession();
             RequestContext::setActor($session['user']);
 
             if ($request->isStateChanging()) {
@@ -35,6 +47,8 @@ final class AuthMiddleware
 
             $request->user = $session['user'];
             $request->csrfToken = $session['csrfToken'];
+            $request->twoFactor = $session['twoFactor'];
+            self::enforceTwoFactor($request);
         };
     }
 
@@ -46,5 +60,36 @@ final class AuthMiddleware
             }
             Authorization::authorize($request->user, $permission);
         };
+    }
+
+    private static function bearer(Request $request): ?string
+    {
+        $header = $request->header('Authorization');
+        if ($header === null || preg_match('/^Bearer\s+(\S+)$/i', $header, $match) !== 1) {
+            return null;
+        }
+
+        return $match[1];
+    }
+
+    private static function enforceTwoFactor(Request $request): void
+    {
+        $state = $request->twoFactor;
+        if ($state === 'ok') {
+            return;
+        }
+        $allowed = $state === 'pending'
+            ? ['/api/auth/me', '/api/auth/logout', '/api/auth/2fa', '/api/auth/2fa/verify', '/api/auth/2fa/recover']
+            : ['/api/auth/me', '/api/auth/logout', '/api/auth/2fa', '/api/auth/2fa/setup', '/api/auth/2fa/confirm'];
+        if (in_array($request->path, $allowed, true)) {
+            return;
+        }
+
+        throw HttpException::forbidden(
+            $state === 'pending'
+                ? 'Enter the code from your authenticator app to continue.'
+                : 'Set up an authenticator app to continue.',
+            $state === 'pending' ? 'two_factor_required' : 'two_factor_enrollment_required',
+        );
     }
 }
