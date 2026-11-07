@@ -33,6 +33,17 @@ final class Request
     {
         $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
         $value = $_SERVER[$key] ?? ($name === 'Content-Type' ? ($_SERVER['CONTENT_TYPE'] ?? null) : null);
+        if (!is_string($value) && strcasecmp($name, 'Authorization') === 0) {
+            $value = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null;
+            if (!is_string($value) && function_exists('getallheaders')) {
+                foreach (getallheaders() ?: [] as $headerName => $headerValue) {
+                    if (strcasecmp((string) $headerName, 'Authorization') === 0 && is_string($headerValue)) {
+                        $value = $headerValue;
+                        break;
+                    }
+                }
+            }
+        }
 
         return is_string($value) ? $value : null;
     }

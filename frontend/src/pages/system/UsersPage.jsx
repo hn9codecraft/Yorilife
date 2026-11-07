@@ -120,6 +120,7 @@ function UserDetails({ user, isSelf }) {
     ['Email', user.email],
     ['Role', user.role.name],
     ['Status', <StatusBadge key="s" variant={statusMeta(user.status).variant}>{statusMeta(user.status).label}</StatusBadge>],
+    ['Authenticator', user.totpEnabled ? 'On' : 'Off'],
     ['Last sign-in', formatDateTime(user.lastLoginAt)],
     ['Created', formatDateTime(user.createdAt)],
     ['Last updated', formatDateTime(user.updatedAt)],
@@ -242,6 +243,24 @@ export default function UsersPage() {
               <i className="bi bi-key" aria-hidden="true" /> Reset password<span className="visually-hidden"> for {u.name}</span>
             </button>
           )}
+          {can('users.change_status') && !isSelf(u) && manageable(u) && u.totpEnabled && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              onClick={async () => {
+                if (!window.confirm(`Turn off the authenticator for ${u.name}? They will be signed out and must set it up again.`)) return
+                try {
+                  const data = await api(`/api/users/${u.id}/totp/reset`, { method: 'POST', body: {} })
+                  upsertUser(data.user)
+                  setNotice({ variant: 'success', text: `Authenticator turned off for ${data.user.name}. Their sessions and device keys were signed out.` })
+                } catch (error) {
+                  setNotice({ variant: 'danger', text: error.message })
+                }
+              }}
+            >
+              <i className="bi bi-shield-x" aria-hidden="true" /> Reset authenticator<span className="visually-hidden"> for {u.name}</span>
+            </button>
+          )}
           {can('users.change_status') && !isSelf(u) && manageable(u) && u.status !== 'disabled' && (
             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setStatusChange({ open: true, user: u, next: 'disabled' })}>
               <i className="bi bi-person-slash" aria-hidden="true" /> Disable<span className="visually-hidden"> {u.name}</span>
@@ -344,8 +363,8 @@ export default function UsersPage() {
       >
         {statusChange.user && (
           <p className="mb-0">
-            {statusChange.next === 'locked' && <><strong>{statusChange.user.name}</strong> will not be able to sign in until the account is unlocked.</>}
-            {statusChange.next === 'disabled' && <><strong>{statusChange.user.name}</strong> will be signed out and won’t be able to sign in until reactivated.</>}
+            {statusChange.next === 'locked' && <><strong>{statusChange.user.name}</strong> will be signed out of the web and their device keys will stop working until the account is unlocked.</>}
+            {statusChange.next === 'disabled' && <><strong>{statusChange.user.name}</strong> will be signed out, their device keys will stop working, and they won’t be able to sign in until reactivated.</>}
             {statusChange.next === 'active' && <><strong>{statusChange.user.name}</strong> will be able to sign in again.</>}
           </p>
         )}
@@ -372,7 +391,7 @@ export default function UsersPage() {
               try {
                 const data = await api(`/api/users/${resetUser.id}/password`, { method: 'POST', body: { password: resetPassword } })
                 upsertUser(data.user)
-                setNotice({ variant: 'success', text: `Password reset for ${data.user.name}. Share the new password with them securely. It is not stored in the audit log.` })
+                setNotice({ variant: 'success', text: `Password reset for ${data.user.name}. Their current sessions and device keys have been signed out. Share the new password securely. It is not stored in the audit log.` })
                 setResetUser(null)
                 setResetPassword('')
               } catch (error) {

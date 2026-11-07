@@ -28,7 +28,8 @@ final class LoginAttemptRepository
             "SELECT COUNT(*) AS failures,
                     COALESCE(TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), MIN(attempted_at) + INTERVAL ? MINUTE), 0) AS retry_after
                FROM login_attempts
-              WHERE {$column} = ? AND succeeded = 0 AND attempted_at > UTC_TIMESTAMP() - INTERVAL ? MINUTE"
+              WHERE {$column} = ? AND succeeded = 0 AND cleared_at IS NULL
+                AND attempted_at > UTC_TIMESTAMP() - INTERVAL ? MINUTE"
         );
         $stmt->execute([$windowMinutes, $value, $windowMinutes]);
         $row = $stmt->fetch();
@@ -36,18 +37,19 @@ final class LoginAttemptRepository
         return ['failures' => (int) $row['failures'], 'retry_after' => max(1, (int) $row['retry_after'])];
     }
 
-    /** A successful sign-in clears that account's failure count. */
+    /** A successful sign-in stops counting earlier failures. The rows are kept. */
     public function clearFailures(string $identifierHash): void
     {
         Database::connection()
-            ->prepare('DELETE FROM login_attempts WHERE identifier_hash = ? AND succeeded = 0')
+            ->prepare('UPDATE login_attempts SET cleared_at = UTC_TIMESTAMP() WHERE identifier_hash = ? AND succeeded = 0 AND cleared_at IS NULL')
             ->execute([$identifierHash]);
     }
 
+    /** Mark old attempts archived. Rows are not deleted; retention uses this too. */
     public function pruneOlderThanDays(int $days): void
     {
         Database::connection()
-            ->prepare('DELETE FROM login_attempts WHERE attempted_at < UTC_TIMESTAMP() - INTERVAL ? DAY')
+            ->prepare('UPDATE login_attempts SET archived_at = UTC_TIMESTAMP() WHERE archived_at IS NULL AND attempted_at < UTC_TIMESTAMP() - INTERVAL ? DAY')
             ->execute([$days]);
     }
 }

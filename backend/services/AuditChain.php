@@ -12,7 +12,9 @@ use Throwable;
  * Tamper-evident hash chain for audit_logs.
  *
  * Each row stores the previous row's hash and its own SHA-256 over a canonical
- * payload. Verification walks every row in id order, including archived rows.
+ * payload. Verification walks every row in id order, including archived rows,
+ * then compares the tip with audit_chain_head. Deleting the newest rows leaves
+ * a valid-looking prefix, but the separately stored head no longer matches.
  * Archiving does not change hashed columns. The application never deletes rows.
  */
 final class AuditChain
@@ -172,7 +174,8 @@ final class AuditChain
     /** @return array{intact: bool, checked: int, brokenAt: int|null, reason: string|null} */
     public static function verify(): array
     {
-        $stmt = Database::connection()->query(
+        $pdo = Database::connection();
+        $stmt = $pdo->query(
             'SELECT id, occurred_at, actor_id, actor_label, module, action, result,
                     target_type, target_id, target_label, ip_address, user_agent, request_id, details,
                     prev_hash, row_hash
@@ -180,9 +183,11 @@ final class AuditChain
         );
         $prev = self::GENESIS;
         $checked = 0;
+        $tipId = null;
         while ($row = $stmt->fetch()) {
             $checked++;
             $id = (int) $row['id'];
+            $tipId = $id;
             if (!is_string($row['row_hash']) || strlen($row['row_hash']) !== 64 || !is_string($row['prev_hash']) || strlen($row['prev_hash']) !== 64) {
                 return self::broken($checked, $id, 'unsealed');
             }
@@ -193,6 +198,18 @@ final class AuditChain
                 return self::broken($checked, $id, 'hash_mismatch');
             }
             $prev = $row['row_hash'];
+        }
+
+        $head = $pdo->query('SELECT last_log_id, last_hash FROM audit_chain_head WHERE id = 1')->fetch();
+        if (!is_array($head) || !is_string($head['last_hash'])) {
+            return self::broken($checked, $tipId ?? 0, 'head_missing');
+        }
+        $headId = $head['last_log_id'] === null ? null : (int) $head['last_log_id'];
+        $tipHash = $checked === 0 ? self::GENESIS : $prev;
+        if ($headId !== $tipId || !hash_equals($tipHash, $head['last_hash'])) {
+            $reason = $headId !== $tipId ? 'tail_truncated' : 'head_mismatch';
+
+            return self::broken($checked === 0 ? 1 : $checked, $headId ?? $tipId ?? 0, $reason);
         }
 
         return ['intact' => true, 'checked' => $checked, 'brokenAt' => null, 'reason' => null];

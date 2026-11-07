@@ -242,6 +242,13 @@ export const NAV_MENU = [
     ],
   },
   {
+    id: 'account-security',
+    label: 'Security',
+    icon: 'bi-shield-lock',
+    path: '/account/security',
+    description: 'Authenticator app, recovery codes, and device sign-in keys for a mobile app.',
+  },
+  {
     id: 'system',
     label: 'System & Audit',
     icon: 'bi-shield-check',
@@ -275,6 +282,13 @@ export const NAV_MENU = [
         icon: 'bi-gear',
         description: 'Company, security and retention settings, with a history of each change.',
         permission: 'settings.view',
+      },
+      {
+        path: '/system/privacy',
+        label: 'Privacy',
+        icon: 'bi-person-lock',
+        description: 'Consent, a copy of someone’s personal data, correction requests, and masking personal data without deleting the record.',
+        permission: 'privacy.manage',
       },
     ],
   },

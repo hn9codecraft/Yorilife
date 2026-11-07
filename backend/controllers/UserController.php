@@ -55,6 +55,14 @@ final class UserController
         JsonResponse::success(['user' => UserPresenter::present($user)]);
     }
 
+    /** POST /api/users/{id}/totp/reset — turn off another person's authenticator. */
+    public function resetTwoFactor(Request $request): void
+    {
+        $user = (new UserService())->resetTwoFactor($request->user, self::id($request));
+
+        JsonResponse::success(['user' => UserPresenter::present($user)]);
+    }
+
     /** GET /api/roles */
     public function roles(Request $request): void
     {

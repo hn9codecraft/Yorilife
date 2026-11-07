@@ -49,6 +49,16 @@ final class SecurityPolicy
         return self::int('security.lockout_window_minutes', (int) (self::fileConfig()['throttle']['window_minutes'] ?? 15), 1, 1440);
     }
 
+    public static function totpRequired(string $roleSlug): bool
+    {
+        return self::stored('security.totp_required_' . $roleSlug) === '1';
+    }
+
+    public static function apiTokenDefaultDays(): int
+    {
+        return self::int('security.api_token_default_days', 90, 1, 365);
+    }
+
     public static function recordsPerPage(): int
     {
         $value = self::int('general.records_per_page', 50, 25, 100);

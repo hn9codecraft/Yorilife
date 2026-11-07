@@ -18,6 +18,8 @@ final class UserPresenter
             'name' => $user['name'],
             'email' => $user['email'],
             'status' => $user['status'],
+            'totpEnabled' => !empty($user['totp_enabled_at']),
+            'anonymised' => !empty($user['anonymised_at']),
             'role' => ['slug' => $user['role_slug'], 'name' => $user['role_name']],
             'lastLoginAt' => self::iso($user['last_login_at']),
             'createdAt' => self::iso($user['created_at']),

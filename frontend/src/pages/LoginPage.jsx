@@ -4,6 +4,7 @@ import BrandLogo from '../components/BrandLogo.jsx'
 import PasswordInput from '../components/PasswordInput.jsx'
 import AuthStatusScreen from '../components/AuthStatusScreen.jsx'
 import useAuth from '../auth/useAuth.js'
+import { api } from '../api/client.js'
 import { safeRedirect } from '../auth/safeRedirect.js'
 import { APP_TITLE } from '../config/navigation.js'
 
@@ -39,6 +40,12 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [step, setStep] = useState('password')
+  const [challengeToken, setChallengeToken] = useState('')
+  const [code, setCode] = useState('')
+  const [setup, setSetup] = useState(null)
+  const [recoveryCodes, setRecoveryCodes] = useState(null)
+  const [pendingSession, setPendingSession] = useState(null)
 
   useEffect(() => {
     document.title = `Sign in · ${APP_TITLE}`
@@ -65,7 +72,20 @@ export default function LoginPage() {
 
     setSubmitting(true)
     try {
-      await auth.login(values.email.trim(), values.password)
+      const data = await auth.login(values.email.trim(), values.password)
+      if (data?.twoFactorRequired) {
+        setChallengeToken(data.challengeToken)
+        setStep('totp')
+        setCode('')
+        setSubmitting(false)
+        return
+      }
+      if (data?.enrollmentRequired) {
+        setChallengeToken(data.challengeToken)
+        setStep('enroll')
+        setSubmitting(false)
+        return
+      }
       navigate(next, { replace: true })
     } catch (error) {
       setSubmitting(false)
@@ -85,8 +105,15 @@ export default function LoginPage() {
     <main className="auth-page">
       <div className="auth-card">
         <BrandLogo className="auth-card__logo" />
-        <h1 className="auth-card__title">Sign in to {APP_TITLE}</h1>
-        <p className="auth-card__subtitle">Use the email address and password from your administrator.</p>
+        <h1 className="auth-card__title">
+          {step === 'password' ? `Sign in to ${APP_TITLE}` : step === 'totp' ? 'Authenticator code' : step === 'codes' ? 'Save recovery codes' : 'Set up an authenticator'}
+        </h1>
+        <p className="auth-card__subtitle">
+          {step === 'password' && 'Use the email address and password from your administrator.'}
+          {step === 'totp' && 'Enter the 6-digit code from your authenticator app, or a recovery code.'}
+          {step === 'enroll' && 'Your role requires an authenticator app before sign-in can finish.'}
+          {step === 'codes' && 'Each code works once. This is the only time they are shown.'}
+        </p>
 
         {sessionEnded && !formError && (
           <div className="alert alert-warning" role="status">
@@ -107,6 +134,102 @@ export default function LoginPage() {
           </div>
         )}
 
+        {step === 'totp' && (
+          <form
+            className="auth-form"
+            onSubmit={async (event) => {
+              event.preventDefault()
+              setFormError(null)
+              if (!code.trim()) {
+                setFormError('Enter the code from your authenticator app, or a recovery code.')
+                return
+              }
+              setSubmitting(true)
+              try {
+                const data = await api('/api/auth/totp', { method: 'POST', body: { challengeToken, code: code.trim() }, notifyUnauthorized: false })
+                auth.completeSignIn(data)
+                navigate(next, { replace: true })
+              } catch (error) {
+                setSubmitting(false)
+                setCode('')
+                setFormError(describeError(error))
+              }
+            }}
+          >
+            <div>
+              <label htmlFor={`${ids}-code`} className="form-label">Code</label>
+              <input id={`${ids}-code`} className="form-control" value={code} onChange={(event) => setCode(event.target.value)} autoComplete="one-time-code" inputMode="text" disabled={submitting} />
+            </div>
+            <button type="submit" className="btn btn-primary btn-lg w-100" disabled={submitting}>{submitting ? 'Checking…' : 'Continue'}</button>
+          </form>
+        )}
+        {step === 'enroll' && (
+          <div className="auth-form">
+            {!setup && (
+              <button
+                type="button"
+                className="btn btn-primary btn-lg w-100"
+                disabled={submitting}
+                onClick={async () => {
+                  setFormError(null)
+                  setSubmitting(true)
+                  try {
+                    setSetup(await api('/api/auth/totp/enroll', { method: 'POST', body: { challengeToken }, notifyUnauthorized: false }))
+                    setSubmitting(false)
+                  } catch (error) {
+                    setSubmitting(false)
+                    setFormError(describeError(error))
+                  }
+                }}
+              >
+                Show setup key
+              </button>
+            )}
+            {setup && (
+              <form
+                onSubmit={async (event) => {
+                  event.preventDefault()
+                  setFormError(null)
+                  setSubmitting(true)
+                  try {
+                    const data = await api('/api/auth/totp/enroll/confirm', { method: 'POST', body: { challengeToken, code: code.trim() }, notifyUnauthorized: false })
+                    setRecoveryCodes(data.recoveryCodes)
+                    setPendingSession(data)
+                    setStep('codes')
+                    setSubmitting(false)
+                  } catch (error) {
+                    setSubmitting(false)
+                    setFormError(error.fields?.code || describeError(error))
+                  }
+                }}
+              >
+                <p className="mb-1">Add Yorilife in your authenticator app with this key:</p>
+                <p><code>{setup.secret}</code></p>
+                <label htmlFor={`${ids}-enroll-code`} className="form-label">6-digit code</label>
+                <input id={`${ids}-enroll-code`} className="form-control mb-3" value={code} onChange={(event) => setCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" disabled={submitting} />
+                <button type="submit" className="btn btn-primary btn-lg w-100" disabled={submitting}>{submitting ? 'Checking…' : 'Turn on and continue'}</button>
+              </form>
+            )}
+          </div>
+        )}
+        {step === 'codes' && recoveryCodes && (
+          <div className="auth-form">
+            <ul>
+              {recoveryCodes.map((item) => <li key={item}><code>{item}</code></li>)}
+            </ul>
+            <button
+              type="button"
+              className="btn btn-primary btn-lg w-100"
+              onClick={() => {
+                auth.completeSignIn(pendingSession)
+                navigate(next, { replace: true })
+              }}
+            >
+              I have saved these codes
+            </button>
+          </div>
+        )}
+        {step === 'password' && (
         <form className="auth-form" noValidate onSubmit={handleSubmit} aria-busy={submitting}>
           <div>
             <label htmlFor={`${ids}-email`} className="form-label">Email address</label>
@@ -152,6 +275,7 @@ export default function LoginPage() {
             )}
           </button>
         </form>
+        )}
 
         <p className="auth-card__footnote">
           Forgotten your password? Ask an administrator to help you.

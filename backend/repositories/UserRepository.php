@@ -13,7 +13,8 @@ use PDO;
  */
 final class UserRepository
 {
-    private const PUBLIC_COLUMNS = 'u.id, u.name, u.email, u.status, u.last_login_at, u.created_at, u.updated_at,
+    private const PUBLIC_COLUMNS = 'u.id, u.name, u.email, u.status, u.session_epoch, u.totp_enabled_at, u.anonymised_at,
+        u.last_login_at, u.created_at, u.updated_at,
         r.id AS role_id, r.slug AS role_slug, r.name AS role_name';
 
     private function pdo(): PDO
@@ -33,7 +34,12 @@ final class UserRepository
     /** Only for verifying a password at sign-in. @return array<string, mixed>|null */
     public function findForLogin(string $email): ?array
     {
-        $stmt = $this->pdo()->prepare('SELECT u.id, u.name, u.status, u.password_hash FROM users u WHERE u.email = ?');
+        $stmt = $this->pdo()->prepare(
+            'SELECT u.id, u.name, u.email, u.status, u.password_hash, u.totp_secret, u.totp_enabled_at, r.slug AS role_slug
+             FROM users u
+             JOIN roles r ON r.id = u.role_id
+             WHERE u.email = ?'
+        );
         $stmt->execute([$email]);
 
         return $stmt->fetch() ?: null;
@@ -45,6 +51,15 @@ final class UserRepository
         $stmt->execute([$email, $exceptId ?? 0]);
 
         return (bool) $stmt->fetchColumn();
+    }
+
+    /** @return array<string, mixed>|null user without password hash */
+    public function findByEmail(string $email): ?array
+    {
+        $stmt = $this->pdo()->prepare('SELECT ' . self::PUBLIC_COLUMNS . ' FROM users u JOIN roles r ON r.id = u.role_id WHERE u.email = ?');
+        $stmt->execute([$email]);
+
+        return $stmt->fetch() ?: null;
     }
 
     /** @return list<array<string, mixed>> */
@@ -111,5 +126,22 @@ final class UserRepository
     public function touchLastLogin(int $id): void
     {
         $this->pdo()->prepare('UPDATE users SET last_login_at = UTC_TIMESTAMP() WHERE id = ?')->execute([$id]);
+    }
+
+    /** Older session cookies stop working on the next request. */
+    public function bumpSessionEpoch(int $id): void
+    {
+        $this->pdo()->prepare('UPDATE users SET session_epoch = session_epoch + 1 WHERE id = ?')->execute([$id]);
+    }
+
+    /** Mask the account in place and make the old password useless. The row stays. */
+    public function anonymise(int $id, string $name, string $email, string $passwordHash): void
+    {
+        $this->pdo()->prepare(
+            'UPDATE users
+                SET name = ?, email = ?, password_hash = ?, status = \'disabled\', anonymised_at = UTC_TIMESTAMP(),
+                    totp_secret = NULL, totp_pending_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL
+              WHERE id = ?'
+        )->execute([$name, $email, $passwordHash, $id]);
     }
 }

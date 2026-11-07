@@ -175,13 +175,17 @@ final class UserService
             'Status' => $updated['status'],
         ];
         EntityHistory::recordDiff('user', $id, $updated['name'], $before, $after, (int) $actor['id']);
+        $revoked = null;
+        if (isset($fields['status']) && in_array($fields['status'], ['locked', 'disabled'], true) && $fields['status'] !== $before['Status']) {
+            $revoked = CredentialRevoker::revoke($id);
+        }
         AuditLogger::record([
             'module' => 'users',
             'action' => 'update',
             'targetType' => 'user',
             'targetId' => $id,
             'targetLabel' => $updated['name'],
-            'details' => ['fields' => array_keys($fields)],
+            'details' => ['fields' => array_keys($fields)] + ($revoked ?? []),
         ]);
 
         return $updated;
@@ -213,6 +217,7 @@ final class UserService
         }
 
         $this->users->updatePasswordHash($id, PasswordHasher::hash($password));
+        $revoked = CredentialRevoker::revoke($id);
         EntityHistory::recordDiff('user', $id, $target['name'], [
             'Password' => '(hidden)',
         ], [
@@ -224,8 +229,29 @@ final class UserService
             'targetType' => 'user',
             'targetId' => $id,
             'targetLabel' => $target['name'],
-            'details' => ['reset' => true],
+            'details' => ['reset' => true] + $revoked,
         ]);
+
+        return $this->users->find($id) ?? throw HttpException::notFound('User not found.');
+    }
+
+    /**
+     * An administrator turns off another person's authenticator, for a lost device.
+     * Their sessions and device keys are revoked.
+     *
+     * @param array<string, mixed> $actor
+     */
+    public function resetTwoFactor(array $actor, int $id): array
+    {
+        Authorization::authorize($actor, 'users.change_status');
+        $target = $this->get($actor, $id);
+        if ((int) $actor['id'] === (int) $target['id']) {
+            throw HttpException::forbidden('Turn off your own authenticator from Security.', 'cannot_reset_own_totp');
+        }
+        if (!Authorization::canManageUser($actor, $target)) {
+            throw HttpException::forbidden('You cannot manage users at this level.', 'cannot_manage_user');
+        }
+        (new TwoFactorService())->resetForUser($actor, $id);
 
         return $this->users->find($id) ?? throw HttpException::notFound('User not found.');
     }

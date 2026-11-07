@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controllers\AccountSecurityController;
 use App\Controllers\AnnouncementController;
 use App\Controllers\AuditLogController;
 use App\Controllers\ExportController;
@@ -12,7 +13,9 @@ use App\Controllers\EmployeeController;
 use App\Controllers\ErpController;
 use App\Controllers\HealthController;
 use App\Controllers\ImportController;
+use App\Controllers\PrivacyController;
 use App\Controllers\ProductController;
+use App\Controllers\RetentionController;
 use App\Controllers\SalesEntryController;
 use App\Controllers\SalesOfficeController;
 use App\Controllers\SearchController;
@@ -30,8 +33,20 @@ $router->get('/api/health/database', [HealthController::class, 'database']);
 // Authentication
 $auth = AuthMiddleware::authenticated();
 $router->post('/api/auth/login', [AuthController::class, 'login']);
+$router->post('/api/auth/totp', [AuthController::class, 'totp']);
+$router->post('/api/auth/totp/enroll/confirm', [AuthController::class, 'enrollConfirm']);
+$router->post('/api/auth/totp/enroll', [AuthController::class, 'enroll']);
 $router->post('/api/auth/logout', [AuthController::class, 'logout'], [$auth]);
 $router->get('/api/auth/me', [AuthController::class, 'me'], [$auth]);
+
+$router->get('/api/account/security', [AccountSecurityController::class, 'show'], [$auth]);
+$router->post('/api/account/totp/setup', [AccountSecurityController::class, 'setupTotp'], [$auth]);
+$router->post('/api/account/totp/confirm', [AccountSecurityController::class, 'confirmTotp'], [$auth]);
+$router->post('/api/account/totp/disable', [AccountSecurityController::class, 'disableTotp'], [$auth]);
+$router->post('/api/account/totp/recovery-codes', [AccountSecurityController::class, 'recoveryCodes'], [$auth]);
+$router->get('/api/account/tokens', [AccountSecurityController::class, 'tokens'], [$auth]);
+$router->post('/api/account/tokens', [AccountSecurityController::class, 'createToken'], [$auth]);
+$router->post('/api/account/tokens/{id}/revoke', [AccountSecurityController::class, 'revokeToken'], [$auth]);
 
 // User management (Sprint 3 foundation). Fine-grained rules are in UserService.
 $router->get('/api/roles', [UserController::class, 'roles'], [$auth, AuthMiddleware::can('users.view')]);
@@ -39,6 +54,7 @@ $router->get('/api/users', [UserController::class, 'index'], [$auth, AuthMiddlew
 $router->post('/api/users', [UserController::class, 'store'], [$auth, AuthMiddleware::can('users.create')]);
 $router->get('/api/users/{id}', [UserController::class, 'show'], [$auth, AuthMiddleware::can('users.view')]);
 $router->post('/api/users/{id}/password', [UserController::class, 'resetPassword'], [$auth, AuthMiddleware::can('users.update')]);
+$router->post('/api/users/{id}/totp/reset', [UserController::class, 'resetTwoFactor'], [$auth, AuthMiddleware::can('users.change_status')]);
 $router->patch('/api/users/{id}', [UserController::class, 'update'], [$auth, AuthMiddleware::can('users.view')]);
 
 // Business data (Sprint 4). Viewing is open to every sales role; changes follow
@@ -158,3 +174,13 @@ $router->get('/api/change-history', [ChangeHistoryController::class, 'index'], [
 $router->get('/api/settings/history', [SettingsController::class, 'history'], [$auth, $settingsView]);
 $router->patch('/api/settings', [SettingsController::class, 'update'], [$auth, $settingsView]);
 $router->get('/api/settings', [SettingsController::class, 'index'], [$auth, $settingsView]);
+$router->post('/api/retention/apply', [RetentionController::class, 'apply'], [$auth, $settingsView]);
+
+$privacy = AuthMiddleware::can('privacy.manage');
+$router->get('/api/privacy/consents', [PrivacyController::class, 'consents'], [$auth, $privacy]);
+$router->post('/api/privacy/consents', [PrivacyController::class, 'storeConsent'], [$auth, $privacy]);
+$router->post('/api/privacy/consents/{id}/withdraw', [PrivacyController::class, 'withdrawConsent'], [$auth, $privacy]);
+$router->get('/api/privacy/requests', [PrivacyController::class, 'requests'], [$auth, $privacy]);
+$router->post('/api/privacy/requests', [PrivacyController::class, 'storeRequest'], [$auth, $privacy]);
+$router->post('/api/privacy/requests/{id}/fulfill', [PrivacyController::class, 'fulfill'], [$auth, $privacy]);
+$router->post('/api/privacy/requests/{id}/reject', [PrivacyController::class, 'reject'], [$auth, $privacy]);

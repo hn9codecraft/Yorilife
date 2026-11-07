@@ -7,7 +7,7 @@ namespace App\Services;
 /**
  * Editable settings: group, input type, default and validation.
  * Company and general settings use settings.edit (Admin and Super Admin).
- * Security settings are Super Admin only. Retention uses settings.edit.
+ * Security and retention settings are Super Admin only. Archive never deletes a row.
  * Values in the database override these defaults.
  */
 final class SettingsCatalog
@@ -51,8 +51,17 @@ final class SettingsCatalog
             'security.session_absolute_hours' => self::number('security', 'Absolute session lifetime (hours)', '12', 1, 168, 'Sign-in ends after this many hours even if the user is active.'),
             'security.lockout_max_failures' => self::number('security', 'Failed attempts before lockout', '5', 3, 20, 'Wrong passwords for one account inside the lockout window.'),
             'security.lockout_window_minutes' => self::number('security', 'Lockout window (minutes)', '15', 1, 1440, 'How long failed attempts are counted, and how long the lockout lasts.'),
-            'retention.audit_log_days' => self::number('retention', 'Archive audit logs older than (days)', '365', 30, 3650, 'Archive marks rows. It never deletes them.'),
-            'retention.change_history_days' => self::number('retention', 'Archive change history older than (days)', '365', 30, 3650, 'Archive marks rows. It never deletes them.'),
+            'security.totp_required_super_admin' => self::bool('security', 'Require authenticator for Super Admin', '0', 'When yes, a Super Admin must set up an authenticator app before they can finish signing in.'),
+            'security.totp_required_admin' => self::bool('security', 'Require authenticator for Admin', '0', 'When yes, an Admin must set up an authenticator app before they can finish signing in.'),
+            'security.totp_required_sales_manager' => self::bool('security', 'Require authenticator for Sales Manager', '0', 'When yes, a Sales Manager must set up an authenticator app before they can finish signing in.'),
+            'security.totp_required_sales_user' => self::bool('security', 'Require authenticator for Sales User', '0', 'When yes, a Sales User must set up an authenticator app before they can finish signing in.'),
+            'security.api_token_default_days' => self::number('security', 'Device sign-in key lifetime (days)', '90', 1, 365, 'Used when someone creates a device key and does not choose a different period. The maximum is 365 days.'),
+            'retention.audit_log_days' => self::number('retention', 'Archive audit logs older than (days)', '365', 30, 3650, 'Rows older than this are marked archived. Records are never deleted.'),
+            'retention.change_history_days' => self::number('retention', 'Archive change history older than (days)', '365', 30, 3650, 'Rows older than this are marked archived. Records are never deleted.'),
+            'retention.import_audit_days' => self::number('retention', 'Archive import audit older than (days)', '365', 30, 3650, 'Rows older than this are marked archived. Records are never deleted.'),
+            'retention.login_attempt_days' => self::number('retention', 'Archive sign-in attempts older than (days)', '90', 30, 3650, 'Rows older than this are marked archived. Records are never deleted.'),
+            'retention.consent_days' => self::number('retention', 'Archive consent records older than (days)', '365', 30, 3650, 'Rows older than this are marked archived. Records are never deleted.'),
+            'retention.privacy_request_days' => self::number('retention', 'Archive privacy requests older than (days)', '365', 30, 3650, 'Rows older than this are marked archived. Records are never deleted.'),
         ];
     }
 
@@ -73,7 +82,7 @@ final class SettingsCatalog
         if (($actor['status'] ?? '') !== 'active') {
             return false;
         }
-        if ($group === 'security') {
+        if ($group === 'security' || $group === 'retention') {
             return ($actor['role_slug'] ?? '') === 'super_admin';
         }
 
@@ -223,14 +232,14 @@ final class SettingsCatalog
     }
 
     /** @return array<string, mixed> */
-    private static function bool(string $group, string $label, string $default): array
+    private static function bool(string $group, string $label, string $default, ?string $help = null): array
     {
         return [
             'group' => $group,
             'label' => $label,
             'input' => 'bool',
             'default' => $default,
-            'help' => 'Applies the next time a password is set. Existing passwords stay valid until they are changed.',
+            'help' => $help ?? 'Applies the next time a password is set. Existing passwords stay valid until they are changed.',
         ];
     }
 

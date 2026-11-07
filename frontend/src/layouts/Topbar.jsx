@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import useAuth from '../auth/useAuth.js'
 import GlobalSearch from '../components/GlobalSearch.jsx'
 
@@ -65,9 +66,9 @@ export default function Topbar({ sidebarId, toggleRef, toggleLabel, toggleExpand
               </li>
               <li><hr className="dropdown-divider" /></li>
               <li>
-                <button type="button" className="dropdown-item" disabled>
-                  <i className="bi bi-person" aria-hidden="true" /> Profile (coming soon)
-                </button>
+                <Link className="dropdown-item" to="/account/security">
+                  <i className="bi bi-shield-lock" aria-hidden="true" /> Security
+                </Link>
               </li>
               <li>
                 <button type="button" className="dropdown-item" onClick={handleSignOut} disabled={signingOut}>

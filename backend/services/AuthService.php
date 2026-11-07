@@ -34,7 +34,7 @@ final class AuthService
 
     /**
      * @param array<string, mixed> $input { email, password }
-     * @return array{user: array<string, mixed>, csrfToken: string}
+     * @return array{user?: array<string, mixed>, csrfToken?: string, challenge?: array{token: string, purpose: string, expiresIn: int}}
      */
     public function login(array $input, string $ip): array
     {
@@ -116,25 +116,65 @@ final class AuthService
             $this->users->updatePasswordHash($userId, PasswordHasher::hash($password));
         }
 
+        $challenge = (new TwoFactorService())->challengeAfterPassword($account);
+        if ($challenge !== null) {
+            return ['challenge' => $challenge];
+        }
+
+        return $this->completeLogin($userId, $email, 'password', $ip);
+    }
+
+    /**
+     * Second step after a correct password, when an authenticator code is required.
+     *
+     * @param array<string, mixed> $input
+     * @return array{user: array<string, mixed>, csrfToken: string}
+     */
+    public function finishTwoFactor(array $input, string $ip): array
+    {
+        RequestContext::boot($ip);
+        $verified = (new TwoFactorService())->verifyChallenge($input, $ip);
+        $user = $this->users->find($verified['userId']) ?? throw HttpException::unauthenticated();
+
+        return $this->completeLogin((int) $user['id'], (string) $user['email'], $verified['method'], $ip);
+    }
+
+    /**
+     * First-time authenticator setup during sign-in, then a normal session.
+     *
+     * @param array<string, mixed> $input
+     * @return array{user: array<string, mixed>, csrfToken: string, recoveryCodes: list<string>}
+     */
+    public function finishEnrollment(array $input, string $ip): array
+    {
+        RequestContext::boot($ip);
+        $enrolled = (new TwoFactorService())->confirmEnrollment($input);
+        $user = $this->users->find($enrolled['userId']) ?? throw HttpException::unauthenticated();
+        $session = $this->completeLogin((int) $user['id'], (string) $user['email'], 'totp', $ip);
+        $session['recoveryCodes'] = $enrolled['recoveryCodes'];
+
+        return $session;
+    }
+
+    /** @return array{user: array<string, mixed>, csrfToken: string} */
+    private function completeLogin(int $userId, string $email, string $method, string $ip): array
+    {
+        $identifierHash = hash('sha256', $email);
         $this->attempts->record($identifierHash, $ip, true);
         $this->attempts->clearFailures($identifierHash);
-        if (random_int(1, 50) === 1) {
-            $this->attempts->pruneOlderThanDays(30);
-        }
         $this->users->touchLastLogin($userId);
 
-        // New session ID on sign-in (session fixation protection).
+        $user = $this->users->find($userId) ?? throw HttpException::unauthenticated();
         Session::regenerate();
         $_SESSION = [
             'user_id' => $userId,
             'authenticated_at' => time(),
             'last_activity_at' => time(),
+            'session_epoch' => (int) ($user['session_epoch'] ?? 0),
             'csrf_token' => bin2hex(random_bytes(32)),
         ];
         $csrf = $_SESSION['csrf_token'];
         Session::close();
-
-        $user = $this->users->find($userId);
         RequestContext::setActor($user);
         AuditLogger::record([
             'module' => 'auth',
@@ -143,7 +183,19 @@ final class AuthService
             'targetType' => 'user',
             'targetId' => $userId,
             'targetLabel' => $user['name'] ?? null,
+            'details' => ['method' => $method],
         ]);
+        if ($method === 'totp' || $method === 'recovery') {
+            AuditLogger::record([
+                'module' => 'auth',
+                'action' => 'totp_used',
+                'result' => 'ok',
+                'targetType' => 'user',
+                'targetId' => $userId,
+                'targetLabel' => $user['name'] ?? null,
+                'details' => ['method' => $method],
+            ]);
+        }
 
         return ['user' => $user, 'csrfToken' => $csrf];
     }
@@ -192,6 +244,17 @@ final class AuthService
         if ($user === null || $user['status'] !== 'active') {
             Session::destroy();
             throw HttpException::unauthenticated('Your session has ended. Please sign in again.', 'session_expired');
+        }
+        if ((int) ($_SESSION['session_epoch'] ?? 0) !== (int) ($user['session_epoch'] ?? 0)) {
+            Session::destroy();
+            throw HttpException::unauthenticated('Your session has ended. Please sign in again.', 'session_expired');
+        }
+        if (SecurityPolicy::totpRequired((string) $user['role_slug']) && empty($user['totp_enabled_at'])) {
+            Session::destroy();
+            throw HttpException::unauthenticated(
+                'This account must set up an authenticator app. Sign in again to continue.',
+                'totp_enrollment_required',
+            );
         }
 
         $_SESSION['last_activity_at'] = $now;

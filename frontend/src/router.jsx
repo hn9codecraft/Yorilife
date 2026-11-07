@@ -20,6 +20,8 @@ import UsersPage from './pages/system/UsersPage.jsx'
 import AuditLogsPage from './pages/system/AuditLogsPage.jsx'
 import ChangeHistoryPage from './pages/system/ChangeHistoryPage.jsx'
 import SettingsPage from './pages/system/SettingsPage.jsx'
+import SecurityPage from './pages/account/SecurityPage.jsx'
+import PrivacyPage from './pages/system/PrivacyPage.jsx'
 import ImportDataPage from './pages/imports/ImportDataPage.jsx'
 import ImportHistoryPage from './pages/imports/ImportHistoryPage.jsx'
 import AnnouncementsListPage from './pages/announcements/AnnouncementsListPage.jsx'
@@ -55,7 +57,9 @@ const PAGE_ELEMENTS = {
   '/system/users': <UsersPage />,
   '/system/audit-logs': <AuditLogsPage />,
   '/system/change-history': <ChangeHistoryPage />,
+  '/account/security': <SecurityPage />,
   '/system/settings': <SettingsPage />,
+  '/system/privacy': <PrivacyPage />,
   '/announcements/list': <AnnouncementsListPage />,
   '/announcements/new': <AnnouncementFormPage />,
   '/announcements/templates': <AnnouncementTemplatesPage />,

@@ -36,7 +36,7 @@ final class SystemHardeningTest extends FeatureTestCase
         $groups = array_column($view['body']['data']['groups'], null, 'id');
         self::assertTrue($groups['company']['editable']);
         self::assertTrue($groups['general']['editable']);
-        self::assertTrue($groups['retention']['editable']);
+        self::assertFalse($groups['retention']['editable']);
         self::assertFalse($groups['security']['editable']);
         self::assertContains('settings.edit', $admin->request('GET', '/api/auth/me')['body']['data']['user']['permissions']);
 

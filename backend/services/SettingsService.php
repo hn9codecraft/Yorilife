@@ -8,9 +8,9 @@ use App\Repositories\SettingsRepository;
 use App\Utils\HttpException;
 
 /**
- * System → Settings. Company, general and retention settings are editable by
- * Admin and Super Admin (settings.edit). Security settings are editable by
- * Super Admin only. Every change keeps the previous value.
+ * System → Settings. Company and general settings are editable by Admin and
+ * Super Admin. Security and retention settings are editable by Super Admin only.
+ * Every change keeps the previous value. Retention archives rows and never deletes them.
  */
 final class SettingsService
 {
@@ -61,7 +61,8 @@ final class SettingsService
         return [
             'readOnly' => !$anyEditable,
             'groups' => $groups,
-            'note' => 'Company, general and retention settings can be changed by an Admin or a Super Admin. Security settings can be changed by a Super Admin only. Each change keeps the previous value.',
+            'canApplyRetention' => ($actor['role_slug'] ?? '') === 'super_admin' && ($actor['status'] ?? '') === 'active',
+            'note' => 'Company and general settings can be changed by an Admin or a Super Admin. Security and retention settings can be changed by a Super Admin only. Retention marks old rows as archived. It never deletes a record.',
         ];
     }
 
@@ -98,7 +99,9 @@ final class SettingsService
                 throw HttpException::forbidden(
                     $group === 'security'
                         ? 'Only a Super Admin can change security settings.'
-                        : 'You cannot change these settings.',
+                        : ($group === 'retention'
+                            ? 'Only a Super Admin can change retention settings.'
+                            : 'You cannot change these settings.'),
                     'settings_not_editable',
                 );
             }

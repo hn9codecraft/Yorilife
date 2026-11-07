@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use App\Services\ApiTokenService;
 use App\Services\AuthService;
 use App\Services\Authorization;
 use App\Services\RequestContext;
@@ -14,14 +15,26 @@ use App\Utils\Request;
  * Route guards. Use in routes/api.php:
  *   [AuthMiddleware::authenticated()]                       signed-in, active user
  *   [AuthMiddleware::authenticated(), AuthMiddleware::can('users.view')]
- * State-changing requests (POST/PUT/PATCH/DELETE) must also carry the
- * session's CSRF token in the X-CSRF-Token header.
+ * State-changing cookie requests must also carry the session's CSRF token
+ * in the X-CSRF-Token header. A device key (Authorization: Bearer) is enough
+ * on its own: the mobile app does not use cookies or a CSRF token.
  */
 final class AuthMiddleware
 {
     public static function authenticated(): callable
     {
         return static function (Request $request): void {
+            $bearer = self::bearer($request);
+            if ($bearer !== null) {
+                $user = (new ApiTokenService())->authenticate($bearer);
+                RequestContext::boot($request->ip(), $request->header('User-Agent'));
+                RequestContext::setActor($user);
+                $request->user = $user;
+                $request->csrfToken = null;
+
+                return;
+            }
+
             $session = (new AuthService())->currentSession();
             RequestContext::boot($request->ip(), $request->header('User-Agent'));
             RequestContext::setActor($session['user']);
@@ -46,5 +59,15 @@ final class AuthMiddleware
             }
             Authorization::authorize($request->user, $permission);
         };
+    }
+
+    private static function bearer(Request $request): ?string
+    {
+        $header = $request->header('Authorization');
+        if (!is_string($header) || preg_match('/^Bearer\s+(\S+)$/i', $header, $match) !== 1) {
+            return null;
+        }
+
+        return $match[1];
     }
 }

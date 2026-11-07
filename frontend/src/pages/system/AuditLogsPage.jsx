@@ -119,7 +119,7 @@ export default function AuditLogsPage() {
           <div>
             {chain.intact
               ? `Audit chain intact${chain.checked != null ? ` (${chain.checked} entries checked)` : ''}.`
-              : `Audit chain broken${chain.brokenAt ? ` at entry ${chain.brokenAt}` : ''}. ${chain.reason === 'hash_mismatch' ? 'A stored row no longer matches its hash.' : chain.reason === 'prev_mismatch' ? 'A row is missing or out of order.' : chain.reason === 'unsealed' ? 'A row has no hash.' : 'The chain could not be verified.'}`}
+              : `Audit chain broken${chain.brokenAt ? ` at entry ${chain.brokenAt}` : ''}. ${chain.reason === 'hash_mismatch' ? 'A stored row no longer matches its hash.' : chain.reason === 'prev_mismatch' ? 'A row is missing or out of order.' : chain.reason === 'unsealed' ? 'A row has no hash.' : chain.reason === 'tail_truncated' ? 'The newest audit entries are missing.' : chain.reason === 'head_mismatch' ? 'The saved chain head does not match the last entry.' : 'The chain could not be verified.'}`}
           </div>
         </div>
       )}

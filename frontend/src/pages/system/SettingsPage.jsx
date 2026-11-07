@@ -78,7 +78,32 @@ export default function SettingsPage() {
         <>
           <div className="alert alert-info" role="status">
             <i className="bi bi-info-circle-fill" aria-hidden="true" />
-            <div>{state.data.note}</div>
+            <div>
+              {state.data.note}
+              {state.data.canApplyRetention && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    disabled={saving === 'retention'}
+                    onClick={async () => {
+                      setSaving('retention')
+                      setNotice(null)
+                      try {
+                        const result = await api('/api/retention/apply', { method: 'POST', body: {} })
+                        setNotice({ variant: 'success', text: `Archived ${result.totalArchived} old row${result.totalArchived === 1 ? '' : 's'}. No records were deleted.` })
+                      } catch (error) {
+                        setNotice({ variant: 'danger', text: error.message })
+                      } finally {
+                        setSaving(null)
+                      }
+                    }}
+                  >
+                    {saving === 'retention' ? 'Applying…' : 'Apply retention now'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           {state.data.groups.map((group) => (
             <TableCard

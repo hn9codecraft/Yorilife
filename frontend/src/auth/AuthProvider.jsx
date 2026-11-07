@@ -43,6 +43,15 @@ export default function AuthProvider({ children }) {
   const login = useCallback(
     async (email, password) => {
       const data = await api('/api/auth/login', { method: 'POST', body: { email, password }, notifyUnauthorized: false })
+      if (data.challengeToken) return data
+      signedIn(data)
+      return data
+    },
+    [signedIn],
+  )
+
+  const completeSignIn = useCallback(
+    (data) => {
       signedIn(data)
       return data.user
     },
@@ -62,6 +71,7 @@ export default function AuthProvider({ children }) {
     () => ({
       ...state,
       login,
+      completeSignIn,
       logout,
       retry: () => {
         setState({ status: 'loading', user: null, reason: null, error: null })
@@ -70,7 +80,7 @@ export default function AuthProvider({ children }) {
       // UI hint only — the server checks every request.
       hasPermission: (permission) => Boolean(state.user?.permissions?.includes(permission)),
     }),
-    [state, login, logout],
+    [state, login, completeSignIn, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
