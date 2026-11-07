@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Services\AuditLogger;
+
 /** SQL for announcements, their audience rules, recipients, files, templates, history and outbox. */
 final class AnnouncementRepository extends Repository
 {
@@ -82,6 +84,17 @@ final class AnnouncementRepository extends Repository
             'changes' => $changes === null ? null : json_encode($changes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
             'changed_by' => $userId,
             'changed_at' => $at,
+        ]);
+        AuditLogger::record([
+            'module' => 'announcements',
+            'action' => $action,
+            'actorId' => $userId,
+            'actorLabel' => $userId === null ? 'system' : null,
+            'targetType' => 'announcement',
+            'targetId' => $id,
+            'targetLabel' => 'Announcement #' . $id,
+            'occurredAt' => $at,
+            'details' => $changes,
         ]);
     }
 

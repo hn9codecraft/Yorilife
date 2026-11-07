@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Middleware\CorsMiddleware;
 use App\Middleware\OriginMiddleware;
+use App\Services\RequestContext;
 use App\Utils\Router;
 use App\Utils\Session;
 
@@ -15,6 +16,10 @@ use App\Utils\Session;
 $appConfig = require dirname(__DIR__) . '/bootstrap.php';
 
 Session::configure((require dirname(__DIR__) . '/config/auth.php')['session']);
+RequestContext::boot(
+    (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'),
+    isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : null,
+);
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 

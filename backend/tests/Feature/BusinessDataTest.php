@@ -64,7 +64,7 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertArrayNotHasKey('managerId', $stockist['body']['data']['stockist']);
     }
 
-    public function testCatalogueDeleteIsBlockedWhileAProductUsesItAndRestoreKeepsTheLink(): void
+    public function testCatalogueDeleteUnlinksProductsAndClearsTermLinks(): void
     {
         $admin = $this->signedInAs('admin', 'admin-catalogue@example.test');
         $group = $admin->request('POST', '/api/catalogue-terms', ['kind' => 'groupCategory', 'name' => 'General'])['body']['data']['term'];
@@ -85,23 +85,20 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertSame(201, $product['status'], $product['raw']);
         self::assertSame([$tag['id']], $product['body']['data']['product']['tagIds']);
         self::assertSame([$badge['id']], $product['body']['data']['product']['badgeIds']);
-        self::assertError(
-            $admin->request('POST', '/api/catalogue-terms/' . $category['id'] . '/delete', []),
-            422,
-            'validation_failed',
-        );
-        self::assertError($admin->request('POST', '/api/catalogue-terms/' . $tag['id'] . '/delete', []), 422, 'validation_failed');
-        self::assertError($admin->request('POST', '/api/catalogue-terms/' . $badge['id'] . '/delete', []), 422, 'validation_failed');
 
         $productId = $product['body']['data']['product']['id'];
-        self::assertSame(200, $admin->request('POST', "/api/products/{$productId}/delete", [])['status']);
+        self::assertSame(200, $admin->request('POST', '/api/catalogue-terms/' . $tag['id'] . '/delete', [])['status']);
+        self::assertSame(200, $admin->request('POST', '/api/catalogue-terms/' . $badge['id'] . '/delete', [])['status']);
         self::assertSame(200, $admin->request('POST', '/api/catalogue-terms/' . $category['id'] . '/delete', [])['status']);
-        $restored = $admin->request('POST', "/api/products/{$productId}/restore", []);
-        self::assertSame(200, $restored['status'], $restored['raw']);
-        self::assertSame($category['id'], $restored['body']['data']['product']['categoryId']);
-        self::assertSame([$tag['id']], $restored['body']['data']['product']['tagIds']);
-        self::assertSame([$badge['id']], $restored['body']['data']['product']['badgeIds']);
-        self::assertNull($restored['body']['data']['product']['deletedAt']);
+
+        $after = $admin->request('GET', '/api/products')['body']['data']['products'][0];
+        self::assertSame($productId, $after['id']);
+        self::assertNull($after['categoryId']);
+        self::assertSame([], $after['tagIds']);
+        self::assertSame([], $after['badgeIds']);
+        self::assertNull($after['deletedAt']);
+
+        self::assertSame(200, $admin->request('POST', '/api/catalogue-terms/' . $group['id'] . '/delete', [])['status']);
     }
 
     public function testProductCodeIsUniqueOnlyWhileActiveAndHistoryNamesTheUser(): void

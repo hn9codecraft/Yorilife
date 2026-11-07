@@ -11,10 +11,17 @@ use Tests\Support\FeatureTestCase;
 /** Product classification, year-specific commercials, and the product-level scheme. */
 final class ProductModuleTest extends FeatureTestCase
 {
-    public function testCategoryMustBelongToTheSelectedGroup(): void
+    public function testCategoryAndGroupAreOptionalAndDeleteUnlinks(): void
     {
         $admin = $this->signedInAs('admin', 'admin-class@example.test');
-        self::assertError($admin->request('POST', '/api/catalogue-terms', ['kind' => 'category', 'name' => 'Loose']), 422, 'validation_failed');
+
+        $loose = $admin->request('POST', '/api/catalogue-terms', [
+            'kind' => 'category', 'name' => 'Loose', 'description' => 'No group', 'status' => 'active',
+        ]);
+        self::assertSame(201, $loose['status'], $loose['raw']);
+        self::assertNull($loose['body']['data']['term']['parentId']);
+        self::assertSame('No group', $loose['body']['data']['term']['description']);
+        self::assertSame('active', $loose['body']['data']['term']['status']);
 
         $group = $this->group($admin, 'Cardiac');
         $other = $this->group($admin, 'Derma');
@@ -22,9 +29,15 @@ final class ProductModuleTest extends FeatureTestCase
         $foreign = $this->category($admin, 'Creams', $other);
 
         self::assertError($admin->request('POST', '/api/products', $this->productBody('Bad', 'BAD', $group, $foreign)), 422, 'validation_failed');
-        self::assertError($admin->request('POST', '/api/products', [
-            'name' => 'No class', 'code' => '', 'groupCategoryId' => null, 'categoryId' => null, 'scheme' => '',
-        ]), 422, 'validation_failed');
+
+        $plain = $admin->request('POST', '/api/products', [
+            'name' => 'No class', 'code' => 'NOCLASS', 'categoryId' => null, 'scheme' => '',
+            'strip' => '10', 'pack' => '1x10', 'mrp' => '100.00', 'ptr' => '80.00', 'pts' => '70.00',
+        ]);
+        self::assertSame(201, $plain['status'], $plain['raw']);
+        self::assertNull($plain['body']['data']['product']['categoryId']);
+        self::assertSame('10', $plain['body']['data']['product']['strip']);
+        self::assertSame('100.00', $plain['body']['data']['product']['mrp']);
 
         $created = $admin->request('POST', '/api/products', $this->productBody('Good', 'GOOD', $group, $category, '10+5'));
         self::assertSame(201, $created['status'], $created['raw']);
@@ -35,27 +48,55 @@ final class ProductModuleTest extends FeatureTestCase
         self::assertSame(200, $edited['status'], $edited['raw']);
         self::assertSame('Good Plus', $edited['body']['data']['product']['name']);
 
-        self::assertError($admin->request('POST', '/api/catalogue-terms/' . $group . '/delete', []), 422, 'validation_failed');
-        self::assertError($admin->request('POST', '/api/catalogue-terms/' . $category . '/delete', []), 422, 'validation_failed');
-        self::assertSame(200, $admin->request('POST', '/api/products/' . $created['body']['data']['product']['id'] . '/delete', [])['status']);
-        self::assertSame(200, $admin->request('POST', '/api/catalogue-terms/' . $category . '/delete', [])['status']);
-        self::assertSame(200, $admin->request('POST', '/api/catalogue-terms/' . $group . '/delete', [])['status']);
+        // Deleting a category in use clears product.category_id instead of blocking.
+        $deleteCategory = $admin->request('POST', '/api/catalogue-terms/' . $category . '/delete', []);
+        self::assertSame(200, $deleteCategory['status'], $deleteCategory['raw']);
+        $afterCategory = $admin->request('GET', '/api/products')['body']['data']['products'];
+        $good = null;
+        foreach ($afterCategory as $row) {
+            if ($row['code'] === 'GOOD') {
+                $good = $row;
+            }
+        }
+        self::assertNotNull($good);
+        self::assertNull($good['categoryId']);
+
+        // Deleting a group clears child category.parent_id.
+        $stillLinked = $admin->request('POST', '/api/catalogue-terms', [
+            'kind' => 'category', 'name' => 'Still Linked', 'parentId' => $group, 'status' => 'active',
+        ]);
+        self::assertSame(201, $stillLinked['status'], $stillLinked['raw']);
+        $deleteGroup = $admin->request('POST', '/api/catalogue-terms/' . $group . '/delete', []);
+        self::assertSame(200, $deleteGroup['status'], $deleteGroup['raw']);
+        $terms = $admin->request('GET', '/api/catalogue-terms')['body']['data']['terms'];
+        $child = null;
+        foreach ($terms as $term) {
+            if ($term['name'] === 'Still Linked') {
+                $child = $term;
+            }
+        }
+        self::assertNotNull($child);
+        self::assertNull($child['parentId']);
     }
 
-    public function testLegacyCategoryIsNotGuessedAndMustBeMapped(): void
+    public function testLegacyCategoryCanBeUsedWithoutGroup(): void
     {
         $admin = $this->signedInAs('admin', 'admin-legacy@example.test');
         $group = $this->group($admin, 'Cardiac');
         $pdo = Database::connection();
-        $pdo->prepare('INSERT INTO catalogue_terms (kind, name) VALUES (?, ?)')->execute(['category', 'Legacy']);
+        $pdo->prepare('INSERT INTO catalogue_terms (kind, name, status) VALUES (?, ?, ?)')->execute(['category', 'Legacy', 'active']);
         $legacyId = (string) $pdo->lastInsertId();
         self::assertNull($pdo->query('SELECT parent_id FROM catalogue_terms WHERE name = \'Legacy\'')->fetchColumn());
 
-        self::assertError($admin->request('POST', '/api/products', $this->productBody('Old', '', $group, $legacyId)), 422, 'validation_failed');
+        $created = $admin->request('POST', '/api/products', [
+            'name' => 'Old', 'code' => 'OLD', 'categoryId' => $legacyId, 'scheme' => '',
+        ]);
+        self::assertSame(201, $created['status'], $created['raw']);
+        self::assertSame($legacyId, $created['body']['data']['product']['categoryId']);
+
         $mapped = $admin->request('PATCH', '/api/catalogue-terms/' . $legacyId, ['name' => 'Legacy', 'parentId' => $group]);
         self::assertSame(200, $mapped['status'], $mapped['raw']);
         self::assertSame($group, $mapped['body']['data']['term']['parentId']);
-        self::assertSame(201, $admin->request('POST', '/api/products', $this->productBody('Old', 'OLD', $group, $legacyId))['status']);
     }
 
     public function testYearCommercialsStaySeparateAndInclusionCanChange(): void
@@ -261,7 +302,9 @@ final class ProductModuleTest extends FeatureTestCase
 
     private function group(ApiClient $admin, string $name): string
     {
-        $created = $admin->request('POST', '/api/catalogue-terms', ['kind' => 'groupCategory', 'name' => $name]);
+        $created = $admin->request('POST', '/api/catalogue-terms', [
+            'kind' => 'groupCategory', 'name' => $name, 'description' => '', 'status' => 'active',
+        ]);
         self::assertSame(201, $created['status'], $created['raw']);
 
         return $created['body']['data']['term']['id'];
@@ -269,13 +312,15 @@ final class ProductModuleTest extends FeatureTestCase
 
     private function category(ApiClient $admin, string $name, string $groupId): string
     {
-        $created = $admin->request('POST', '/api/catalogue-terms', ['kind' => 'category', 'name' => $name, 'parentId' => $groupId]);
+        $created = $admin->request('POST', '/api/catalogue-terms', [
+            'kind' => 'category', 'name' => $name, 'parentId' => $groupId, 'status' => 'active',
+        ]);
         self::assertSame(201, $created['status'], $created['raw']);
 
         return $created['body']['data']['term']['id'];
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, mixed> */
     private function productBody(string $name, string $code, string $groupId, string $categoryId, string $scheme = ''): array
     {
         return [

@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Controllers\AnnouncementController;
+use App\Controllers\AuditLogController;
 use App\Controllers\AuthController;
 use App\Controllers\CatalogueController;
+use App\Controllers\ChangeHistoryController;
 use App\Controllers\EmployeeController;
 use App\Controllers\ErpController;
 use App\Controllers\HealthController;
@@ -13,6 +15,7 @@ use App\Controllers\ProductController;
 use App\Controllers\SalesEntryController;
 use App\Controllers\SalesOfficeController;
 use App\Controllers\SearchController;
+use App\Controllers\SettingsController;
 use App\Controllers\UserController;
 use App\Middleware\AuthMiddleware;
 use App\Utils\Router;
@@ -137,3 +140,13 @@ $router->get('/api/employees', [EmployeeController::class, 'index'], [$auth, $an
 $router->post('/api/employees', [EmployeeController::class, 'store'], [$auth, $annManage]);
 $router->patch('/api/employees/{id}', [EmployeeController::class, 'update'], [$auth, $annManage]);
 $router->post('/api/employees/{id}/delete', [EmployeeController::class, 'delete'], [$auth, $annManage]);
+
+// System & Audit (Super Admin and Admin).
+$auditView = AuthMiddleware::can('audit.view');
+$settingsView = AuthMiddleware::can('settings.view');
+$router->get('/api/audit-logs/export', [AuditLogController::class, 'export'], [$auth, $auditView]);
+$router->get('/api/audit-logs', [AuditLogController::class, 'index'], [$auth, $auditView]);
+$router->get('/api/audit-logs/{id}', [AuditLogController::class, 'show'], [$auth, $auditView]);
+$router->get('/api/change-history/export', [ChangeHistoryController::class, 'export'], [$auth, $auditView]);
+$router->get('/api/change-history', [ChangeHistoryController::class, 'index'], [$auth, $auditView]);
+$router->get('/api/settings', [SettingsController::class, 'index'], [$auth, $settingsView]);

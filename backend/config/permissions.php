@@ -54,13 +54,15 @@ return [
         'announcements.manage' => 'Create and edit announcement drafts, templates and the employee list',
         'announcements.publish' => 'Publish, schedule, pin, edit live and recall announcements',
         'announcements.reports' => 'See announcement tracking and export recipient lists',
+        'audit.view' => 'View Audit Logs and Change History',
+        'settings.view' => 'View system settings',
     ],
 
     'roles' => [
         'super_admin' => ['rank' => 100, 'permissions' => ['*']],
         'admin' => [
             'rank' => 80,
-            'permissions' => ['users.view', 'users.create', 'users.update', 'users.change_status', 'users.assign_role', ...$business],
+            'permissions' => ['users.view', 'users.create', 'users.update', 'users.change_status', 'users.assign_role', 'audit.view', 'settings.view', ...$business],
         ],
         'sales_manager' => ['rank' => 50, 'permissions' => $viewOnly],
         'sales_user' => ['rank' => 10, 'permissions' => $viewOnly],

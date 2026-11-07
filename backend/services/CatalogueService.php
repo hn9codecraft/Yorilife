@@ -17,29 +17,52 @@ final class CatalogueService
     public function create(array $input): array
     {
         $errors = [];
-        Input::onlyFields($input, ['name', 'kind', 'parentId'], $errors);
+        Input::onlyFields($input, ['name', 'kind', 'parentId', 'description', 'status'], $errors);
         $name = Input::text($input, 'name', 'name', 100, $errors);
         $kind = ErpPresenter::termKindIn(is_string($input['kind'] ?? null) ? $input['kind'] : '');
         if ($kind === null) {
             $errors['kind'] = 'Choose a term type.';
         }
+        $description = Input::optionalText($input, 'description', 'description', 500, $errors);
+        $status = $this->status($input['status'] ?? 'active', $errors);
         $parentId = $this->parentId($input['parentId'] ?? null, $errors);
         if ($errors !== []) {
             throw HttpException::validation($errors);
         }
         if ($kind === 'category') {
-            $this->assertGroup($parentId);
+            $this->assertGroupOptional($parentId);
         } elseif ($parentId !== null) {
             throw HttpException::validation(['parentId' => 'Only a product category belongs to a group category.']);
         }
 
-        $fields = ['kind' => $kind, 'name' => $name];
+        $fields = [
+            'kind' => $kind,
+            'name' => $name,
+            'description' => $description,
+            'status' => $status,
+        ];
         if ($kind === 'category') {
             $fields['parent_id'] = $parentId;
         }
         $id = $this->records->insert($fields);
+        $created = $this->records->find($id);
+        EntityHistory::recordDiff('catalogue_term', $id, $created['name'], [], [
+            'Name' => $created['name'],
+            'Kind' => $created['kind'],
+            'Status' => $created['status'],
+            'Description' => $created['description'] ?? null,
+            'Group' => $created['parent_id'] ?? null,
+        ]);
+        AuditLogger::record([
+            'module' => 'catalogue',
+            'action' => 'create',
+            'targetType' => 'catalogue_term',
+            'targetId' => $id,
+            'targetLabel' => $created['name'],
+            'details' => ['kind' => $created['kind']],
+        ]);
 
-        return ErpPresenter::term($this->records->find($id));
+        return ErpPresenter::term($created);
     }
 
     /** @param array<string, mixed> $input */
@@ -50,8 +73,14 @@ final class CatalogueService
             throw HttpException::validation(['name' => 'Restore this record before editing it.']);
         }
         $errors = [];
-        Input::onlyFields($input, ['name', 'parentId'], $errors);
+        Input::onlyFields($input, ['name', 'parentId', 'description', 'status'], $errors);
         $name = Input::text($input, 'name', 'name', 100, $errors);
+        $description = array_key_exists('description', $input)
+            ? Input::optionalText($input, 'description', 'description', 500, $errors)
+            : ($term['description'] ?? null);
+        $status = array_key_exists('status', $input)
+            ? $this->status($input['status'], $errors)
+            : (string) ($term['status'] ?? 'active');
         $parentProvided = array_key_exists('parentId', $input);
         $parentId = $parentProvided ? $this->parentId($input['parentId'], $errors) : null;
         if ($errors !== []) {
@@ -61,16 +90,40 @@ final class CatalogueService
             throw HttpException::validation(['parentId' => 'Only a product category belongs to a group category.']);
         }
         if ($term['kind'] === 'category' && $parentProvided) {
-            $this->assertGroup($parentId);
+            $this->assertGroupOptional($parentId);
         }
 
-        $fields = ['name' => $name];
+        $fields = [
+            'name' => $name,
+            'description' => $description,
+            'status' => $status,
+        ];
         if ($term['kind'] === 'category' && $parentProvided) {
             $fields['parent_id'] = $parentId;
         }
+        $before = [
+            'Name' => $term['name'],
+            'Status' => $term['status'],
+            'Description' => $term['description'] ?? null,
+            'Group' => $term['parent_id'] ?? null,
+        ];
         $this->records->update($id, $fields);
+        $updated = $this->records->find($id);
+        EntityHistory::recordDiff('catalogue_term', $id, $updated['name'], $before, [
+            'Name' => $updated['name'],
+            'Status' => $updated['status'],
+            'Description' => $updated['description'] ?? null,
+            'Group' => $updated['parent_id'] ?? null,
+        ]);
+        AuditLogger::record([
+            'module' => 'catalogue',
+            'action' => 'update',
+            'targetType' => 'catalogue_term',
+            'targetId' => $id,
+            'targetLabel' => $updated['name'],
+        ]);
 
-        return ErpPresenter::term($this->records->find($id));
+        return ErpPresenter::term($updated);
     }
 
     public function delete(int $id): array
@@ -79,17 +132,28 @@ final class CatalogueService
         if ($term['deleted_at'] !== null) {
             return ErpPresenter::term($term);
         }
-        if ($term['kind'] === 'group_category' && $this->records->activeChildCategories($id) > 0) {
-            throw HttpException::validation([
-                'name' => 'A product category still belongs to this group. Reassign or delete those categories before deleting the group.',
-            ]);
+
+        // Unlink children instead of blocking: groups clear category.parent_id;
+        // categories clear product.category_id. Products themselves are kept.
+        if ($term['kind'] === 'group_category') {
+            $this->records->clearChildParents($id);
         }
-        if ($this->records->activeReferences($id) > 0) {
-            throw HttpException::validation([
-                'name' => 'This is still used by an active product. Remove it from those products before deleting it.',
-            ]);
+        if ($term['kind'] === 'category') {
+            $this->records->clearProductCategories($id);
+        }
+        if (in_array($term['kind'], ['tag', 'badge'], true)) {
+            $this->records->clearProductTermLinks($id);
         }
         $this->records->setDeleted($id, true);
+        EntityHistory::recordDiff('catalogue_term', $id, $term['name'], ['Status' => 'Active'], ['Status' => 'Deleted']);
+        AuditLogger::record([
+            'module' => 'catalogue',
+            'action' => 'delete',
+            'targetType' => 'catalogue_term',
+            'targetId' => $id,
+            'targetLabel' => $term['name'],
+            'details' => ['kind' => $term['kind']],
+        ]);
 
         return ErpPresenter::term($this->records->find($id));
     }
@@ -101,6 +165,15 @@ final class CatalogueService
             return ErpPresenter::term($term);
         }
         $this->records->setDeleted($id, false);
+        EntityHistory::recordDiff('catalogue_term', $id, $term['name'], ['Status' => 'Deleted'], ['Status' => 'Active']);
+        AuditLogger::record([
+            'module' => 'catalogue',
+            'action' => 'restore',
+            'targetType' => 'catalogue_term',
+            'targetId' => $id,
+            'targetLabel' => $term['name'],
+            'details' => ['kind' => $term['kind']],
+        ]);
 
         return ErpPresenter::term($this->records->find($id));
     }
@@ -119,14 +192,30 @@ final class CatalogueService
         return $id;
     }
 
-    private function assertGroup(?int $parentId): void
+    /** Group is optional; when set it must be an active group category. */
+    private function assertGroupOptional(?int $parentId): void
     {
         if ($parentId === null) {
-            throw HttpException::validation(['parentId' => 'Choose the group category this product category belongs to.']);
+            return;
         }
         $parent = $this->records->find($parentId);
         if ($parent === null || $parent['kind'] !== 'group_category' || $parent['deleted_at'] !== null) {
             throw HttpException::validation(['parentId' => 'Choose an active group category.']);
         }
+    }
+
+    /** @param array<string, string> $errors */
+    private function status(mixed $value, array &$errors): string
+    {
+        if ($value === null || $value === '') {
+            return 'active';
+        }
+        if (!is_string($value) || !in_array($value, ['active', 'inactive'], true)) {
+            $errors['status'] = 'Choose active or inactive.';
+
+            return 'active';
+        }
+
+        return $value;
     }
 }

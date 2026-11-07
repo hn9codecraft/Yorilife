@@ -6,6 +6,7 @@ namespace App\Middleware;
 
 use App\Services\AuthService;
 use App\Services\Authorization;
+use App\Services\RequestContext;
 use App\Utils\HttpException;
 use App\Utils\Request;
 
@@ -22,6 +23,8 @@ final class AuthMiddleware
     {
         return static function (Request $request): void {
             $session = (new AuthService())->currentSession();
+            RequestContext::boot($request->ip(), $request->header('User-Agent'));
+            RequestContext::setActor($session['user']);
 
             if ($request->isStateChanging()) {
                 $token = $request->header('X-CSRF-Token') ?? '';

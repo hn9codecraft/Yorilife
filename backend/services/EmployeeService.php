@@ -24,23 +24,68 @@ final class EmployeeService
     {
         $values = $this->validate($input);
         $id = $this->repository->insert($values + ['created_by' => (int) $user['id'], 'updated_by' => (int) $user['id'], 'created_at' => UtcTime::now(), 'updated_at' => UtcTime::now()]);
+        $created = $this->repository->find($id);
+        EntityHistory::recordDiff('employee', $id, $created['name'], [], [
+            'Name' => $created['name'],
+            'Email' => $created['email'],
+            'Phone' => $created['phone'],
+            'Status' => $created['status'],
+            'Role' => $created['role'],
+        ], (int) $user['id']);
+        AuditLogger::record([
+            'module' => 'announcements',
+            'action' => 'employee_create',
+            'targetType' => 'employee',
+            'targetId' => $id,
+            'targetLabel' => $created['name'],
+        ]);
 
-        return self::present($this->repository->find($id));
+        return self::present($created);
     }
 
     public function update(int $id, array $input, array $user): array
     {
-        $this->repository->find($id) ?? throw HttpException::notFound('Employee not found.');
+        $current = $this->repository->find($id) ?? throw HttpException::notFound('Employee not found.');
         $values = $this->validate($input);
+        $before = [
+            'Name' => $current['name'],
+            'Email' => $current['email'],
+            'Phone' => $current['phone'],
+            'Status' => $current['status'],
+            'Role' => $current['role'],
+        ];
         $this->repository->update($id, $values + ['updated_by' => (int) $user['id'], 'updated_at' => UtcTime::now()]);
+        $updated = $this->repository->find($id);
+        EntityHistory::recordDiff('employee', $id, $updated['name'], $before, [
+            'Name' => $updated['name'],
+            'Email' => $updated['email'],
+            'Phone' => $updated['phone'],
+            'Status' => $updated['status'],
+            'Role' => $updated['role'],
+        ], (int) $user['id']);
+        AuditLogger::record([
+            'module' => 'announcements',
+            'action' => 'employee_update',
+            'targetType' => 'employee',
+            'targetId' => $id,
+            'targetLabel' => $updated['name'],
+        ]);
 
-        return self::present($this->repository->find($id));
+        return self::present($updated);
     }
 
     public function delete(int $id, array $user): void
     {
-        $this->repository->find($id) ?? throw HttpException::notFound('Employee not found.');
+        $current = $this->repository->find($id) ?? throw HttpException::notFound('Employee not found.');
         $this->repository->softDelete($id, (int) $user['id']);
+        EntityHistory::recordDiff('employee', $id, $current['name'], ['Status' => $current['status']], ['Status' => 'deleted'], (int) $user['id']);
+        AuditLogger::record([
+            'module' => 'announcements',
+            'action' => 'employee_delete',
+            'targetType' => 'employee',
+            'targetId' => $id,
+            'targetLabel' => $current['name'],
+        ]);
     }
 
     /** @return array<string, mixed> */

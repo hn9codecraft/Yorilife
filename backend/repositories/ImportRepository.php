@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Services\AuditLogger;
+
 use InvalidArgumentException;
 
 /**
@@ -161,6 +163,15 @@ final class ImportRepository extends Repository
                 $ip === null ? null : substr($ip, 0, 45),
                 $details === [] ? null : json_encode($details, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             ]);
+        AuditLogger::record([
+            'module' => 'import',
+            'action' => $action,
+            'actorId' => $userId,
+            'targetType' => 'import',
+            'targetId' => $importId,
+            'targetLabel' => 'Import #' . $importId,
+            'details' => $details === [] ? null : $details,
+        ]);
     }
 
     /** @return list<array<string, mixed>> */

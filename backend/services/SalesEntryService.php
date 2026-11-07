@@ -26,17 +26,60 @@ final class SalesEntryService
         $fields = $this->fields($input, null);
         $fields['entered_by'] = (int) $actor['id'];
         $id = $this->records->insert($fields);
+        $created = $this->records->find($id);
+        EntityHistory::recordDiff('sales_entry', $id, 'Sales entry #' . $id, [], [
+            'Month' => $created['sales_month'],
+            'Headquarters' => $created['headquarters_id'],
+            'Stockist' => $created['stockist_id'],
+            'Achievement' => $created['achievement_value'],
+            'Bonus' => $created['bonus'],
+            'Deduction' => $created['deduction'],
+            'Final value' => $created['final_value'],
+        ], (int) $actor['id']);
+        AuditLogger::record([
+            'module' => 'sales',
+            'action' => 'create',
+            'targetType' => 'sales_entry',
+            'targetId' => $id,
+            'targetLabel' => 'Sales entry #' . $id,
+        ]);
 
-        return ErpPresenter::sales($this->records->find($id));
+        return ErpPresenter::sales($created);
     }
 
     /** @param array<string, mixed> $input */
     public function update(int $id, array $input): array
     {
         $current = $this->records->find($id) ?? throw HttpException::notFound('Sales entry not found.');
+        $before = [
+            'Month' => $current['sales_month'],
+            'Headquarters' => $current['headquarters_id'],
+            'Stockist' => $current['stockist_id'],
+            'Achievement' => $current['achievement_value'],
+            'Bonus' => $current['bonus'],
+            'Deduction' => $current['deduction'],
+            'Final value' => $current['final_value'],
+        ];
         $this->records->update($id, $this->fields($input, $current));
+        $updated = $this->records->find($id);
+        EntityHistory::recordDiff('sales_entry', $id, 'Sales entry #' . $id, $before, [
+            'Month' => $updated['sales_month'],
+            'Headquarters' => $updated['headquarters_id'],
+            'Stockist' => $updated['stockist_id'],
+            'Achievement' => $updated['achievement_value'],
+            'Bonus' => $updated['bonus'],
+            'Deduction' => $updated['deduction'],
+            'Final value' => $updated['final_value'],
+        ]);
+        AuditLogger::record([
+            'module' => 'sales',
+            'action' => 'update',
+            'targetType' => 'sales_entry',
+            'targetId' => $id,
+            'targetLabel' => 'Sales entry #' . $id,
+        ]);
 
-        return ErpPresenter::sales($this->records->find($id));
+        return ErpPresenter::sales($updated);
     }
 
     /**
