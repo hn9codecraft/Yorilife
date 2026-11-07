@@ -61,7 +61,7 @@ function StateListField({ id, locations, value, onChange, error, emptyText = 'No
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <div className="border rounded p-2" style={{ maxHeight: '11rem', overflow: 'auto' }}>
+        <div className="choice-group choice-group--scroll">
           {locations.length === 0 ? (
             <p className="text-muted mb-0">{emptyText}</p>
           ) : choices.length === 0 ? (

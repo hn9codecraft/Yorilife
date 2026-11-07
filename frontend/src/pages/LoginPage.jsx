@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import BrandLogo from '../components/BrandLogo.jsx'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 import PasswordInput from '../components/PasswordInput.jsx'
 import AuthStatusScreen from '../components/AuthStatusScreen.jsx'
 import useAuth from '../auth/useAuth.js'
@@ -83,6 +84,9 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
+      <div className="auth-page__toolbar">
+        <ThemeToggle />
+      </div>
       <div className="auth-card">
         <BrandLogo className="auth-card__logo" />
         <h1 className="auth-card__title">Sign in to {APP_TITLE}</h1>

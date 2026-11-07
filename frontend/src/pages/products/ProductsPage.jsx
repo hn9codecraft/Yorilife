@@ -251,7 +251,7 @@ export default function ProductsPage({ deleted = false }) {
             <SearchInput value={query} onChange={setQuery} label="Search products" placeholder="Search name or code" />
             {!deleted && (
               <select
-                className="form-select w-auto"
+                className="form-select toolbar__select"
                 aria-label="Filter by product category"
                 value={categoryFilter}
                 onChange={(event) => setCategoryFilter(event.target.value)}

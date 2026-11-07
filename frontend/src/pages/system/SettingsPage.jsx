@@ -32,7 +32,7 @@ export default function SettingsPage() {
           </div>
           {state.data.groups.map((group) => (
             <TableCard key={group.id} title={group.label}>
-              <div className="table-responsive">
+              <div className="table-container">
                 <table className="table table-sm mb-0">
                   <caption className="visually-hidden">{group.label}</caption>
                   <thead>
@@ -45,12 +45,12 @@ export default function SettingsPage() {
                   <tbody>
                     {group.items.map((item) => (
                       <tr key={item.key}>
-                        <td>
+                        <td data-label="Setting">
                           <strong className="fw-semibold">{item.label}</strong>
                           {item.source && <div className="small text-muted">{item.source}</div>}
                         </td>
-                        <td><code>{item.value === '' || item.value == null ? '—' : item.value}</code></td>
-                        <td className="text-nowrap">{item.updatedAt ? formatDateTime(item.updatedAt) : '—'}</td>
+                        <td data-label="Value"><code>{item.value === '' || item.value == null ? '—' : item.value}</code></td>
+                        <td data-label="Updated">{item.updatedAt ? formatDateTime(item.updatedAt) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>

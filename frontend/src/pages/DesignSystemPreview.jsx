@@ -71,6 +71,7 @@ export default function DesignSystemPreview() {
       />
 
       <Section title="Brand colours">
+        <p className="text-muted">Chips follow the active colour mode. The hex value is the light-theme brand colour.</p>
         <div className="row row-cols-2 row-cols-sm-3 row-cols-lg-6 g-3">
           {SWATCHES.map((swatch) => (
             <div className="col" key={swatch.token}>
@@ -78,7 +79,8 @@ export default function DesignSystemPreview() {
                 <div className="swatch__color" style={{ backgroundColor: `var(${swatch.token})` }} />
                 <div className="swatch__meta">
                   <span className="swatch__name">{swatch.name}</span>
-                  <span className="swatch__value">{swatch.value}</span>
+                  <span className="swatch__value">{swatch.token}</span>
+                  <span className="swatch__value">Light {swatch.value}</span>
                 </div>
               </div>
             </div>
@@ -291,15 +293,15 @@ export default function DesignSystemPreview() {
               <tbody>
                 {SAMPLE_ROWS.map((row) => (
                   <tr key={row.code}>
-                    <td className="font-mono text-nowrap">{row.code}</td>
-                    <td>{row.name}</td>
-                    <td>
+                    <td className="font-mono text-nowrap" data-label="Code">{row.code}</td>
+                    <td data-label="Name">{row.name}</td>
+                    <td data-label="Status">
                       <span className={`badge status-badge text-${row.status}-emphasis bg-${row.status}-subtle`}>
                         {row.label}
                       </span>
                     </td>
-                    <td className="text-end text-nowrap">{row.value}</td>
-                    <td className="text-end">
+                    <td className="text-end text-nowrap" data-label="Value">{row.value}</td>
+                    <td className="text-end" data-label="Actions">
                       <button type="button" className="btn btn-sm btn-outline-secondary btn-icon" aria-label={`Actions for ${row.code}`}>
                         <i className="bi bi-three-dots" aria-hidden="true" />
                       </button>
