@@ -53,8 +53,10 @@ final class ImportBackupDownloadTest extends FeatureTestCase
         self::assertSame('3rd Line Manager', $manager['Data Type']);
         self::assertSame(['Shyam', 'Shyam'], [$manager['Previous Name'], $manager['New Name']], 'unchanged fields show the same value');
         self::assertSame(['XA', 'XA|XB'], [$manager['Previous State List'], $manager['New State List']]);
-        self::assertSame(["\t9876543210", "\t9876500000"], [$manager['Previous Phone Number'], $manager['New Phone Number']], 'a tab keeps Excel from showing 9.88E+09');
-        self::assertStringContainsString("\"\t9876500000\"", $download['raw']);
+        self::assertSame(['******3210', '******0000'], [$manager['Previous Phone Number'], $manager['New Phone Number']], 'phone numbers are masked in the CSV');
+        self::assertStringNotContainsString('9876543210', $download['raw']);
+        self::assertStringNotContainsString('9876500000', $download['raw']);
+        self::assertStringContainsString('******0000', $download['raw']);
         self::assertDoesNotMatchRegularExpression('/(^|,)[0-9]{10}(,|\r)/m', $download['raw'], 'no bare 10-digit number Excel would turn into 9.88E+09');
         self::assertSame('State List, Phone Number', $manager['Changed Fields']);
         self::assertSame('', $manager['Notes']);
@@ -106,11 +108,14 @@ final class ImportBackupDownloadTest extends FeatureTestCase
         foreach ($rows as $row) {
             self::assertNotSame('', $row['Changed Fields']);
         }
-        self::assertSame(['ER-M3-108', "\t9876510802", "\t9876510812", 'Phone Number'], [$rows[0]['Code'], $rows[0]['Previous Phone Number'], $rows[0]['New Phone Number'], $rows[0]['Changed Fields']]);
+        self::assertSame(['ER-M3-108', '******0802', '******0812', 'Phone Number'], [$rows[0]['Code'], $rows[0]['Previous Phone Number'], $rows[0]['New Phone Number'], $rows[0]['Changed Fields']]);
         self::assertSame(["\t380001", "\t380009"], [$rows[1]['Previous Pincode'], $rows[1]['New Pincode']]);
-        self::assertSame(["\t9876510804", "\t9876510814"], [$rows[2]['Previous Phone Number'], $rows[2]['New Phone Number']]);
-        foreach (['9876510802', '9876510812', '9876510813', '9876510814', '380009'] as $number) {
-            self::assertStringContainsString("\"\t{$number}\"", $download['raw']);
+        self::assertSame(['******0804', '******0814'], [$rows[2]['Previous Phone Number'], $rows[2]['New Phone Number']]);
+        self::assertStringContainsString("\"\t380009\"", $download['raw']);
+        self::assertStringNotContainsString('nirav@example.com', $download['raw']);
+        self::assertStringContainsString('n***@example.com', $download['raw']);
+        foreach (['9876510802', '9876510812', '9876510813', '9876510814'] as $number) {
+            self::assertStringNotContainsString($number, $download['raw']);
         }
         self::assertDoesNotMatchRegularExpression('/(^|,)[0-9]{6,}(,|\r)/m', $download['raw'], 'no bare long number Excel would coerce');
     }

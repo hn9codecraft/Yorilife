@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Database\Database;
 use App\Repositories\EntityChangeRepository;
+use App\Utils\HttpException;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -27,6 +28,8 @@ final class ChangeHistoryService
         $filters = $this->filters($query);
         $limit = (int) $filters['limit'];
         $offset = (int) $filters['offset'];
+        $window = min(5000, $offset + $limit);
+        $fetch = array_merge($filters, ['limit' => $window, 'offset' => 0]);
 
         $rows = [];
         $wantTypes = $filters['entityTypes'] ?? null;
@@ -42,7 +45,7 @@ final class ChangeHistoryService
         }
 
         if ($includeEntity) {
-            foreach ($this->changes->search(array_merge($filters, ['limit' => 500, 'offset' => 0])) as $row) {
+            foreach ($this->changes->search($fetch) as $row) {
                 $rows[] = $this->presentEntity($row);
             }
         }
@@ -52,20 +55,24 @@ final class ChangeHistoryService
             $typesFilter = [$wantEntity];
         }
 
+        $sqlTotal = $includeEntity ? $this->changes->count($filters) : 0;
         if ($this->wants($typesFilter, ['product'])) {
-            foreach ($this->bridgeProducts($filters) as $row) {
+            foreach ($this->bridgeProducts($fetch) as $row) {
                 $rows[] = $row;
             }
+            $sqlTotal += $this->countSimple('product_changes', $filters);
         }
         if ($this->wants($typesFilter, ['master_sheet_entry'])) {
-            foreach ($this->bridgeMasterSheet($filters) as $row) {
+            foreach ($this->bridgeMasterSheet($fetch) as $row) {
                 $rows[] = $row;
             }
+            $sqlTotal += $this->countSimple('master_sheet_changes', $filters);
         }
         if ($this->wants($typesFilter, ['announcement'])) {
-            foreach ($this->bridgeAnnouncements($filters) as $row) {
+            foreach ($this->bridgeAnnouncements($fetch) as $row) {
                 $rows[] = $row;
             }
+            $sqlTotal += $this->countSimple('announcement_changes', $filters);
         }
 
         if (!empty($filters['changedBy'])) {
@@ -101,7 +108,8 @@ final class ChangeHistoryService
             return $cmp !== 0 ? $cmp : strcmp((string) $b['id'], (string) $a['id']);
         });
 
-        $total = count($rows);
+        $filtered = !empty($filters['q']) || !empty($filters['field']) || !empty($filters['entityId']) || !empty($filters['changedBy']);
+        $total = $filtered ? count($rows) : max(count($rows), $sqlTotal);
         $page = array_slice($rows, $offset, $limit);
 
         return [
@@ -125,27 +133,51 @@ final class ChangeHistoryService
                 self::csv($item['entityId'] !== null ? (string) $item['entityId'] : ''),
                 self::csv((string) ($item['entityLabel'] ?? '')),
                 self::csv((string) $item['field']),
-                self::csv((string) ($item['oldValue'] ?? '')),
-                self::csv((string) ($item['newValue'] ?? '')),
+                self::csv(PiiMask::field((string) $item['field'], (string) ($item['oldValue'] ?? ''))),
+                self::csv(PiiMask::field((string) $item['field'], (string) ($item['newValue'] ?? ''))),
                 self::csv((string) ($item['changedByName'] ?? '')),
                 self::csv((string) ($item['source'] ?? '')),
             ]);
         }
 
-        AuditLogger::record([
-            'module' => 'system',
-            'action' => 'change_history_export',
-            'targetType' => 'entity_changes',
-            'targetLabel' => 'Change History CSV',
-            'details' => ['rowCount' => count($result['items'])],
-        ]);
-
         $stamp = (new DateTimeImmutable('now', new DateTimeZone(UtcTime::INDIA)))->format('Ymd_His');
+        $filename = "yorilife-change-history-{$stamp}.csv";
+        ExportAudit::record('change_history', $filename, count($result['items']));
 
         return [
-            'filename' => "yorilife-change-history-{$stamp}.csv",
+            'filename' => $filename,
             'content' => "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n",
         ];
+    }
+
+    /** @param array<string, mixed> $actor @param array<string, mixed> $input */
+    public function archive(array $actor, array $input): array
+    {
+        Authorization::authorize($actor, 'audit.view');
+        $errors = [];
+        UserValidator::onlyFields($input, ['olderThanDays'], $errors);
+        if ($errors !== []) {
+            throw HttpException::validation($errors);
+        }
+        $days = Retention::days($input, 'retention.change_history_days');
+        $cutoff = Retention::cutoff($days);
+        $now = UtcTime::now();
+        $archived = 0;
+        $pdo = Database::connection();
+        foreach (['entity_changes', 'product_changes', 'master_sheet_changes', 'announcement_changes'] as $table) {
+            $stmt = $pdo->prepare("UPDATE {$table} SET archived_at = ? WHERE archived_at IS NULL AND changed_at < ?");
+            $stmt->execute([$now, $cutoff]);
+            $archived += $stmt->rowCount();
+        }
+        AuditLogger::record([
+            'module' => 'system',
+            'action' => 'archive_change_history',
+            'targetType' => 'entity_changes',
+            'targetLabel' => 'Change history',
+            'details' => ['archived' => $archived, 'olderThanDays' => $days],
+        ]);
+
+        return ['archived' => $archived, 'olderThanDays' => $days, 'cutoff' => UtcTime::iso($cutoff)];
     }
 
     /** @param list<string>|null $filter @param list<string> $types */
@@ -175,8 +207,14 @@ final class ChangeHistoryService
         $entityId = isset($query['entityId']) && ctype_digit((string) $query['entityId']) ? (int) $query['entityId'] : null;
         $field = isset($query['field']) && is_string($query['field']) && $query['field'] !== '' ? $query['field'] : null;
         $q = isset($query['q']) && is_string($query['q']) ? trim($query['q']) : null;
-        $limit = isset($query['limit']) && ctype_digit((string) $query['limit']) ? (int) $query['limit'] : 50;
+        $limit = isset($query['limit']) && ctype_digit((string) $query['limit']) ? (int) $query['limit'] : SecurityPolicy::recordsPerPage();
         $offset = isset($query['offset']) && ctype_digit((string) $query['offset']) ? (int) $query['offset'] : 0;
+        $archived = 'active';
+        if (($query['archived'] ?? null) === 'only') {
+            $archived = 'only';
+        } elseif (($query['archived'] ?? null) === 'all') {
+            $archived = 'all';
+        }
 
         return [
             'from' => $from,
@@ -187,7 +225,8 @@ final class ChangeHistoryService
             'entityId' => $entityId,
             'field' => $field,
             'q' => $q === '' ? null : $q,
-            'limit' => max(1, min(200, $limit)),
+            'archived' => $archived,
+            'limit' => max(1, min(5000, $limit)),
             'offset' => max(0, $offset),
         ];
     }
@@ -220,10 +259,11 @@ final class ChangeHistoryService
             $where[] = 'c.changed_at <= ?';
             $params[] = $filters['to'];
         }
+        $this->appendArchived($where, $filters);
         $sql = 'SELECT c.id, c.product_id, c.product_name, c.action, c.changes, c.changed_at, c.changed_by, u.name AS changed_by_name
                 FROM product_changes c LEFT JOIN users u ON u.id = c.changed_by'
             . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
-            . ' ORDER BY c.changed_at DESC, c.id DESC LIMIT 1000';
+            . $this->bridgeTail($filters);
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $out = [];
@@ -291,13 +331,14 @@ final class ChangeHistoryService
             $where[] = 'c.changed_at <= ?';
             $params[] = $filters['to'];
         }
+        $this->appendArchived($where, $filters);
         $sql = 'SELECT c.id, c.product_id, c.product_name, c.field, c.old_value, c.new_value, c.changed_at, c.changed_by,
                        u.name AS changed_by_name, y.label AS year_label
                 FROM master_sheet_changes c
                 JOIN financial_years y ON y.id = c.year_id
                 LEFT JOIN users u ON u.id = c.changed_by'
             . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
-            . ' ORDER BY c.changed_at DESC, c.id DESC LIMIT 1000';
+            . $this->bridgeTail($filters);
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $out = [];
@@ -336,12 +377,13 @@ final class ChangeHistoryService
             $where[] = 'c.changed_at <= ?';
             $params[] = $filters['to'];
         }
+        $this->appendArchived($where, $filters);
         $sql = 'SELECT c.id, c.announcement_id, c.action, c.changes, c.changed_at, c.changed_by, u.name AS changed_by_name, a.title
                 FROM announcement_changes c
                 LEFT JOIN announcements a ON a.id = c.announcement_id
                 LEFT JOIN users u ON u.id = c.changed_by'
             . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
-            . ' ORDER BY c.changed_at DESC, c.id DESC LIMIT 1000';
+            . $this->bridgeTail($filters);
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $out = [];
@@ -408,6 +450,54 @@ final class ChangeHistoryService
         return $out;
     }
 
+    /** @param list<string> $where @param array<string, mixed> $filters */
+    private function appendArchived(array &$where, array $filters): void
+    {
+        $archived = $filters['archived'] ?? 'active';
+        if ($archived === 'only') {
+            $where[] = 'c.archived_at IS NOT NULL';
+        } elseif ($archived !== 'all') {
+            $where[] = 'c.archived_at IS NULL';
+        }
+    }
+
+    /** @param array<string, mixed> $filters */
+    private function bridgeTail(array $filters): string
+    {
+        $limit = max(1, min(5000, (int) ($filters['limit'] ?? 50)));
+
+        return ' ORDER BY c.changed_at DESC, c.id DESC LIMIT ' . $limit;
+    }
+
+    /** @param array<string, mixed> $filters */
+    private function countSimple(string $table, array $filters): int
+    {
+        if (!in_array($table, ['product_changes', 'master_sheet_changes', 'announcement_changes'], true)) {
+            return 0;
+        }
+        $where = [];
+        $params = [];
+        $archived = $filters['archived'] ?? 'active';
+        if ($archived === 'only') {
+            $where[] = 'archived_at IS NOT NULL';
+        } elseif ($archived !== 'all') {
+            $where[] = 'archived_at IS NULL';
+        }
+        if (!empty($filters['from'])) {
+            $where[] = 'changed_at >= ?';
+            $params[] = $filters['from'];
+        }
+        if (!empty($filters['to'])) {
+            $where[] = 'changed_at <= ?';
+            $params[] = $filters['to'];
+        }
+        $sql = 'SELECT COUNT(*) AS total FROM ' . $table . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where));
+        $stmt = Database::connection()->prepare($sql);
+        $stmt->execute($params);
+
+        return (int) $stmt->fetchColumn();
+    }
+
     /** @param array<string, mixed> $row */
     private function presentEntity(array $row): array
     {
@@ -430,7 +520,10 @@ final class ChangeHistoryService
 
     private static function csv(string $value): string
     {
-        if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n") || str_contains($value, "\r")) {
+        if ($value !== '' && str_contains('=+-@', $value[0])) {
+            $value = "'" . $value;
+        }
+        if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n") || str_contains($value, "\r") || str_contains($value, "\t")) {
             return '"' . str_replace('"', '""', $value) . '"';
         }
 

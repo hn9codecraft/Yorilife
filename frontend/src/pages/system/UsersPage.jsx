@@ -16,9 +16,15 @@ import useFormState from '../../hooks/useFormState.js'
 import { api } from '../../api/client.js'
 import { formatDateTime, matchesSearch } from '../../data/selectors.js'
 
-const MIN_PASSWORD = 12
+const FALLBACK_MIN_PASSWORD = 12
 
-function UserForm({ formId, record, roles, isSelf, canAssignRole, onSaved }) {
+function statusMeta(status) {
+  if (status === 'locked') return { variant: 'warning', label: 'Locked' }
+  if (status === 'active') return { variant: 'success', label: 'Active' }
+  return { variant: 'secondary', label: 'Disabled' }
+}
+
+function UserForm({ formId, record, roles, isSelf, canAssignRole, minPassword, passwordHelp, onSaved }) {
   const isNew = !record
   // Roles the actor may assign, plus the user's current role so it still displays.
   const roleOptions = roles
@@ -33,7 +39,7 @@ function UserForm({ formId, record, roles, isSelf, canAssignRole, onSaved }) {
       if (!v.name.trim()) errors.name = 'Enter a name.'
       if (!v.email.trim()) errors.email = 'Enter an email address.'
       if (isNew && !v.role) errors.role = 'Choose a role.'
-      if (isNew && v.password.length < MIN_PASSWORD) errors.password = `Use at least ${MIN_PASSWORD} characters.`
+      if (isNew && v.password.length < minPassword) errors.password = `Use at least ${minPassword} characters.`
       return errors
     },
   )
@@ -93,7 +99,7 @@ function UserForm({ formId, record, roles, isSelf, canAssignRole, onSaved }) {
         help={roleLocked ? (isSelf ? 'You can’t change your own role.' : 'You can’t change this user’s role.') : undefined}
       />
       {isNew && (
-        <FormField id={form.fieldId('password')} label="Initial password" required error={errors.password} help={`At least ${MIN_PASSWORD} characters. Share it with the user securely.`}>
+        <FormField id={form.fieldId('password')} label="Initial password" required error={errors.password} help={passwordHelp || `At least ${minPassword} characters. Share it with the user securely.`}>
           <PasswordInput
             id={form.fieldId('password')}
             value={form.values.password}
@@ -113,7 +119,7 @@ function UserDetails({ user, isSelf }) {
     ['Name', user.name],
     ['Email', user.email],
     ['Role', user.role.name],
-    ['Status', <StatusBadge key="s" variant={user.status === 'active' ? 'success' : 'secondary'}>{user.status === 'active' ? 'Active' : 'Disabled'}</StatusBadge>],
+    ['Status', <StatusBadge key="s" variant={statusMeta(user.status).variant}>{statusMeta(user.status).label}</StatusBadge>],
     ['Last sign-in', formatDateTime(user.lastLoginAt)],
     ['Created', formatDateTime(user.createdAt)],
     ['Last updated', formatDateTime(user.updatedAt)],
@@ -136,17 +142,21 @@ function UserDetails({ user, isSelf }) {
 export default function UsersPage() {
   const auth = useAuth()
   const editor = useEditor()
-  const [state, setState] = useState({ status: 'loading', users: [], roles: [], error: null })
+  const [state, setState] = useState({ status: 'loading', users: [], roles: [], passwordPolicy: null, error: null })
   const [query, setQuery] = useState('')
   const [viewing, setViewing] = useState({ open: false, user: null })
-  const [statusChange, setStatusChange] = useState({ open: false, user: null })
+  const [statusChange, setStatusChange] = useState({ open: false, user: null, next: 'disabled' })
+  const [resetUser, setResetUser] = useState(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetError, setResetError] = useState(null)
+  const [resetting, setResetting] = useState(false)
   const [notice, setNotice] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
     Promise.all([api('/api/users', { signal: controller.signal }), api('/api/roles', { signal: controller.signal })])
-      .then(([usersData, rolesData]) => setState({ status: 'ready', users: usersData.users, roles: rolesData.roles, error: null }))
+      .then(([usersData, rolesData]) => setState({ status: 'ready', users: usersData.users, roles: rolesData.roles, passwordPolicy: usersData.passwordPolicy ?? null, error: null }))
       .catch((error) => {
         if (error.name !== 'AbortError') setState((s) => ({ ...s, status: 'error', error }))
       })
@@ -170,13 +180,16 @@ export default function UsersPage() {
   // UI hint only: the server re-checks every change.
   const manageable = (user) => isSelf(user) || Boolean(state.roles.find((r) => r.slug === user.role.slug)?.assignable)
 
+  const minPassword = state.passwordPolicy?.minLength ?? FALLBACK_MIN_PASSWORD
+
   async function confirmStatusChange() {
     const user = statusChange.user
-    const status = user.status === 'active' ? 'disabled' : 'active'
+    const status = statusChange.next
     try {
       const data = await api(`/api/users/${user.id}`, { method: 'PATCH', body: { status } })
       upsertUser(data.user)
-      setNotice({ variant: 'success', text: `${data.user.name} is now ${status === 'active' ? 'active' : 'disabled'}.` })
+      const label = status === 'active' ? 'active' : status === 'locked' ? 'locked' : 'disabled'
+      setNotice({ variant: 'success', text: `${data.user.name} is now ${label}.` })
     } catch (error) {
       setNotice({ variant: 'danger', text: error.message })
     }
@@ -202,7 +215,10 @@ export default function UsersPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (u) => <StatusBadge variant={u.status === 'active' ? 'success' : 'secondary'}>{u.status === 'active' ? 'Active' : 'Disabled'}</StatusBadge>,
+      render: (u) => {
+        const meta = statusMeta(u.status)
+        return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>
+      },
     },
     { key: 'lastLoginAt', header: 'Last sign-in', nowrap: true, render: (u) => formatDateTime(u.lastLoginAt) },
     {
@@ -221,11 +237,29 @@ export default function UsersPage() {
               <i className="bi bi-pencil" aria-hidden="true" /> Edit<span className="visually-hidden"> {u.name}</span>
             </button>
           )}
-          {can('users.change_status') && !isSelf(u) && manageable(u) && (
-            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setStatusChange({ open: true, user: u })}>
-              <i className={`bi ${u.status === 'active' ? 'bi-person-slash' : 'bi-person-check'}`} aria-hidden="true" />
-              {u.status === 'active' ? ' Disable' : ' Activate'}
-              <span className="visually-hidden"> {u.name}</span>
+          {can('users.update') && !isSelf(u) && manageable(u) && (
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => { setResetUser(u); setResetPassword(''); setResetError(null) }}>
+              <i className="bi bi-key" aria-hidden="true" /> Reset password<span className="visually-hidden"> for {u.name}</span>
+            </button>
+          )}
+          {can('users.change_status') && !isSelf(u) && manageable(u) && u.status !== 'disabled' && (
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setStatusChange({ open: true, user: u, next: 'disabled' })}>
+              <i className="bi bi-person-slash" aria-hidden="true" /> Disable<span className="visually-hidden"> {u.name}</span>
+            </button>
+          )}
+          {can('users.change_status') && !isSelf(u) && manageable(u) && u.status === 'disabled' && (
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setStatusChange({ open: true, user: u, next: 'active' })}>
+              <i className="bi bi-person-check" aria-hidden="true" /> Activate<span className="visually-hidden"> {u.name}</span>
+            </button>
+          )}
+          {can('users.change_status') && !isSelf(u) && manageable(u) && u.status !== 'locked' && (
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setStatusChange({ open: true, user: u, next: 'locked' })}>
+              <i className="bi bi-lock" aria-hidden="true" /> Lock<span className="visually-hidden"> {u.name}</span>
+            </button>
+          )}
+          {can('users.change_status') && !isSelf(u) && manageable(u) && u.status === 'locked' && (
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setStatusChange({ open: true, user: u, next: 'active' })}>
+              <i className="bi bi-unlock" aria-hidden="true" /> Unlock<span className="visually-hidden"> {u.name}</span>
             </button>
           )}
         </div>
@@ -285,6 +319,8 @@ export default function UsersPage() {
             roles={state.roles}
             isSelf={editor.record ? isSelf(editor.record) : false}
             canAssignRole={can('users.assign_role')}
+            minPassword={minPassword}
+            passwordHelp={state.passwordPolicy?.summary}
             onSaved={(user) => {
               upsertUser(user)
               setNotice({ variant: 'success', text: editor.record ? `${user.name} was updated.` : `${user.name} was added.` })
@@ -302,18 +338,57 @@ export default function UsersPage() {
         open={statusChange.open}
         onClose={() => setStatusChange((s) => ({ ...s, open: false }))}
         onConfirm={confirmStatusChange}
-        title={statusChange.user?.status === 'active' ? 'Disable user?' : 'Activate user?'}
-        confirmLabel={statusChange.user?.status === 'active' ? 'Disable' : 'Activate'}
-        variant={statusChange.user?.status === 'active' ? 'danger' : 'primary'}
+        title={statusChange.next === 'locked' ? 'Lock user?' : statusChange.next === 'disabled' ? 'Disable user?' : 'Activate user?'}
+        confirmLabel={statusChange.next === 'locked' ? 'Lock' : statusChange.next === 'disabled' ? 'Disable' : 'Activate'}
+        variant={statusChange.next === 'active' ? 'primary' : 'danger'}
       >
         {statusChange.user && (
           <p className="mb-0">
-            {statusChange.user.status === 'active'
-              ? <><strong>{statusChange.user.name}</strong> will be signed out and won’t be able to sign in until reactivated.</>
-              : <><strong>{statusChange.user.name}</strong> will be able to sign in again.</>}
+            {statusChange.next === 'locked' && <><strong>{statusChange.user.name}</strong> will not be able to sign in until the account is unlocked.</>}
+            {statusChange.next === 'disabled' && <><strong>{statusChange.user.name}</strong> will be signed out and won’t be able to sign in until reactivated.</>}
+            {statusChange.next === 'active' && <><strong>{statusChange.user.name}</strong> will be able to sign in again.</>}
           </p>
         )}
       </ConfirmDialog>
+
+      <FormModal
+        open={Boolean(resetUser)}
+        onClose={() => { if (!resetting) setResetUser(null) }}
+        title={resetUser ? `Reset password for ${resetUser.name}` : 'Reset password'}
+        submitLabel={resetting ? 'Saving…' : 'Reset password'}
+        renderForm={(formId) => (
+          <form
+            id={formId}
+            className="row g-3"
+            onSubmit={async (event) => {
+              event.preventDefault()
+              if (!resetUser || resetting) return
+              if (resetPassword.length < minPassword) {
+                setResetError(`Use at least ${minPassword} characters.`)
+                return
+              }
+              setResetting(true)
+              setResetError(null)
+              try {
+                const data = await api(`/api/users/${resetUser.id}/password`, { method: 'POST', body: { password: resetPassword } })
+                upsertUser(data.user)
+                setNotice({ variant: 'success', text: `Password reset for ${data.user.name}. Share the new password with them securely. It is not stored in the audit log.` })
+                setResetUser(null)
+                setResetPassword('')
+              } catch (error) {
+                setResetError(error.fields?.password || error.message)
+              } finally {
+                setResetting(false)
+              }
+            }}
+          >
+            {resetError && <div className="col-12"><div className="alert alert-danger mb-0" role="alert">{resetError}</div></div>}
+            <FormField id="reset-password" label="New password" required error={null} help={state.passwordPolicy?.summary || `At least ${minPassword} characters. It is not shown again and is not written to the audit log.`}>
+              <PasswordInput id="reset-password" value={resetPassword} onChange={setResetPassword} autoComplete="new-password" />
+            </FormField>
+          </form>
+        )}
+      />
     </PageShell>
   )
 }

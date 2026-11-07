@@ -56,13 +56,14 @@ return [
         'announcements.reports' => 'See announcement tracking and export recipient lists',
         'audit.view' => 'View Audit Logs and Change History',
         'settings.view' => 'View system settings',
+        'settings.edit' => 'Edit company, general and retention settings',
     ],
 
     'roles' => [
         'super_admin' => ['rank' => 100, 'permissions' => ['*']],
         'admin' => [
             'rank' => 80,
-            'permissions' => ['users.view', 'users.create', 'users.update', 'users.change_status', 'users.assign_role', 'audit.view', 'settings.view', ...$business],
+            'permissions' => ['users.view', 'users.create', 'users.update', 'users.change_status', 'users.assign_role', 'audit.view', 'settings.view', 'settings.edit', ...$business],
         ],
         'sales_manager' => ['rank' => 50, 'permissions' => $viewOnly],
         'sales_user' => ['rank' => 10, 'permissions' => $viewOnly],

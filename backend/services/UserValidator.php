@@ -10,9 +10,6 @@ namespace App\Services;
  */
 final class UserValidator
 {
-    /** @var array{min_length: int, max_bytes: int}|null */
-    private static ?array $passwordRules = null;
-
     public static function normaliseEmail(mixed $value): string
     {
         return is_string($value) ? mb_strtolower(trim($value)) : '';
@@ -53,7 +50,7 @@ final class UserValidator
     /** @param array<string, string> $errors */
     public static function newPassword(mixed $value, array &$errors): ?string
     {
-        $rules = self::$passwordRules ??= (require dirname(__DIR__) . '/config/auth.php')['password'];
+        $rules = SecurityPolicy::password();
 
         if (!is_string($value) || $value === '') {
             $errors['password'] = 'Enter a password.';
@@ -61,6 +58,14 @@ final class UserValidator
             $errors['password'] = "Password must be at least {$rules['min_length']} characters.";
         } elseif (strlen($value) > $rules['max_bytes']) {
             $errors['password'] = "Password must be at most {$rules['max_bytes']} bytes.";
+        } elseif ($rules['require_uppercase'] && preg_match('/\p{Lu}/u', $value) !== 1) {
+            $errors['password'] = 'Password must include an uppercase letter.';
+        } elseif ($rules['require_lowercase'] && preg_match('/\p{Ll}/u', $value) !== 1) {
+            $errors['password'] = 'Password must include a lowercase letter.';
+        } elseif ($rules['require_number'] && preg_match('/\d/', $value) !== 1) {
+            $errors['password'] = 'Password must include a number.';
+        } elseif ($rules['require_symbol'] && preg_match('/[^\p{L}\p{N}]/u', $value) !== 1) {
+            $errors['password'] = 'Password must include a symbol.';
         } else {
             return $value;
         }
@@ -71,10 +76,10 @@ final class UserValidator
     /** @param array<string, string> $errors */
     public static function status(mixed $value, array &$errors): ?string
     {
-        if (in_array($value, ['active', 'disabled'], true)) {
+        if (in_array($value, ['active', 'disabled', 'locked'], true)) {
             return $value;
         }
-        $errors['status'] = 'Status must be "active" or "disabled".';
+        $errors['status'] = 'Status must be "active", "disabled" or "locked".';
 
         return null;
     }

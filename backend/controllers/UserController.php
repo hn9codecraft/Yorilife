@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\SecurityPolicy;
 use App\Services\UserPresenter;
 use App\Services\UserService;
 use App\Utils\HttpException;
@@ -18,7 +19,10 @@ final class UserController
     {
         $users = (new UserService())->list($request->user);
 
-        JsonResponse::success(['users' => array_map([UserPresenter::class, 'present'], $users)]);
+        JsonResponse::success([
+            'users' => array_map([UserPresenter::class, 'present'], $users),
+            'passwordPolicy' => SecurityPolicy::describe(),
+        ]);
     }
 
     /** GET /api/users/{id} */
@@ -39,6 +43,14 @@ final class UserController
     public function update(Request $request): void
     {
         $user = (new UserService())->update($request->user, self::id($request), $request->json());
+
+        JsonResponse::success(['user' => UserPresenter::present($user)]);
+    }
+
+    /** POST /api/users/{id}/password { password } */
+    public function resetPassword(Request $request): void
+    {
+        $user = (new UserService())->resetPassword($request->user, self::id($request), $request->json());
 
         JsonResponse::success(['user' => UserPresenter::present($user)]);
     }
