@@ -385,16 +385,18 @@ final class AnnouncementService
             $rows[] = [
                 ['manager' => 'Manager', 'user' => 'ERP user', 'employee' => 'Employee'][$r['recipient_type']] ?? $r['recipient_type'],
                 $r['recipient_name'],
-                (string) $r['recipient_contact'],
+                PiiMask::contact((string) $r['recipient_contact']),
                 UtcTime::indiaLabel($r['delivered_at']),
                 UtcTime::indiaLabel($r['read_at']) ?: 'Pending',
                 $current['requires_ack'] ? (UtcTime::indiaLabel($r['acknowledged_at']) ?: 'Pending') : 'Not required',
             ];
         }
         $ref = self::reference($id, (string) $current['created_at']);
+        $filename = $ref . ($pendingOnly ? '-not-read' : '-recipients') . '.csv';
+        ExportAudit::record('announcement_tracking', $filename, count($rows), ['announcementId' => $id]);
 
         return [
-            'filename' => $ref . ($pendingOnly ? '-not-read' : '-recipients') . '.csv',
+            'filename' => $filename,
             'content' => "\xEF\xBB\xBF" . ImportCsv::document(['Type', 'Name', 'Email / Phone', 'Delivered (IST)', 'Read (IST)', 'Acknowledged (IST)'], $rows),
         ];
     }

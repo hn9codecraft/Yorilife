@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\AnnouncementController;
 use App\Controllers\AuditLogController;
+use App\Controllers\ExportController;
 use App\Controllers\AuthController;
 use App\Controllers\CatalogueController;
 use App\Controllers\ChangeHistoryController;
@@ -37,6 +38,7 @@ $router->get('/api/roles', [UserController::class, 'roles'], [$auth, AuthMiddlew
 $router->get('/api/users', [UserController::class, 'index'], [$auth, AuthMiddleware::can('users.view')]);
 $router->post('/api/users', [UserController::class, 'store'], [$auth, AuthMiddleware::can('users.create')]);
 $router->get('/api/users/{id}', [UserController::class, 'show'], [$auth, AuthMiddleware::can('users.view')]);
+$router->post('/api/users/{id}/password', [UserController::class, 'resetPassword'], [$auth, AuthMiddleware::can('users.update')]);
 $router->patch('/api/users/{id}', [UserController::class, 'update'], [$auth, AuthMiddleware::can('users.view')]);
 
 // Business data (Sprint 4). Viewing is open to every sales role; changes follow
@@ -144,9 +146,15 @@ $router->post('/api/employees/{id}/delete', [EmployeeController::class, 'delete'
 // System & Audit (Super Admin and Admin).
 $auditView = AuthMiddleware::can('audit.view');
 $settingsView = AuthMiddleware::can('settings.view');
+$router->post('/api/exports', [ExportController::class, 'store'], [$auth]);
 $router->get('/api/audit-logs/export', [AuditLogController::class, 'export'], [$auth, $auditView]);
+$router->get('/api/audit-logs/verify', [AuditLogController::class, 'verify'], [$auth, $auditView]);
+$router->post('/api/audit-logs/archive', [AuditLogController::class, 'archive'], [$auth, $auditView]);
 $router->get('/api/audit-logs', [AuditLogController::class, 'index'], [$auth, $auditView]);
 $router->get('/api/audit-logs/{id}', [AuditLogController::class, 'show'], [$auth, $auditView]);
 $router->get('/api/change-history/export', [ChangeHistoryController::class, 'export'], [$auth, $auditView]);
+$router->post('/api/change-history/archive', [ChangeHistoryController::class, 'archive'], [$auth, $auditView]);
 $router->get('/api/change-history', [ChangeHistoryController::class, 'index'], [$auth, $auditView]);
+$router->get('/api/settings/history', [SettingsController::class, 'history'], [$auth, $settingsView]);
+$router->patch('/api/settings', [SettingsController::class, 'update'], [$auth, $settingsView]);
 $router->get('/api/settings', [SettingsController::class, 'index'], [$auth, $settingsView]);

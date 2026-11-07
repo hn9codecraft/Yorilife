@@ -6,8 +6,12 @@ import SearchInput from '../../components/SearchInput.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
 import LoadingIndicator from '../../components/LoadingIndicator.jsx'
 import Modal from '../../components/Modal.jsx'
+import ListPager from '../../components/ListPager.jsx'
+import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import { api, apiDownload } from '../../api/client.js'
 import { formatDateTime } from '../../data/selectors.js'
+
+const PAGE_SIZE = 50
 
 const RESULT_BADGE = {
   ok: { label: 'OK', variant: 'success' },
@@ -16,30 +20,40 @@ const RESULT_BADGE = {
 }
 
 export default function AuditLogsPage() {
-  const [state, setState] = useState({ status: 'loading', items: [], total: 0, error: null })
-  const [filters, setFilters] = useState({ q: '', module: '', result: '', from: '', to: '' })
-  const [applied, setApplied] = useState({ q: '', module: '', result: '', from: '', to: '' })
+  const [state, setState] = useState({ status: 'loading', items: [], total: 0, limit: PAGE_SIZE, offset: 0, error: null })
+  const [filters, setFilters] = useState({ q: '', module: '', result: '', from: '', to: '', archived: '' })
+  const [applied, setApplied] = useState({ q: '', module: '', result: '', from: '', to: '', archived: '' })
+  const [offset, setOffset] = useState(0)
   const [detail, setDetail] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [chain, setChain] = useState(null)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [notice, setNotice] = useState(null)
 
   useEffect(() => {
     const controller = new AbortController()
     const params = new URLSearchParams()
-    params.set('limit', '50')
-    params.set('offset', '0')
+    params.set('limit', String(PAGE_SIZE))
+    params.set('offset', String(offset))
     if (applied.q) params.set('q', applied.q)
     if (applied.module) params.set('module', applied.module)
     if (applied.result) params.set('result', applied.result)
     if (applied.from) params.set('from', applied.from)
     if (applied.to) params.set('to', applied.to)
+    if (applied.archived) params.set('archived', applied.archived)
     setState((s) => ({ ...s, status: 'loading' }))
     api(`/api/audit-logs?${params}`, { signal: controller.signal })
-      .then((data) => setState({ status: 'ready', items: data.items, total: data.total, error: null }))
+      .then((data) => setState({ status: 'ready', items: data.items, total: data.total, limit: data.limit, offset: data.offset, error: null }))
       .catch((error) => {
         if (error.name !== 'AbortError') setState((s) => ({ ...s, status: 'error', error }))
       })
+    api('/api/audit-logs/verify', { signal: controller.signal })
+      .then((data) => setChain(data))
+      .catch((error) => {
+        if (error.name !== 'AbortError') setChain({ intact: false, reason: 'unavailable' })
+      })
     return () => controller.abort()
-  }, [applied, reloadKey])
+  }, [applied, offset, reloadKey])
 
   const columns = [
     { key: 'occurredAt', header: 'When', nowrap: true, render: (r) => formatDateTime(r.occurredAt) },
@@ -76,23 +90,40 @@ export default function AuditLogsPage() {
   return (
     <PageShell
       actions={
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          onClick={() => {
-            const params = new URLSearchParams()
-            if (applied.q) params.set('q', applied.q)
-            if (applied.module) params.set('module', applied.module)
-            if (applied.result) params.set('result', applied.result)
-            if (applied.from) params.set('from', applied.from)
-            if (applied.to) params.set('to', applied.to)
-            apiDownload(`/api/audit-logs/export?${params}`, 'yorilife-audit-logs.csv').catch(() => {})
-          }}
-        >
-          <i className="bi bi-download" aria-hidden="true" /> Export CSV
-        </button>
+        <>
+          <button type="button" className="btn btn-outline-secondary" onClick={() => setArchiveOpen(true)}>
+            <i className="bi bi-archive" aria-hidden="true" /> Archive old logs
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => {
+              const params = new URLSearchParams()
+              if (applied.q) params.set('q', applied.q)
+              if (applied.module) params.set('module', applied.module)
+              if (applied.result) params.set('result', applied.result)
+              if (applied.from) params.set('from', applied.from)
+              if (applied.to) params.set('to', applied.to)
+              if (applied.archived) params.set('archived', applied.archived)
+              apiDownload(`/api/audit-logs/export?${params}`, 'yorilife-audit-logs.csv').catch(() => {})
+            }}
+          >
+            <i className="bi bi-download" aria-hidden="true" /> Export CSV
+          </button>
+        </>
       }
     >
+      {chain && (
+        <div className={`alert ${chain.intact ? 'alert-success' : 'alert-danger'}`} role="status">
+          <i className={`bi ${chain.intact ? 'bi-shield-check' : 'bi-shield-exclamation'}`} aria-hidden="true" />
+          <div>
+            {chain.intact
+              ? `Audit chain intact${chain.checked != null ? ` (${chain.checked} entries checked)` : ''}.`
+              : `Audit chain broken${chain.brokenAt ? ` at entry ${chain.brokenAt}` : ''}. ${chain.reason === 'hash_mismatch' ? 'A stored row no longer matches its hash.' : chain.reason === 'prev_mismatch' ? 'A row is missing or out of order.' : chain.reason === 'unsealed' ? 'A row has no hash.' : 'The chain could not be verified.'}`}
+          </div>
+        </div>
+      )}
+      {notice && <div className={`alert alert-${notice.variant}`} role="status">{notice.text}</div>}
       <TableCard
         title={`Audit logs (${state.total})`}
         toolbar={
@@ -100,6 +131,7 @@ export default function AuditLogsPage() {
             className="row g-2 align-items-end"
             onSubmit={(e) => {
               e.preventDefault()
+              setOffset(0)
               setApplied({ ...filters })
             }}
           >
@@ -128,6 +160,14 @@ export default function AuditLogsPage() {
               <input id="audit-to" type="date" className="form-control form-control-sm" value={filters.to} onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} />
             </div>
             <div className="col-auto">
+              <label className="form-label mb-0" htmlFor="audit-archived">Rows</label>
+              <select id="audit-archived" className="form-select form-select-sm" value={filters.archived} onChange={(e) => setFilters((f) => ({ ...f, archived: e.target.value }))}>
+                <option value="">Active</option>
+                <option value="only">Archived</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+            <div className="col-auto">
               <button type="submit" className="btn btn-sm btn-primary">Apply</button>
             </div>
           </form>
@@ -145,7 +185,26 @@ export default function AuditLogsPage() {
         {state.status === 'ready' && (
           <DataTable caption="Audit logs" columns={columns} rows={state.items} emptyText="No audit log entries yet." />
         )}
+        {state.status === 'ready' && (
+          <div className="card-body border-top">
+            <ListPager total={state.total} limit={state.limit || PAGE_SIZE} offset={offset} onPage={(page) => setOffset((page - 1) * PAGE_SIZE)} label="Audit log pages" />
+          </div>
+        )}
       </TableCard>
+      <ConfirmDialog
+        open={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        onConfirm={async () => {
+          const data = await api('/api/audit-logs/archive', { method: 'POST', body: {} })
+          setNotice({ variant: 'success', text: `Archived ${data.archived} audit log ${data.archived === 1 ? 'entry' : 'entries'} older than ${data.olderThanDays} days. Nothing was deleted.` })
+          setReloadKey((k) => k + 1)
+        }}
+        title="Archive old audit logs?"
+        confirmLabel="Archive"
+        variant="primary"
+      >
+        <p className="mb-0">Rows older than the retention setting are marked archived and hidden from the active list. They stay in the database and in the hash chain.</p>
+      </ConfirmDialog>
 
       <Modal open={Boolean(detail)} onClose={() => setDetail(null)} title="Audit log detail">
         {detail && (
@@ -159,7 +218,7 @@ export default function AuditLogsPage() {
               ['Target', detail.targetLabel ?? '—'],
               ['IP', detail.ipAddress ?? '—'],
               ['Request id', detail.requestId ?? '—'],
-              ['Details', detail.details ? <pre className="mb-0 small">{JSON.stringify(detail.details, null, 2)}</pre> : '—'],
+              ['Details', detail.details ? <pre key="details" className="mb-0 small">{JSON.stringify(detail.details, null, 2)}</pre> : '—'],
             ].map(([label, value]) => (
               <div key={label} className="detail-list__row">
                 <dt>{label}</dt>

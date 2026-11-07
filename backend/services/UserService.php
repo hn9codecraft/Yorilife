@@ -187,6 +187,49 @@ final class UserService
         return $updated;
     }
 
+    /**
+     * Admin reset of another user's password. The new password is hashed and
+     * never written to the audit log, change history or the response.
+     *
+     * @param array<string, mixed> $actor
+     * @param array<string, mixed> $input { password }
+     */
+    public function resetPassword(array $actor, int $id, array $input): array
+    {
+        Authorization::authorize($actor, 'users.update');
+        $target = $this->get($actor, $id);
+        if ((int) $actor['id'] === (int) $target['id']) {
+            throw HttpException::forbidden('You cannot reset your own password here.', 'cannot_reset_own_password');
+        }
+        if (!Authorization::canManageUser($actor, $target)) {
+            throw HttpException::forbidden('You cannot manage users at this level.', 'cannot_manage_user');
+        }
+
+        $errors = [];
+        UserValidator::onlyFields($input, ['password'], $errors);
+        $password = UserValidator::newPassword($input['password'] ?? null, $errors);
+        if ($errors !== []) {
+            throw HttpException::validation($errors);
+        }
+
+        $this->users->updatePasswordHash($id, PasswordHasher::hash($password));
+        EntityHistory::recordDiff('user', $id, $target['name'], [
+            'Password' => '(hidden)',
+        ], [
+            'Password' => '(reset)',
+        ], (int) $actor['id']);
+        AuditLogger::record([
+            'module' => 'users',
+            'action' => 'password_reset',
+            'targetType' => 'user',
+            'targetId' => $id,
+            'targetLabel' => $target['name'],
+            'details' => ['reset' => true],
+        ]);
+
+        return $this->users->find($id) ?? throw HttpException::notFound('User not found.');
+    }
+
     /** @param array<string, string> $errors */
     private function resolveRole(mixed $slug, array &$errors): ?array
     {

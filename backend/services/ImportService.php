@@ -158,9 +158,12 @@ final class ImportService
         $parsed = ImportCsv::parse($this->storedFile($import));
         $rows = $parsed['rows'];
         $header = array_shift($rows) ?? [];
+        $rows = PiiMask::maskTable($header, $rows);
         $this->imports->audit($id, 'file_download', (int) $user['id'], $ip);
+        $filename = $this->downloadName($import, '');
+        ExportAudit::record('import_file', $filename, count($rows), ['importId' => $id]);
 
-        return ['filename' => $this->downloadName($import, ''), 'content' => ImportCsv::document($header, $rows)];
+        return ['filename' => $filename, 'content' => ImportCsv::document($header, $rows)];
     }
 
     /** @return array{filename: string, content: string} */
@@ -179,9 +182,12 @@ final class ImportService
         $header = $unified
             ? ['Row', 'Data Type', 'Column', 'Error', ...ImportTypes::UNIFIED_COLUMNS]
             : ['Row', 'Column', 'Error', ...array_column($definition['columns'] ?? [], 'header')];
+        $rows = PiiMask::maskTable($header, $rows);
         $this->imports->audit($id, 'errors_download', (int) $user['id'], $ip, ['errors' => count($rows)]);
+        $filename = $this->downloadName($import, '-errors');
+        ExportAudit::record('import_errors', $filename, count($rows), ['importId' => $id]);
 
-        return ['filename' => $this->downloadName($import, '-errors'), 'content' => ImportCsv::document($header, $rows)];
+        return ['filename' => $filename, 'content' => ImportCsv::document($header, $rows)];
     }
 
     /**
@@ -204,8 +210,10 @@ final class ImportService
         $saved = json_decode($content, true);
         $csv = ImportBackupCsv::build($this->imports->changes($id), is_array($saved['data'] ?? null) ? $saved['data'] : [], $this->imports->recordCodes());
         $this->imports->audit($id, 'backup_download', (int) $user['id'], $ip);
+        $filename = 'import-' . $id . '-backup.csv';
+        ExportAudit::record('import_backup', $filename, max(0, substr_count($csv, "\n") - 1), ['importId' => $id]);
 
-        return ['filename' => 'import-' . $id . '-backup.csv', 'content' => $csv];
+        return ['filename' => $filename, 'content' => $csv];
     }
 
     /**

@@ -25,57 +25,44 @@ final class AuditLogService
         Authorization::authorize($actor, 'audit.view');
         $filters = $this->filters($query);
         $rows = $this->logs->search($filters);
-        $total = $this->logs->count($filters);
-
-        // Bridge import audit when not filtering to a non-import module.
-        $bridged = [];
-        if (($filters['module'] ?? null) === null || ($filters['module'] ?? null) === 'import') {
-            $bridged = $this->logs->bridgedImports($filters['from'] ?? null, $filters['to'] ?? null, 200);
-            if (!empty($filters['actorId'])) {
-                $bridged = array_values(array_filter(
-                    $bridged,
-                    static fn (array $row): bool => (int) ($row['actor_id'] ?? 0) === (int) $filters['actorId']
-                ));
-            }
-            if (!empty($filters['action'])) {
-                $bridged = array_values(array_filter(
-                    $bridged,
-                    static fn (array $row): bool => ($row['action'] ?? '') === $filters['action']
-                ));
-            }
-            if (!empty($filters['q'])) {
-                $q = mb_strtolower((string) $filters['q']);
-                $bridged = array_values(array_filter(
-                    $bridged,
-                    static function (array $row) use ($q): bool {
-                        $hay = mb_strtolower(implode(' ', [
-                            (string) ($row['actor_label'] ?? ''),
-                            (string) ($row['target_label'] ?? ''),
-                            (string) ($row['action'] ?? ''),
-                            (string) ($row['module'] ?? ''),
-                        ]));
-
-                        return str_contains($hay, $q);
-                    }
-                ));
-            }
-        }
-
-        $merged = array_map($this->present(...), $rows);
-        foreach ($bridged as $row) {
-            $merged[] = $this->present($row, true);
-        }
-        usort($merged, static fn (array $a, array $b): int => strcmp($b['occurredAt'], $a['occurredAt']));
-        $limit = (int) ($filters['limit'] ?? 50);
-        $offset = (int) ($filters['offset'] ?? 0);
-        $page = array_slice($merged, $offset, $limit);
 
         return [
-            'items' => $page,
-            'total' => $total + count($bridged),
-            'limit' => $limit,
-            'offset' => $offset,
+            'items' => array_map($this->present(...), $rows),
+            'total' => $this->logs->count($filters),
+            'limit' => (int) $filters['limit'],
+            'offset' => (int) $filters['offset'],
         ];
+    }
+
+    /** @param array<string, mixed> $actor */
+    public function verify(array $actor): array
+    {
+        Authorization::authorize($actor, 'audit.view');
+
+        return AuditChain::verify();
+    }
+
+    /** @param array<string, mixed> $actor @param array<string, mixed> $input */
+    public function archive(array $actor, array $input): array
+    {
+        Authorization::authorize($actor, 'audit.view');
+        $errors = [];
+        UserValidator::onlyFields($input, ['olderThanDays'], $errors);
+        if ($errors !== []) {
+            throw HttpException::validation($errors);
+        }
+        $days = Retention::days($input, 'retention.audit_log_days');
+        $cutoff = Retention::cutoff($days);
+        $archived = $this->logs->archiveOlderThan(UtcTime::now(), $cutoff);
+        AuditLogger::record([
+            'module' => 'system',
+            'action' => 'archive_audit_logs',
+            'targetType' => 'audit_logs',
+            'targetLabel' => 'Audit logs',
+            'details' => ['archived' => $archived, 'olderThanDays' => $days],
+        ]);
+
+        return ['archived' => $archived, 'olderThanDays' => $days, 'cutoff' => UtcTime::iso($cutoff)];
     }
 
     /** @param array<string, mixed> $actor */
@@ -91,39 +78,29 @@ final class AuditLogService
     public function exportCsv(array $actor, array $query): array
     {
         Authorization::authorize($actor, 'audit.view');
-        $filters = $this->filters($query);
-        $filters['limit'] = 5000;
-        $filters['offset'] = 0;
         $result = $this->list($actor, array_merge($query, ['limit' => '5000', 'offset' => '0']));
 
         $lines = ['Occurred at (UTC),Actor,Module,Action,Result,Target type,Target id,Target,IP,Request id'];
         foreach ($result['items'] as $item) {
             $lines[] = implode(',', [
-                self::csv($item['occurredAt']),
-                self::csv($item['actorLabel'] ?? ''),
-                self::csv($item['module']),
-                self::csv($item['action']),
-                self::csv($item['result']),
-                self::csv($item['targetType'] ?? ''),
+                self::csv((string) $item['occurredAt']),
+                self::csv(PiiMask::text((string) ($item['actorLabel'] ?? ''))),
+                self::csv((string) $item['module']),
+                self::csv((string) $item['action']),
+                self::csv((string) $item['result']),
+                self::csv((string) ($item['targetType'] ?? '')),
                 self::csv($item['targetId'] !== null ? (string) $item['targetId'] : ''),
-                self::csv($item['targetLabel'] ?? ''),
-                self::csv($item['ipAddress'] ?? ''),
-                self::csv($item['requestId'] ?? ''),
+                self::csv(PiiMask::text((string) ($item['targetLabel'] ?? ''))),
+                self::csv((string) ($item['ipAddress'] ?? '')),
+                self::csv((string) ($item['requestId'] ?? '')),
             ]);
         }
 
-        AuditLogger::record([
-            'module' => 'system',
-            'action' => 'audit_export',
-            'targetType' => 'audit_logs',
-            'targetLabel' => 'Audit Logs CSV',
-            'details' => ['rowCount' => count($result['items'])],
-        ]);
-
-        $stamp = (new DateTimeImmutable('now', new DateTimeZone(UtcTime::INDIA)))->format('Ymd_His');
+        $filename = 'yorilife-audit-logs-' . (new DateTimeImmutable('now', new DateTimeZone(UtcTime::INDIA)))->format('Ymd_His') . '.csv';
+        ExportAudit::record('audit_logs', $filename, count($result['items']));
 
         return [
-            'filename' => "yorilife-audit-logs-{$stamp}.csv",
+            'filename' => $filename,
             'content' => "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n",
         ];
     }
@@ -138,8 +115,14 @@ final class AuditLogService
         $action = isset($query['action']) && is_string($query['action']) && $query['action'] !== '' ? $query['action'] : null;
         $result = isset($query['result']) && in_array($query['result'], ['ok', 'denied', 'failed'], true) ? $query['result'] : null;
         $q = isset($query['q']) && is_string($query['q']) ? trim($query['q']) : null;
-        $limit = isset($query['limit']) && ctype_digit((string) $query['limit']) ? (int) $query['limit'] : 50;
+        $limit = isset($query['limit']) && ctype_digit((string) $query['limit']) ? (int) $query['limit'] : SecurityPolicy::recordsPerPage();
         $offset = isset($query['offset']) && ctype_digit((string) $query['offset']) ? (int) $query['offset'] : 0;
+        $archived = 'active';
+        if (($query['archived'] ?? null) === 'only') {
+            $archived = 'only';
+        } elseif (($query['archived'] ?? null) === 'all') {
+            $archived = 'all';
+        }
 
         return [
             'from' => $from,
@@ -149,8 +132,9 @@ final class AuditLogService
             'action' => $action,
             'result' => $result,
             'q' => $q === '' ? null : $q,
-            'limit' => $limit,
-            'offset' => $offset,
+            'archived' => $archived,
+            'limit' => max(1, min(5000, $limit)),
+            'offset' => max(0, $offset),
         ];
     }
 
@@ -185,9 +169,12 @@ final class AuditLogService
             }
         }
 
+        $isBridged = $bridged || (int) ($row['bridged'] ?? 0) === 1 || isset($row['bridge_id']);
+
         return [
-            'id' => isset($row['id']) ? (int) $row['id'] : ($row['bridge_id'] ?? null),
-            'bridged' => $bridged || isset($row['bridge_id']),
+            'id' => $isBridged ? ('import-' . (int) ($row['id'] ?? 0)) : (isset($row['id']) ? (int) $row['id'] : null),
+            'bridged' => $isBridged,
+            'archived' => !empty($row['archived_at']),
             'occurredAt' => UtcTime::iso($row['occurred_at'] ?? null),
             'actorId' => isset($row['actor_id']) && $row['actor_id'] !== null ? (int) $row['actor_id'] : null,
             'actorLabel' => $row['actor_label'] ?? null,
@@ -206,7 +193,10 @@ final class AuditLogService
 
     private static function csv(string $value): string
     {
-        if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n") || str_contains($value, "\r")) {
+        if ($value !== '' && str_contains('=+-@', $value[0])) {
+            $value = "'" . $value;
+        }
+        if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n") || str_contains($value, "\r") || str_contains($value, "\t")) {
             return '"' . str_replace('"', '""', $value) . '"';
         }
 

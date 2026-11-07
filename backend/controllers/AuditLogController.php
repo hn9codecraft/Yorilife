@@ -17,6 +17,18 @@ final class AuditLogController
         JsonResponse::success((new AuditLogService())->list($request->user, $_GET));
     }
 
+    /** GET /api/audit-logs/verify */
+    public function verify(Request $request): void
+    {
+        JsonResponse::success((new AuditLogService())->verify($request->user));
+    }
+
+    /** POST /api/audit-logs/archive */
+    public function archive(Request $request): void
+    {
+        JsonResponse::success((new AuditLogService())->archive($request->user, $request->json()));
+    }
+
     /** GET /api/audit-logs/export */
     public function export(Request $request): void
     {

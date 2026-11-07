@@ -42,30 +42,24 @@ final class AuditLogger
                 $details = self::scrub($details);
             }
 
-            $pdo = Database::connection();
-            $pdo->prepare(
-                'INSERT INTO audit_logs (
-                    occurred_at, actor_id, actor_label, module, action, result,
-                    target_type, target_id, target_label, ip_address, user_agent, request_id, details
-                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            )->execute([
-                $event['occurredAt'] ?? UtcTime::now(),
-                $actorId,
-                $actorLabel === null ? null : mb_substr((string) $actorLabel, 0, 150),
-                mb_substr((string) $event['module'], 0, 40),
-                mb_substr((string) $event['action'], 0, 80),
-                $event['result'] ?? 'ok',
-                isset($event['targetType']) && $event['targetType'] !== null && $event['targetType'] !== ''
+            AuditChain::append(Database::connection(), [
+                'occurred_at' => $event['occurredAt'] ?? UtcTime::now(),
+                'actor_id' => $actorId,
+                'actor_label' => $actorLabel === null ? null : mb_substr((string) $actorLabel, 0, 150),
+                'module' => mb_substr((string) $event['module'], 0, 40),
+                'action' => mb_substr((string) $event['action'], 0, 80),
+                'result' => $event['result'] ?? 'ok',
+                'target_type' => isset($event['targetType']) && $event['targetType'] !== null && $event['targetType'] !== ''
                     ? mb_substr((string) $event['targetType'], 0, 40)
                     : null,
-                $event['targetId'] ?? null,
-                isset($event['targetLabel']) && $event['targetLabel'] !== null && $event['targetLabel'] !== ''
+                'target_id' => $event['targetId'] ?? null,
+                'target_label' => isset($event['targetLabel']) && $event['targetLabel'] !== null && $event['targetLabel'] !== ''
                     ? mb_substr((string) $event['targetLabel'], 0, 255)
                     : null,
-                RequestContext::ip(),
-                RequestContext::userAgent(),
-                RequestContext::requestId(),
-                $details === null || $details === []
+                'ip_address' => RequestContext::ip(),
+                'user_agent' => RequestContext::userAgent(),
+                'request_id' => RequestContext::requestId(),
+                'details' => $details === null || $details === []
                     ? null
                     : json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
             ]);

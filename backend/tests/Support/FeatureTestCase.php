@@ -27,7 +27,16 @@ abstract class FeatureTestCase extends TestCase
 
         self::wipeBusinessTables($pdo);
         $pdo->exec('DELETE FROM login_attempts');
+        if ($pdo->query("SHOW TABLES LIKE 'settings'")->fetchColumn() !== false) {
+            $pdo->exec('UPDATE settings SET updated_by = NULL');
+        }
         $pdo->exec('DELETE FROM users');
+        if ($pdo->query("SHOW TABLES LIKE 'settings'")->fetchColumn() !== false) {
+            $reset = $pdo->prepare('UPDATE settings SET setting_value = ?, updated_by = NULL WHERE setting_key = ?');
+            foreach (\App\Services\SettingsCatalog::defaults() as $key => $value) {
+                $reset->execute([$value, $key]);
+            }
+        }
     }
 
     /**
@@ -39,6 +48,7 @@ abstract class FeatureTestCase extends TestCase
     {
         $existing = $pdo->query('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN);
         foreach ([
+            'setting_versions' => 'DELETE FROM setting_versions',
             'audit_logs' => 'DELETE FROM audit_logs',
             'entity_changes' => 'DELETE FROM entity_changes',
             'notification_outbox' => 'DELETE FROM notification_outbox',
@@ -89,6 +99,10 @@ abstract class FeatureTestCase extends TestCase
             foreach (require dirname(__DIR__, 2) . '/config/location_states.php' as $location) {
                 $insert->execute([$location['name'], $location['code']]);
             }
+        }
+        if (in_array('audit_chain_head', $existing, true)) {
+            $pdo->prepare('UPDATE audit_chain_head SET last_log_id = NULL, last_hash = ?, updated_at = UTC_TIMESTAMP() WHERE id = 1')
+                ->execute([str_repeat('0', 64)]);
         }
     }
 

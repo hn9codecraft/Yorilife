@@ -88,8 +88,9 @@ final class AuthService
             throw HttpException::unauthenticated(self::INVALID_CREDENTIALS, 'invalid_credentials');
         }
 
-        // Only someone who knows the correct password learns the account is disabled.
+        // Only someone who knows the correct password learns the account is disabled or locked.
         if ($account['status'] !== 'active') {
+            $locked = $account['status'] === 'locked';
             $this->attempts->record($identifierHash, $ip, false);
             AuditLogger::record([
                 'module' => 'auth',
@@ -100,9 +101,14 @@ final class AuthService
                 'targetType' => 'user',
                 'targetId' => (int) $account['id'],
                 'targetLabel' => $account['name'] ?? null,
-                'details' => ['reason' => 'account_disabled'],
+                'details' => ['reason' => $locked ? 'account_locked' : 'account_disabled'],
             ]);
-            throw HttpException::forbidden('This account is disabled. Contact an administrator.', 'account_disabled');
+            throw HttpException::forbidden(
+                $locked
+                    ? 'This account is locked. Contact an administrator.'
+                    : 'This account is disabled. Contact an administrator.',
+                $locked ? 'account_locked' : 'account_disabled',
+            );
         }
 
         $userId = (int) $account['id'];
@@ -175,8 +181,8 @@ final class AuthService
         }
 
         $now = time();
-        $idleLimit = $this->config['session']['idle_timeout_minutes'] * 60;
-        $absoluteLimit = $this->config['session']['absolute_lifetime_hours'] * 3600;
+        $idleLimit = SecurityPolicy::sessionIdleMinutes() * 60;
+        $absoluteLimit = SecurityPolicy::sessionAbsoluteHours() * 3600;
         if ($now - (int) ($_SESSION['last_activity_at'] ?? 0) > $idleLimit || $now - (int) ($_SESSION['authenticated_at'] ?? 0) > $absoluteLimit) {
             Session::destroy();
             throw HttpException::unauthenticated('Your session has expired. Please sign in again.', 'session_expired');
@@ -205,11 +211,12 @@ final class AuthService
     private function guardAgainstBruteForce(string $identifierHash, string $ip): void
     {
         $throttle = $this->config['throttle'];
-        $byAccount = $this->attempts->recentFailures('identifier_hash', $identifierHash, $throttle['window_minutes']);
-        $byIp = $this->attempts->recentFailures('ip_address', $ip, $throttle['window_minutes']);
+        $window = SecurityPolicy::lockoutWindowMinutes();
+        $byAccount = $this->attempts->recentFailures('identifier_hash', $identifierHash, $window);
+        $byIp = $this->attempts->recentFailures('ip_address', $ip, $window);
 
         $limited = null;
-        if ($byAccount['failures'] >= $throttle['max_failures_per_account']) {
+        if ($byAccount['failures'] >= SecurityPolicy::lockoutMaxFailures()) {
             $limited = $byAccount['retry_after'];
         } elseif ($byIp['failures'] >= $throttle['max_failures_per_ip']) {
             $limited = $byIp['retry_after'];

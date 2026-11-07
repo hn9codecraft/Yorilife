@@ -41,6 +41,10 @@ if (in_array('--status', $argv, true) || $pending === []) {
 try {
     $done = $migrator->migrate(static fn (string $line) => fwrite(STDOUT, $line . "\n"));
     fwrite(STDOUT, sprintf("Done. %d migration(s) applied.\n", count($done)));
+    $sealed = \App\Services\AuditChain::sealUnsealed();
+    if ($sealed > 0) {
+        fwrite(STDOUT, sprintf("Sealed %d existing audit log row(s) into the hash chain.\n", $sealed));
+    }
 } catch (Throwable $e) {
     fwrite(STDERR, $e->getMessage() . "\n");
     exit(1);

@@ -273,7 +273,7 @@ export const NAV_MENU = [
         path: '/system/settings',
         label: 'Settings',
         icon: 'bi-gear',
-        description: 'System-wide configuration (view-only in Phase 1).',
+        description: 'Company, security and retention settings, with a history of each change.',
         permission: 'settings.view',
       },
     ],

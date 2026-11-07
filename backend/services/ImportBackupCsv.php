@@ -63,8 +63,8 @@ final class ImportBackupCsv
             $row = [ImportTypes::DATA_TYPE_LABELS[$type] ?? 'Unknown', $new['Code'] !== '' ? $new['Code'] : (string) $change['record_code']];
             $changed = [];
             foreach (self::FIELDS as $field) {
-                $row[] = $old[$field] ?? '';
-                $row[] = $new[$field] ?? '';
+                $row[] = PiiMask::field($field, (string) ($old[$field] ?? ''));
+                $row[] = PiiMask::field($field, (string) ($new[$field] ?? ''));
                 if (($old[$field] ?? '') !== ($new[$field] ?? '')) {
                     $changed[] = $field;
                 }
