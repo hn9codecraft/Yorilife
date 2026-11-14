@@ -4,9 +4,25 @@
 const WIDTH_TOKENS = { sm: '--table-col-sm', md: '--table-col-md', lg: '--table-col-lg', xl: '--table-col-xl', money: '--table-col-money' }
 
 function columnToken(column) {
-  if (column.key === 'actions' || column.sticky === 'end') return '--table-col-actions'
+  if (column.key === 'actions') return '--table-col-actions'
   if (column.sticky === 'start') return '--table-col-pinned-min'
+  if (column.sticky === 'end') return WIDTH_TOKENS[column.width] ?? '--table-col-actions'
   return WIDTH_TOKENS[column.width] ?? '--table-col-auto'
+}
+
+/**
+ * CSS `right` for a column pinned to the end. The last one sits on the edge.
+ * Any pinned column to its left is offset by the widths of the pinned columns
+ * after it, so Total can sit beside Actions instead of covering it.
+ */
+export function stickyEndRight(columns = [], column) {
+  if (column?.sticky !== 'end') return undefined
+  const pinned = columns.filter((item) => item.sticky === 'end')
+  const index = pinned.findIndex((item) => item.key === column.key)
+  if (index < 0) return undefined
+  const after = pinned.slice(index + 1)
+  if (after.length === 0) return '0px'
+  return `calc(${after.map((item) => `var(${columnToken(item)})`).join(' + ')})`
 }
 
 /** calc() of every column's min-width (plus the select column), or undefined. */

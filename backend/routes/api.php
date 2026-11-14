@@ -120,6 +120,7 @@ $bonusView = AuthMiddleware::can('sales.view');
 $bonusManage = AuthMiddleware::can('sales.manage');
 $router->get('/api/bonus-calc', [BonusCalcController::class, 'index'], [$auth, $bonusView]);
 $router->post('/api/bonus-calc/rows', [BonusCalcController::class, 'store'], [$auth, $bonusManage]);
+$router->post('/api/bonus-calc/rows/delete', [BonusCalcController::class, 'deleteMany'], [$auth, $bonusManage]);
 $router->patch('/api/bonus-calc/rows/{id}', [BonusCalcController::class, 'update'], [$auth, $bonusManage]);
 $router->post('/api/bonus-calc/rows/{id}/delete', [BonusCalcController::class, 'delete'], [$auth, $bonusManage]);
 $router->get('/api/bonus-calc/{financialYear}/{employeeId}/{month}', [BonusCalcController::class, 'showMonth'], [$auth, $bonusView]);

@@ -145,9 +145,30 @@ export function stockistTotals(lines) {
 
 /** Sum of bonus amounts across stockists, or null when nobody has a figure yet. */
 export function monthBonus(stockists) {
-  const totals = stockists.map((stockist) => stockistTotals(stockist.lines).bonusAmount)
-  if (totals.every((total) => total == null)) return null
-  return sumMoney(totals.map((total) => total ?? '0.00'))
+  return monthTotals(stockists).bonusAmount
+}
+
+/** OP, purchases, sales and bonus for every stockist on the month. */
+export function monthTotals(stockists = []) {
+  return stockistTotals(stockists.flatMap((stockist) => stockist.lines ?? []))
+}
+
+/**
+ * Muted line under a stockist name. The headquarters name and code come from
+ * the Headquarter list (not the stockist code). The count is the products in
+ * the sheet, not a code.
+ */
+export function stockistSubtitle(stockist, productCount) {
+  const count = Number(productCount) || 0
+  const parts = []
+  const headquarters = String(stockist?.headquartersName ?? '').trim()
+  const headquartersCode = String(stockist?.headquartersCode ?? '').trim()
+  if (headquarters) {
+    parts.push(headquartersCode ? `HQ: ${headquarters} (${headquartersCode})` : `HQ: ${headquarters}`)
+  }
+  parts.push(`${count} ${count === 1 ? 'product' : 'products'}`)
+  if (stockist?.assigned === false) parts.push('No longer assigned to this employee')
+  return parts.join(' · ')
 }
 
 export function formatQuantity(value) {

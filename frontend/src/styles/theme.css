@@ -1551,8 +1551,11 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
 .table--sticky-start > :not(caption) > tr > .table-select-cell {
   position: sticky;
   z-index: 2;
-  background-color: var(--table-row-bg, var(--table-sticky-bg));
-  box-shadow: none;
+  /* Solid fill, including Bootstrap's inset wash, so a scrolled cell cannot
+     show through the pinned column (cut-off amounts at the edge). */
+  background-color: var(--table-row-bg, var(--color-surface));
+  background-clip: padding-box;
+  box-shadow: inset 0 0 0 9999px var(--table-row-bg, var(--color-surface));
 }
 
 .table--sticky-start > :not(caption) > tr > .table-select-cell,
@@ -1571,18 +1574,42 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
 .table > thead > tr > th.table-col--sticky-start,
 .table > thead > tr > th.table-col--sticky-end,
 .table--sticky-start > thead > tr > th.table-select-cell {
-  z-index: 4;
+  z-index: 5;
+  --table-row-bg: var(--color-surface-muted);
   background-color: var(--color-surface-muted);
+  box-shadow: inset 0 0 0 9999px var(--color-surface-muted);
 }
 
-/* Edge shadow only while content is hidden behind a pinned column
-   (DataTable sets is-scrolled-start / has-more-end on the wrapper). */
-.table-container.is-scrolled-start > .table > :not(caption) > tr > .table-col--sticky-start {
-  box-shadow: 6px 0 8px -6px var(--table-sticky-shadow);
+/* The rightmost pinned column sits above the one beside it. */
+.table > :not(caption) > tr > .table-col--sticky-end-last {
+  z-index: 3;
 }
 
-.table-container.has-more-end > .table > :not(caption) > tr > .table-col--sticky-end {
-  box-shadow: -6px 0 8px -6px var(--table-sticky-shadow);
+.table > thead > tr > th.table-col--sticky-end-last {
+  z-index: 6;
+}
+
+/* Actions pinned at the end keep a fixed width so a Total column pinned
+   beside them can offset by exactly that width. */
+.table > :not(caption) > tr > .table-col--actions.table-col--sticky-end {
+  width: var(--table-col-actions);
+  min-width: var(--table-col-actions);
+  max-width: var(--table-col-actions);
+}
+
+/* A solid edge, not a soft shadow, covers the gap where the next column
+   would otherwise peek out from behind the pinned cell. */
+.table-container.is-scrolled-start > .table > :not(caption) > tr > .table-col--sticky-start,
+.table-container.is-scrolled-start > .table--sticky-start > :not(caption) > tr > .table-select-cell {
+  box-shadow:
+    inset 0 0 0 9999px var(--table-row-bg, var(--color-surface)),
+    8px 0 0 0 var(--table-row-bg, var(--color-surface));
+}
+
+.table-container.has-more-end > .table > :not(caption) > tr > .table-col--sticky-end-edge {
+  box-shadow:
+    inset 0 0 0 9999px var(--table-row-bg, var(--color-surface)),
+    -8px 0 0 0 var(--table-row-bg, var(--color-surface));
 }
 
 .table-select-cell {
@@ -3287,6 +3314,7 @@ legend.form-label {
    DataTable (width: 'money'). Pinned columns keep the shared sticky rules. */
 .bonus-month {
   display: inline-flex;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   width: 100%;
   margin: 0;
@@ -3295,11 +3323,17 @@ legend.form-label {
   background: none;
   color: var(--color-link);
   font: inherit;
+  font-variant-numeric: tabular-nums;
   line-height: inherit;
   text-align: right;
   text-decoration: underline;
   text-underline-offset: 0.15em;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.bonus-year .table-col--money {
+  min-width: var(--bonus-month-col);
 }
 
 .bonus-month:hover {
@@ -3342,22 +3376,77 @@ legend.form-label {
   height: auto;
 }
 
-.bonus-qty {
+/* The shared table box scrolls on both axes once overflow-x is auto.
+   A stockist sheet grows to its rows and only scrolls sideways. */
+.bonus-sheet .table-container {
+  overflow-y: hidden;
+}
+
+.bonus-sheet .bonus-qty {
   width: var(--bonus-qty-width);
-  max-width: 100%;
+  min-width: var(--bonus-qty-width);
+  max-width: var(--bonus-qty-width);
   margin-left: auto;
+  padding-right: 0.45rem;
+  padding-left: 0.35rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.bonus-sheet .table--striped > tbody > tr.bonus-total > * {
-  --bs-table-bg-type: var(--bonus-total-bg);
-  --table-row-bg: var(--bonus-total-bg);
+.bonus-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.bonus-summary__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 6.5rem;
+}
+
+.bonus-summary__label,
+.bonus-summary__value {
+  margin: 0;
+}
+
+.bonus-summary__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+}
+
+.bonus-summary__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bonus-grand {
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.bonus-grand__title {
+  margin: 0;
+  padding: var(--space-3) var(--space-4) 0;
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
 }
 
-.bonus-sheet .table--striped > tbody > tr.bonus-total > .table-col--sticky-start {
-  background-color: var(--bonus-total-bg);
+.bonus-grand .bonus-summary {
+  background: transparent;
+  border-top: 0;
 }
 
 /* ==========================================================================

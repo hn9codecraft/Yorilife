@@ -71,6 +71,8 @@ final class BonusCalcTest extends FeatureTestCase
         self::assertSame('Asha Rao', $sheet['body']['data']['employee']['name']);
         self::assertSame('EMP-1', $sheet['body']['data']['employee']['employeeCode']);
         self::assertCount(1, $sheet['body']['data']['stockists']);
+        self::assertNull($sheet['body']['data']['stockists'][0]['headquartersName']);
+        self::assertNull($sheet['body']['data']['stockists'][0]['headquartersCode']);
         self::assertCount(2, $sheet['body']['data']['stockists'][0]['lines']);
         self::assertFalse($sheet['body']['data']['stockists'][0]['lines'][0]['saved']);
         self::assertNull($sheet['body']['data']['stockists'][0]['lines'][0]['openingQty']);
@@ -202,6 +204,98 @@ final class BonusCalcTest extends FeatureTestCase
         self::assertGreaterThan(0, $history);
         $kept = $pdo->query('SELECT COUNT(*) FROM sales_employees WHERE employee_code = ' . $pdo->quote('EMP-2') . ' AND deleted_at IS NULL')->fetchColumn();
         self::assertSame(1, (int) $kept);
+    }
+
+    public function testBulkRemoveLeavesSavedMonthsAndNamesTheHeadquarters(): void
+    {
+        $viewer = $this->signedInAs('sales_user', 'bonus-bulk-view@example.test');
+        $editor = $this->signedInAs('sales_manager', 'bonus-bulk@example.test');
+        $admin = $this->signedInAs('admin', 'bonus-bulk-admin@example.test');
+        $asha = $this->employee($admin, 'Asha', 'Rao', 'EMP-B1');
+        $bina = $this->employee($admin, 'Bina', 'Shah', 'EMP-B2');
+        $locations = $admin->request('GET', '/api/locations')['body']['data']['locations'];
+        $gujarat = null;
+        foreach ($locations as $location) {
+            if ($location['name'] === 'Gujarat') {
+                $gujarat = $location['id'];
+            }
+        }
+        self::assertNotNull($gujarat);
+        $offices = $admin->request('POST', '/api/location-headquarters', [
+            'locationId' => $gujarat,
+            'name' => 'Surat',
+            'code' => '12',
+        ]);
+        self::assertSame(201, $offices['status'], $offices['raw']);
+        $hqId = null;
+        foreach ($offices['body']['data']['locations'] as $location) {
+            foreach ($location['headquarters'] as $office) {
+                if ($office['name'] === 'Surat') {
+                    $hqId = $office['id'];
+                }
+            }
+        }
+        self::assertNotNull($hqId);
+        $cap = $admin->request('POST', '/api/products', ['name' => 'Yori Cap', 'netRate' => '80.00']);
+        $capId = $cap['body']['data']['product']['id'];
+        $stockist = $admin->request('POST', '/api/stockists', [
+            'name' => 'Krishna Pharma',
+            'code' => 'surat 12',
+            'locationHeadquartersId' => $hqId,
+            'assignedEmployeeId' => $asha,
+        ]);
+        self::assertSame(201, $stockist['status'], $stockist['raw']);
+        $stockistId = $stockist['body']['data']['stockist']['id'];
+        $added = $editor->request('POST', '/api/bonus-calc/rows', [
+            'financialYear' => '2026-27',
+            'employeeIds' => [$asha, $bina],
+        ]);
+        self::assertSame(201, $added['status'], $added['raw']);
+        $ids = array_column($added['body']['data']['rows'], 'id');
+        $saved = $editor->request('PUT', '/api/bonus-calc/2026-27/' . $asha . '/4', ['lines' => [[
+            'stockistId' => $stockistId,
+            'productId' => $capId,
+            'openingQty' => '1',
+            'newPurchaseQty' => '0',
+            'productSalesQty' => '2',
+        ]]]);
+        self::assertSame(200, $saved['status'], $saved['raw']);
+        $section = $saved['body']['data']['stockists'][0];
+        self::assertSame('Krishna Pharma', $section['name']);
+        self::assertSame('surat 12', $section['code']);
+        self::assertSame('Surat', $section['headquartersName']);
+        self::assertSame('12', $section['headquartersCode']);
+
+        self::assertError($viewer->request('POST', '/api/bonus-calc/rows/delete', [
+            'financialYear' => '2026-27',
+            'ids' => $ids,
+        ]), 403, 'forbidden');
+        self::assertError($editor->request('POST', '/api/bonus-calc/rows/delete', [
+            'financialYear' => '2026-27',
+            'ids' => [],
+        ]), 422, 'validation_failed');
+
+        $pdo = Database::connection();
+        $before = (int) $pdo->query('SELECT COUNT(*) FROM bonus_calc_lines')->fetchColumn();
+        $removed = $editor->request('POST', '/api/bonus-calc/rows/delete', [
+            'financialYear' => '2026-27',
+            'ids' => $ids,
+        ]);
+        self::assertSame(200, $removed['status'], $removed['raw']);
+        self::assertSame([], $removed['body']['data']['rows']);
+        self::assertSame($before, (int) $pdo->query('SELECT COUNT(*) FROM bonus_calc_lines')->fetchColumn());
+
+        $restored = $editor->request('POST', '/api/bonus-calc/rows', [
+            'financialYear' => '2026-27',
+            'employeeIds' => [$asha],
+        ]);
+        self::assertSame('160.00', $restored['body']['data']['rows'][0]['total']);
+        $blocked = $editor->request('POST', '/api/bonus-calc/rows/delete', [
+            'financialYear' => '2026-27',
+            'ids' => [$ids[0], 999999],
+        ]);
+        self::assertError($blocked, 422, 'validation_failed');
+        self::assertCount(1, $editor->request('GET', '/api/bonus-calc?financialYear=2026-27')['body']['data']['rows']);
     }
 
     /** @param array<string, mixed> $sheet */

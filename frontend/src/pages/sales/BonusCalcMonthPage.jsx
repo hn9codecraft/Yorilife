@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useBlocker, useParams } from 'react-router'
 import PageShell from '../../components/PageShell.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import ExportCsvButton from '../../components/ExportCsvButton.jsx'
 import FilterBar from '../../components/FilterBar.jsx'
 import LoadingIndicator from '../../components/LoadingIndicator.jsx'
+import Modal from '../../components/Modal.jsx'
 import TableSection, { TableSectionStack } from '../../components/TableSection.jsx'
 import usePermission from '../../data/usePermission.js'
+import useRouteMeta from '../../hooks/useRouteMeta.js'
 import { api } from '../../api/client.js'
 import { formatMoney } from '../../data/productList.js'
 import {
@@ -16,10 +18,12 @@ import {
   filterLines,
   formatQuantity,
   isFinancialYear,
-  monthBonus,
+  lineFigures,
   monthCsvRecord,
+  monthTotals,
   normalizeQuantity,
   quantityError,
+  stockistSubtitle,
   stockistTotals,
 } from '../../data/bonusCalc.js'
 
@@ -37,8 +41,41 @@ function lineKey(line) {
   return `${line.stockistId}:${line.productId}`
 }
 
+function dash() {
+  return <span className="bonus-month__empty">–</span>
+}
+
+function showMoney(value) {
+  return formatMoney(value) ?? dash()
+}
+
+function showQuantity(value) {
+  return formatQuantity(value) ?? dash()
+}
+
+function Summary({ totals, label }) {
+  const items = [
+    ['OP', showQuantity(totals.openingQty)],
+    ['New purchase', showQuantity(totals.newPurchaseQty)],
+    ['Total product', showQuantity(totals.totalProduct)],
+    ['Sales', showQuantity(totals.productSalesQty)],
+    ['Bonus', showMoney(totals.bonusAmount)],
+  ]
+  return (
+    <dl className="bonus-summary" aria-label={label}>
+      {items.map(([name, value]) => (
+        <div key={name} className="bonus-summary__item">
+          <dt className="bonus-summary__label">{name}</dt>
+          <dd className="bonus-summary__value">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 export default function BonusCalcMonthPage() {
   const canManage = usePermission('sales.manage')
+  const routeMeta = useRouteMeta()
   const { fy, employeeId, month } = useParams()
   const monthNumber = MONTHS.some((item) => String(item.value) === month) ? Number(month) : null
   const yearOk = isFinancialYear(fy)
@@ -101,12 +138,32 @@ export default function BonusCalcMonthPage() {
     })
   }, [sheet, drafts, query])
 
-  const total = view.length ? monthBonus(view) : null
+  const grand = monthTotals(view)
   const back = `/sales/bonus-calc?year=${encodeURIComponent(fy || '')}`
   const employee = sheet?.employee
   const subtitle = employee
     ? `${monthMeta?.label ?? ''} · Financial Year ${fy}${employee.employeeCode ? ` · ${employee.employeeCode}` : employee.id ? ` · ID ${employee.id}` : ''}`
     : undefined
+  const crumbLabel = employee && monthMeta ? `${employee.name} - ${monthMeta.label}` : (monthMeta?.label ?? 'Bonus month')
+  const breadcrumbs = routeMeta.breadcrumbs.map((crumb, index, all) => (
+    index === all.length - 1 ? { label: crumbLabel } : crumb
+  ))
+  const dirty = Boolean(canManage && sheet && sheet.stockists.some((stockist) => stockist.lines.some((line) => {
+    const draft = drafts[lineKey(line)]
+    if (!draft) return false
+    return QTY_FIELDS.some(([field]) => Object.prototype.hasOwnProperty.call(draft, field) && String(draft[field]) !== String(line[field] ?? ''))
+  })))
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname)
+
+  useEffect(() => {
+    if (!dirty) return undefined
+    const warn = (event) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
 
   function setQty(line, field, next) {
     setSaved(false)
@@ -171,6 +228,7 @@ export default function BonusCalcMonthPage() {
     <PageShell
       title={employee?.name || 'Bonus month'}
       subtitle={subtitle}
+      breadcrumbs={breadcrumbs}
       actions={(
         <>
           <Link className="btn btn-outline-secondary" to={back}>Back</Link>
@@ -199,10 +257,11 @@ export default function BonusCalcMonthPage() {
       )}
       {status === 'ready' && sheet && (
         <>
-          <p className="bonus-note">
-            Month bonus {total == null ? <span className="bonus-month__empty">-</span> : formatMoney(total)}.
-            {' '}Rates are kept from the first save of each product, so a later price change does not change this month.
-          </p>
+          <section className="bonus-grand" aria-labelledby="bonus-grand-title">
+            <h2 id="bonus-grand-title" className="bonus-grand__title">Grand total</h2>
+            <Summary totals={grand} label="Grand total" />
+          </section>
+          <p className="bonus-note">Rates are kept from the first save of each product, so a later price change does not change this month.</p>
           {saved && <div className="alert alert-success" role="status">Saved.</div>}
           {formError && (
             <div className="alert alert-danger" role="alert">
@@ -245,74 +304,69 @@ export default function BonusCalcMonthPage() {
               />
               </div>
               <TableSectionStack>
-                {view.map((stockist) => {
-                  const totals = stockistTotals(stockist.shown)
-                  const rows = stockist.shown.length === 0 ? [] : [
-                    ...stockist.shown.map((line) => ({ ...line, isTotal: false })),
-                    { id: `total-${stockist.id}`, isTotal: true, productName: 'Total', ...totals },
-                  ]
-                  return (
-                    <TableSection key={stockist.id} title={stockist.name} count={stockist.lines.length}>
-                      {(stockist.code || !stockist.assigned) && (
-                        <p className="bonus-stockist-note">
-                          {[stockist.code, stockist.assigned ? null : 'No longer assigned to this employee'].filter(Boolean).join(' · ')}
-                        </p>
-                      )}
+                {view.map((stockist) => (
+                    <TableSection key={stockist.id} title={stockist.name}>
+                      <p className="bonus-stockist-note">{stockistSubtitle(stockist, stockist.lines.length)}</p>
                       <div className="bonus-sheet">
                         <DataTable
                           caption={`${stockist.name} products`}
                           striped
-                          scroll
-                          rowClassName={(row) => (row.isTotal ? 'bonus-total' : undefined)}
                           columns={sheetColumns({ canManage, fieldErrors, setQty })}
-                          rows={rows}
-                          rowKey={(row) => row.id ?? lineKey(row)}
-                          emptyText="No products match your search"
-                          emptyHint="Change the search to see the products for this stockist."
-                          emptyIcon="bi-funnel"
+                          rows={stockist.shown}
+                          rowKey={(row) => lineKey(row)}
+                          emptyText={stockist.lines.length ? 'No products match your search' : 'No products yet'}
+                          emptyHint={stockist.lines.length ? 'Change the search to see the products for this stockist.' : 'Add products on the Product list. They appear here for every stockist.'}
+                          emptyIcon={stockist.lines.length ? 'bi-funnel' : 'bi-box2'}
                         />
                       </div>
+                      <Summary totals={stockistTotals(stockist.lines)} label={`${stockist.name} totals`} />
                     </TableSection>
-                  )
-                })}
+                ))}
               </TableSectionStack>
             </>
           )}
         </>
       )}
+      <Modal
+        open={blocker.state === 'blocked'}
+        onClose={() => blocker.reset()}
+        title="Unsaved changes"
+        footer={(
+          <>
+            <button type="button" className="btn btn-outline-secondary" onClick={() => blocker.reset()}>Stay</button>
+            <button type="button" className="btn btn-primary" onClick={() => blocker.proceed()}>Leave</button>
+          </>
+        )}
+      >
+        Leave this month? The quantities you typed have not been saved.
+      </Modal>
     </PageShell>
   )
 }
 
 function sheetColumns({ canManage, fieldErrors, setQty }) {
-  const blank = () => <span className="visually-hidden">Not applicable</span>
   const money = (key, header) => ({
     key,
     header,
     width: 'money',
-    render: (row) => (row.isTotal ? blank() : formatMoney(row[key])),
+    nowrap: true,
+    render: (row) => showMoney(row[key]),
   })
-  const figure = (key, header, moneyColumn = false) => ({
-    key,
+  const figure = (header, moneyColumn, pick) => ({
+    key: moneyColumn ? 'bonusAmount' : 'totalProduct',
     header,
     width: moneyColumn ? 'money' : 'sm',
     align: 'end',
-    render: (row) => {
-      const value = row[key]
-      if (value == null || value === '') return null
-      return moneyColumn ? formatMoney(value) : formatQuantity(value)
-    },
+    nowrap: true,
+    render: (row) => (moneyColumn ? showMoney(pick(lineFigures(row))) : showQuantity(pick(lineFigures(row)))),
   })
   const qty = (field, header) => ({
     key: field,
     header,
     width: 'sm',
     align: 'end',
+    nowrap: true,
     render: (row) => {
-      if (row.isTotal) {
-        const value = row[field]
-        return value == null || value === '' ? null : formatQuantity(value)
-      }
       const error = fieldErrors[fieldKey(row, field)]
       return (
         <input
@@ -336,18 +390,18 @@ function sheetColumns({ canManage, fieldErrors, setQty }) {
       header: 'Product Name',
       sticky: 'start',
       title: (row) => row.productName,
-      render: (row) => row.productName,
+      render: (row) => row.productName || dash(),
     },
-    { key: 'packagingUnit', header: 'Packaging Unit', width: 'md', render: (row) => (row.isTotal ? blank() : row.packagingUnit) },
+    { key: 'packagingUnit', header: 'Packaging Unit', width: 'md', render: (row) => (row.packagingUnit ? row.packagingUnit : dash()) },
     money('mrp', 'MRP'),
     money('ptr', 'PTR'),
     money('pts', 'PTS'),
-    { key: 'scheme', header: 'Scheme', width: 'sm', nowrap: true, render: (row) => (row.isTotal ? blank() : row.scheme) },
+    { key: 'scheme', header: 'Scheme', width: 'sm', nowrap: true, render: (row) => (row.scheme ? row.scheme : dash()) },
     money('netRate', 'Net Rate'),
     qty('openingQty', 'OP'),
     qty('newPurchaseQty', 'New Purchase'),
-    figure('totalProduct', 'Total Product'),
+    figure('Total Product', false, (figures) => figures.totalProduct),
     qty('productSalesQty', 'Product Sales'),
-    figure('bonusAmount', 'Bonus Amount', true),
+    figure('Bonus Amount', true, (figures) => figures.bonusAmount),
   ]
 }

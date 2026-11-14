@@ -147,14 +147,17 @@ final class BonusCalcRepository extends Repository
         );
     }
 
+    private const STOCKIST_SELECT = 's.id, s.name, s.code, s.assigned_employee_id, lh.name AS headquarters_name, lh.code AS headquarters_code';
+
     /** @return list<array<string, mixed>> */
     public function stockistsForEmployee(int $employeeId): array
     {
         return $this->many(
-            'SELECT id, name, code, assigned_employee_id
-             FROM stockists
-             WHERE assigned_employee_id = ?
-             ORDER BY name, code, id',
+            'SELECT ' . self::STOCKIST_SELECT . '
+             FROM stockists s
+             LEFT JOIN location_headquarters lh ON lh.id = s.location_headquarters_id
+             WHERE s.assigned_employee_id = ?
+             ORDER BY s.name, s.code, s.id',
             [$employeeId]
         );
     }
@@ -167,7 +170,10 @@ final class BonusCalcRepository extends Repository
         }
         $marks = implode(', ', array_fill(0, count($ids), '?'));
         $rows = $this->many(
-            "SELECT id, name, code, assigned_employee_id FROM stockists WHERE id IN ({$marks})",
+            'SELECT ' . self::STOCKIST_SELECT . "
+             FROM stockists s
+             LEFT JOIN location_headquarters lh ON lh.id = s.location_headquarters_id
+             WHERE s.id IN ({$marks})",
             $ids
         );
         $byId = [];
