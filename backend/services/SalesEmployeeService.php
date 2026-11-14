@@ -100,7 +100,11 @@ final class SalesEmployeeService
     public function delete(int $id): void
     {
         $current = $this->repository->find($id) ?? throw HttpException::notFound('Employee not found.');
-        $this->repository->softDelete($id, UtcTime::now());
+        $this->repository->transaction(function () use ($id): void {
+            $this->repository->softDelete($id, UtcTime::now());
+            // Stockists: clear "Assigned To" for this employee in the same transaction (SalesOfficeService::releaseStockistsFrom).
+            (new SalesOfficeService())->releaseStockistsFrom($id);
+        });
         AuditLogger::record([
             'module' => 'sales_office',
             'action' => 'delete',

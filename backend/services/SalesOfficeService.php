@@ -252,9 +252,9 @@ final class SalesOfficeService
     /** @param array<string, mixed> $input */
     public function createStockist(array $input): array
     {
-        $id = $this->records->insertStockist($this->stockistFields($input));
+        $id = $this->records->insertStockist($this->stockistFields($input, null));
         $created = $this->records->findStockist($id);
-        EntityHistory::recordDiff('stockist', $id, $created['name'] ?? null, [], ['Name' => $created['name'] ?? null, 'Code' => $created['code'] ?? null, 'Headquarters' => $created['headquarters_id'] ?? null]);
+        EntityHistory::recordDiff('stockist', $id, $created['name'] ?? null, [], self::stockistHistory($created));
         AuditLogger::record(['module' => 'sales_office', 'action' => 'create', 'targetType' => 'stockist', 'targetId' => $id, 'targetLabel' => $created['name'] ?? null]);
 
         return ErpPresenter::stockist($created);
@@ -264,9 +264,9 @@ final class SalesOfficeService
     public function updateStockist(int $id, array $input): array
     {
         $before = $this->records->findStockist($id) ?? throw HttpException::notFound('Stockist not found.');
-        $this->records->updateStockist($id, $this->stockistFields($input));
+        $this->records->updateStockist($id, $this->stockistFields($input, $id));
         $updated = $this->records->findStockist($id);
-        EntityHistory::recordDiff('stockist', $id, $updated['name'] ?? null, ['Name' => $before['name'] ?? null, 'Code' => $before['code'] ?? null, 'Headquarters' => $before['headquarters_id'] ?? null], ['Name' => $updated['name'] ?? null, 'Code' => $updated['code'] ?? null, 'Headquarters' => $updated['headquarters_id'] ?? null]);
+        EntityHistory::recordDiff('stockist', $id, $updated['name'] ?? null, self::stockistHistory($before), self::stockistHistory($updated));
         AuditLogger::record(['module' => 'sales_office', 'action' => 'update', 'targetType' => 'stockist', 'targetId' => $id, 'targetLabel' => $updated['name'] ?? null]);
 
         return ErpPresenter::stockist($updated);
@@ -692,26 +692,88 @@ final class SalesOfficeService
         );
     }
 
-    /** @param array<string, mixed> $input @return array<string, mixed> */
-    private function stockistFields(array $input): array
+    /**
+     * Called when a Sales Office employee is removed: every stockist assigned to
+     * them becomes unassigned. Runs inside the caller's transaction when there is one.
+     */
+    public function releaseStockistsFrom(int $employeeId): void
+    {
+        foreach ($this->records->clearStockistAssignments($employeeId) as $stockist) {
+            $id = (int) $stockist['id'];
+            EntityHistory::recordDiff('stockist', $id, $stockist['name'] ?? null, ['Assigned to' => $employeeId], ['Assigned to' => null]);
+            AuditLogger::record(['module' => 'sales_office', 'action' => 'update', 'targetType' => 'stockist', 'targetId' => $id, 'targetLabel' => $stockist['name'] ?? null]);
+        }
+    }
+
+    /** Stockist fields shown in Change History. @param array<string, mixed>|null $row @return array<string, mixed> */
+    private static function stockistHistory(?array $row): array
+    {
+        return [
+            'Name' => $row['name'] ?? null,
+            'Code' => $row['code'] ?? null,
+            'Headquarter' => $row['location_headquarters_id'] ?? null,
+            'Headquarters (old)' => $row['headquarters_id'] ?? null,
+            'Assigned to' => $row['assigned_employee_id'] ?? null,
+            'Drug licence' => $row['drug_licence_no'] ?? null,
+            'Drug licence valid up to' => $row['drug_licence_valid_upto'] ?? null,
+            'Food licence' => $row['food_licence_no'] ?? null,
+            'Food licence valid up to' => $row['food_licence_valid_upto'] ?? null,
+            'FSSAI licence' => $row['fssai_licence_no'] ?? null,
+            'FSSAI licence valid up to' => $row['fssai_licence_valid_upto'] ?? null,
+        ];
+    }
+
+    /** Licence number field => [column, label], and its valid-up-to date field => column. */
+    private const STOCKIST_LICENCES = [
+        'drug' => ['drugLicenceNo', 'drug_licence_no', 'drugLicenceValidUpto', 'drug_licence_valid_upto', 'Drug licence'],
+        'food' => ['foodLicenceNo', 'food_licence_no', 'foodLicenceValidUpto', 'food_licence_valid_upto', 'Food licence'],
+        'fssai' => ['fssaiLicenceNo', 'fssai_licence_no', 'fssaiLicenceValidUpto', 'fssai_licence_valid_upto', 'FSSAI licence'],
+    ];
+
+    /**
+     * Only the stockist name is required. The code is typed by hand and must be
+     * unique (trimmed, any letter case). Headquarter comes from the Headquarter
+     * list (location_headquarters); the older Sales Office headquarters link is
+     * still accepted (Excel import) and is kept in step where one exists.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private function stockistFields(array $input, ?int $id): array
     {
         $errors = [];
-        Input::onlyFields($input, ['name', 'code', 'headquartersId', 'address', 'pincode', 'phone', 'email'], $errors);
-        $name = Input::text($input, 'name', 'stockist name', 150, $errors);
-        $code = Input::optionalText($input, 'code', 'code', 50, $errors);
-        if ($code !== null && preg_match('/^ST-/i', $code) === 1) {
-            if (preg_match('/^ST-([0-9]+)$/i', $code, $matches) !== 1) {
-                $errors['code'] = 'Enter numbers only after ST-.';
-                $code = null;
-            } else {
-                $code = 'ST-' . $matches[1];
-            }
+        $allowed = ['name', 'code', 'headquartersId', 'locationHeadquartersId', 'assignedEmployeeId', 'address', 'pincode', 'phone', 'email'];
+        foreach (self::STOCKIST_LICENCES as [$numberField, , $dateField]) {
+            $allowed[] = $numberField;
+            $allowed[] = $dateField;
         }
-        $hqId = Input::id($input['headquartersId'] ?? null);
-        if ($hqId === null) {
+        Input::onlyFields($input, $allowed, $errors);
+        $name = Input::text($input, 'name', 'stockist name', 150, $errors);
+        $code = Input::optionalText($input, 'code', 'stockist code', 50, $errors);
+        if ($code !== null && $this->records->stockistCodeTaken($code, $id)) {
+            $errors['code'] = 'This stockist code is already in use.';
+        }
+        $fields = ['name' => $name, 'code' => $code];
+
+        $hasOldHq = array_key_exists('headquartersId', $input);
+        $hasHq = array_key_exists('locationHeadquartersId', $input);
+        $oldHqId = $hasOldHq ? Input::id($input['headquartersId']) : null;
+        $hqId = $hasHq ? Input::id($input['locationHeadquartersId']) : null;
+        if ($hasOldHq && $input['headquartersId'] !== null && $input['headquartersId'] !== '' && $oldHqId === null) {
             $errors['headquartersId'] = 'Select a headquarters.';
         }
-        $fields = ['name' => $name, 'code' => $code, 'headquarters_id' => $hqId];
+        if ($hasHq && $input['locationHeadquartersId'] !== null && $input['locationHeadquartersId'] !== '' && $hqId === null) {
+            $errors['locationHeadquartersId'] = 'Select a headquarter.';
+        }
+        if (array_key_exists('assignedEmployeeId', $input)) {
+            $employeeId = Input::id($input['assignedEmployeeId']);
+            if ($employeeId === null && $input['assignedEmployeeId'] !== null && $input['assignedEmployeeId'] !== '') {
+                $errors['assignedEmployeeId'] = 'Select an employee.';
+            } elseif ($employeeId !== null && !$this->records->activeSalesEmployeeExists($employeeId)) {
+                $errors['assignedEmployeeId'] = 'That employee is not in the employee list.';
+            }
+            $fields['assigned_employee_id'] = $employeeId;
+        }
         if (array_key_exists('address', $input)) {
             $fields['address'] = Input::optionalText($input, 'address', 'address', 255, $errors);
         }
@@ -728,14 +790,54 @@ final class SalesOfficeService
         if (array_key_exists('email', $input)) {
             $fields['email'] = self::optionalEmail($input['email'] ?? null, $errors);
         }
+        foreach (self::STOCKIST_LICENCES as [$numberField, $numberColumn, $dateField, $dateColumn, $label]) {
+            if (array_key_exists($numberField, $input)) {
+                $fields[$numberColumn] = Input::optionalText($input, $numberField, $label . ' number', 100, $errors);
+            }
+            if (array_key_exists($dateField, $input)) {
+                $fields[$dateColumn] = self::optionalDate($input[$dateField], $dateField, $errors);
+            }
+        }
         $this->fail($errors);
-        if ($this->records->findHeadquarters($hqId) === null) {
+
+        $oldHq = $oldHqId === null ? null : $this->records->findHeadquarters($oldHqId);
+        if ($oldHqId !== null && $oldHq === null) {
             throw HttpException::validation(['headquartersId' => 'That headquarters does not exist.']);
+        }
+        if ($hqId !== null && $this->records->findLocationHeadquarters($hqId) === null) {
+            throw HttpException::validation(['locationHeadquartersId' => 'That headquarter does not exist.']);
+        }
+        if ($hasHq) {
+            $fields['location_headquarters_id'] = $hqId;
+        }
+        if ($hasOldHq) {
+            $fields['headquarters_id'] = $oldHqId;
+            if (!$hasHq) {
+                $fields['location_headquarters_id'] = $oldHq === null ? null : Presenter::id($oldHq['location_headquarters_id'] ?? null);
+            }
+        } elseif ($hasHq) {
+            // Keep the older link in step so sales entries and the hierarchy view still find the stockist.
+            $fields['headquarters_id'] = $hqId === null ? null : Presenter::id($this->records->findHeadquartersByLocationOffice($hqId)['id'] ?? null);
         }
 
         return $fields;
     }
 
+    /** A YYYY-MM-DD date, or null when empty. */
+    private static function optionalDate(mixed $value, string $field, array &$errors): ?string
+    {
+        if ($value === null || (is_string($value) && trim($value) === '')) {
+            return null;
+        }
+        if (!is_string($value) || preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', trim($value), $m) !== 1
+            || !checkdate((int) $m[2], (int) $m[3], (int) $m[1]) || (int) $m[1] < 1900 || (int) $m[1] > 2200) {
+            $errors[$field] = 'Enter a valid date.';
+
+            return null;
+        }
+
+        return trim($value);
+    }
     private function requireHeadquarters(int $id): void
     {
         if ($this->records->findHeadquarters($id) === null) {

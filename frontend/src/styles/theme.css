@@ -1001,8 +1001,154 @@ pre code {
   padding-right: 2.25rem;
 }
 
-.form-control::placeholder {
-  color: var(--color-text-subtle);
+/* ==== Shared form text: placeholders, notes, empty date fields =========
+   One place for the whole ERP. Colours and sizes come from variable.css:
+   --color-placeholder, --font-size-placeholder, --font-size-note.
+   ======================================================================= */
+.form-control::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-placeholder, var(--color-text-subtle));
+  font-size: var(--font-size-placeholder);
+  opacity: 1;
+}
+
+/* A select still showing its empty "Select …" option looks like a placeholder. */
+.form-select:has(> option[value=""]:checked) {
+  color: var(--color-placeholder, var(--color-text-subtle));
+  font-size: var(--font-size-placeholder);
+}
+
+.form-select option {
+  color: var(--color-text);
+  font-size: var(--font-size-input);
+}
+
+/* Helper text under a field and the short note beside a label, e.g. "Pincode (6 digits)". */
+.form-text,
+.label-note {
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.label-note {
+  font-weight: var(--font-weight-normal, 400);
+  margin-left: 0.25em;
+}
+
+/* Empty date / time / month fields (Chrome shows "dd-mm-yyyy"). TextField sets
+   data-empty="true"; [value=""] covers plain inputs that render the attribute. */
+input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):is([data-empty="true"], [value=""]):not(:focus) {
+  color: var(--color-placeholder, var(--color-text-subtle));
+  font-size: var(--font-size-placeholder);
+}
+
+input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):is([data-empty="true"], [value=""]):not(:focus)::-webkit-datetime-edit {
+  color: var(--color-placeholder, var(--color-text-subtle));
+}
+
+/* ==== Searchable select (components/SearchableSelect.jsx) =============== */
+.searchable-select {
+  position: relative;
+}
+
+.searchable-select__control {
+  position: relative;
+}
+
+.searchable-select__input.form-control {
+  padding-right: 4rem;
+  cursor: text;
+}
+
+.searchable-select__actions {
+  position: absolute;
+  inset-block: 0;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  pointer-events: none;
+}
+
+.searchable-select__clear,
+.searchable-select__caret {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.searchable-select__clear:hover,
+.searchable-select__caret:hover {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.searchable-select__clear:focus-visible,
+.searchable-select__caret:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+.searchable-select__menu {
+  position: absolute;
+  z-index: 1060;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: min(18rem, 50vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: var(--space-1, 0.25rem) 0;
+  list-style: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.searchable-select__option {
+  padding: 0.5rem 0.75rem;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.searchable-select__option.is-active {
+  background-color: var(--color-primary-50);
+}
+
+.searchable-select__option[aria-selected="true"] {
+  font-weight: var(--font-weight-semibold);
+}
+
+.searchable-select__option[aria-selected="true"]::after {
+  content: "\2713";
+  float: right;
+  margin-left: 0.5rem;
+  color: var(--color-primary);
+}
+
+.searchable-select__empty,
+.searchable-select__more {
+  padding: 0.5rem 0.75rem;
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.searchable-select__more {
+  border-top: 1px solid var(--color-border);
 }
 
 .form-control:focus,

@@ -7,6 +7,10 @@ namespace App\Repositories;
 /** Headquarters, managers and stockists. */
 final class SalesOfficeRepository extends Repository
 {
+    private const STOCKIST_COLUMNS = 'id, name, code, address, pincode, phone, email, headquarters_id, location_headquarters_id, assigned_employee_id,
+        drug_licence_no, drug_licence_valid_upto, food_licence_no, food_licence_valid_upto, fssai_licence_no, fssai_licence_valid_upto,
+        created_at, updated_at';
+
     /** @return list<array<string, mixed>> */
     public function headquarters(): array
     {
@@ -47,13 +51,13 @@ final class SalesOfficeRepository extends Repository
     /** @return list<array<string, mixed>> */
     public function stockists(): array
     {
-        return $this->many('SELECT id, name, code, address, pincode, phone, email, headquarters_id, created_at, updated_at FROM stockists ORDER BY name, id');
+        return $this->many('SELECT ' . self::STOCKIST_COLUMNS . ' FROM stockists ORDER BY name, id');
     }
 
     /** @return array<string, mixed>|null */
     public function findStockist(int $id): ?array
     {
-        return $this->one('SELECT id, name, code, address, pincode, phone, email, headquarters_id, created_at, updated_at FROM stockists WHERE id = ?', [$id]);
+        return $this->one('SELECT ' . self::STOCKIST_COLUMNS . ' FROM stockists WHERE id = ?', [$id]);
     }
 
     /** @return array<string, mixed>|null */
@@ -78,7 +82,7 @@ final class SalesOfficeRepository extends Repository
     /** @return array<string, mixed>|null */
     public function findStockistByCode(string $code): ?array
     {
-        return $this->one('SELECT id, name, code, address, pincode, phone, email, headquarters_id, created_at, updated_at FROM stockists WHERE code = ?', [$code]);
+        return $this->one('SELECT ' . self::STOCKIST_COLUMNS . ' FROM stockists WHERE code = ?', [$code]);
     }
 
     /**
@@ -508,6 +512,44 @@ final class SalesOfficeRepository extends Repository
             fn () => $this->updateRow('stockists', $id, $fields),
             ['stockists_code_unique' => ['code' => 'This code is already in use.']]
         );
+    }
+
+    /** True when another stockist already uses this code (trimmed, any letter case). */
+    public function stockistCodeTaken(string $code, ?int $exceptId): bool
+    {
+        $statement = $this->pdo()->prepare(
+            'SELECT 1 FROM stockists WHERE LOWER(TRIM(code)) = LOWER(TRIM(?)) AND (? IS NULL OR id <> ?) LIMIT 1'
+        );
+        $statement->execute([$code, $exceptId, $exceptId]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
+    /** True when the Sales Office employee exists and has not been removed. */
+    public function activeSalesEmployeeExists(int $id): bool
+    {
+        $statement = $this->pdo()->prepare('SELECT 1 FROM sales_employees WHERE id = ? AND deleted_at IS NULL');
+        $statement->execute([$id]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
+    /**
+     * Clears "Assigned To" on every stockist assigned to this employee.
+     * Returns the stockists that were changed (id, name) for the audit log.
+     *
+     * @return list<array{id: int|string, name: string}>
+     */
+    public function clearStockistAssignments(int $employeeId): array
+    {
+        return $this->transaction(function () use ($employeeId): array {
+            $rows = $this->many('SELECT id, name FROM stockists WHERE assigned_employee_id = ? ORDER BY id FOR UPDATE', [$employeeId]);
+            if ($rows !== []) {
+                $this->pdo()->prepare('UPDATE stockists SET assigned_employee_id = NULL WHERE assigned_employee_id = ?')->execute([$employeeId]);
+            }
+
+            return $rows;
+        });
     }
 
     public function deleteStockist(int $id): void

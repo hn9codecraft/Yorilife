@@ -62,9 +62,10 @@ final class SearchRepository extends Repository
         $escape = self::ESCAPE;
 
         return $this->many(
-            "SELECT s.id, s.name, s.code, h.name AS headquarters_name
+            "SELECT s.id, s.name, s.code, COALESCE(lh.name, h.name) AS headquarters_name
              FROM stockists s
-             JOIN headquarters h ON h.id = s.headquarters_id
+             LEFT JOIN location_headquarters lh ON lh.id = s.location_headquarters_id
+             LEFT JOIN headquarters h ON h.id = s.headquarters_id
              WHERE s.name LIKE ? {$escape} OR s.code LIKE ? {$escape}
              ORDER BY s.name, s.id
              LIMIT 6",

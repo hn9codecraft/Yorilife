@@ -22,6 +22,18 @@ export default function FormField({ id, label, required, error, help, className 
   )
 }
 
+/** A short note beside a label in brackets, e.g. <LabelNote label="Pincode" note="6 digits" />. Styled by .label-note. */
+export function LabelNote({ label, note }) {
+  return (
+    <>
+      {label}
+      {note && <small className="label-note">({note})</small>}
+    </>
+  )
+}
+
+const DATE_LIKE = new Set(['date', 'time', 'month', 'datetime-local'])
+
 export function TextField({ id, label, required, error, help, className, value, onChange, type = 'text', ...inputProps }) {
   return (
     <FormField id={id} label={label} required={required} error={error} help={help} className={className}>
@@ -34,6 +46,7 @@ export function TextField({ id, label, required, error, help, className, value, 
         aria-invalid={error ? 'true' : undefined}
         aria-describedby={describedBy(id, error, help)}
         aria-required={required || undefined}
+        data-empty={DATE_LIKE.has(type) ? String(!value) : undefined}
         {...inputProps}
       />
     </FormField>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Database\Database;
 use Tests\Support\FeatureTestCase;
 
 /** Sprint 4 persistence: office, catalogue, products, master sheet and sales. */
@@ -601,7 +602,7 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertTrue($sourceGone);
     }
 
-    public function testStockistCodeUsesTheStPrefixAndKeepsOptionalContact(): void
+    public function testStockistCodeIsTypedByHandUniqueAndKeepsOptionalContact(): void
     {
         $admin = $this->signedInAs('admin', 'stockist-contact@example.test');
         $hq = $admin->request('POST', '/api/headquarters', $this->hq('HQ', 'HQ-001', $this->managerChain($admin)));
@@ -618,7 +619,7 @@ final class BusinessDataTest extends FeatureTestCase
         ]);
         self::assertSame(201, $created['status'], $created['raw']);
         $stockist = $created['body']['data']['stockist'];
-        self::assertSame('ST-001', $stockist['code']);
+        self::assertSame('st-001', $stockist['code']);
         self::assertSame('12 Market Road', $stockist['address']);
         self::assertSame('380001', $stockist['pincode']);
         self::assertSame('12452724', $stockist['phone']);
@@ -629,12 +630,12 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertNull($blank['body']['data']['stockist']['code']);
         self::assertNull($blank['body']['data']['stockist']['address']);
 
-        self::assertError($admin->request('POST', '/api/stockists', [
-            'name' => 'Bad', 'code' => 'ST-12A', 'headquartersId' => $hqId,
-        ]), 422, 'validation_failed');
-        self::assertError($admin->request('POST', '/api/stockists', [
-            'name' => 'Again', 'code' => 'ST-001', 'headquartersId' => $hqId,
-        ]), 422, 'validation_failed');
+        $free = $admin->request('POST', '/api/stockists', ['name' => 'Free Code', 'code' => 'ABC/12A', 'headquartersId' => $hqId]);
+        self::assertSame(201, $free['status'], $free['raw']);
+        self::assertSame('ABC/12A', $free['body']['data']['stockist']['code']);
+        $again = $admin->request('POST', '/api/stockists', ['name' => 'Again', 'code' => ' ST-001 ', 'headquartersId' => $hqId]);
+        self::assertError($again, 422, 'validation_failed');
+        self::assertSame('This stockist code is already in use.', $again['body']['error']['details']['fields']['code'] ?? null, $again['raw']);
 
         $sale = $admin->request('POST', '/api/sales-entries', [
             'month' => '2026-04',
@@ -648,6 +649,101 @@ final class BusinessDataTest extends FeatureTestCase
         $names = array_column($admin->request('GET', '/api/stockists')['body']['data']['stockists'], 'name');
         self::assertNotContains('City Store', $names);
         self::assertContains('Plain', $names);
+    }
+
+    public function testStockistKeepsHeadquarterLicencesAndAssignedEmployee(): void
+    {
+        $admin = $this->signedInAs('admin', 'stockist-licence@example.test');
+        $gujarat = $admin->request('GET', '/api/locations')['body']['data']['locations'][0]['id'];
+        $office = $admin->request('POST', '/api/location-headquarters', [
+            'locationId' => $gujarat, 'name' => 'Licence HQ', 'code' => 'HQ-901', 'address' => '1 Demo Road',
+            'pincode' => '380009', 'phone' => '12452724', 'email' => 'lic@example.test',
+        ]);
+        self::assertSame(201, $office['status'], $office['raw']);
+        $officeId = null;
+        foreach ($office['body']['data']['locations'] as $location) {
+            foreach ($location['headquarters'] as $row) {
+                if ($row['code'] === 'HQ-901') {
+                    $officeId = $row['id'];
+                }
+            }
+        }
+        self::assertNotNull($officeId);
+        $employee = $admin->request('POST', '/api/sales-employees', []);
+        self::assertSame(201, $employee['status'], $employee['raw']);
+        $employeeId = $employee['body']['data']['employee']['id'];
+
+        $onlyName = $admin->request('POST', '/api/stockists', ['name' => 'Only Name']);
+        self::assertSame(201, $onlyName['status'], $onlyName['raw']);
+        self::assertNull($onlyName['body']['data']['stockist']['locationHeadquartersId']);
+
+        $created = $admin->request('POST', '/api/stockists', [
+            'name' => 'Licensed Store',
+            'code' => 'LS-1',
+            'locationHeadquartersId' => $officeId,
+            'assignedEmployeeId' => $employeeId,
+            'drugLicenceNo' => 'DL-123',
+            'drugLicenceValidUpto' => '2027-03-31',
+            'foodLicenceNo' => 'FL-9',
+            'foodLicenceValidUpto' => '',
+            'fssaiLicenceNo' => 'FSSAI-77',
+            'fssaiLicenceValidUpto' => '2025-01-15',
+        ]);
+        self::assertSame(201, $created['status'], $created['raw']);
+        $stockist = $created['body']['data']['stockist'];
+        self::assertSame((string) $officeId, (string) $stockist['locationHeadquartersId']);
+        self::assertSame((string) $employeeId, (string) $stockist['assignedEmployeeId']);
+        self::assertSame('DL-123', $stockist['drugLicenceNo']);
+        self::assertSame('2027-03-31', $stockist['drugLicenceValidUpto']);
+        self::assertNull($stockist['foodLicenceValidUpto']);
+        self::assertSame('2025-01-15', $stockist['fssaiLicenceValidUpto']);
+
+        $dup = $admin->request('POST', '/api/stockists', ['name' => 'Dup', 'code' => 'ls-1']);
+        self::assertError($dup, 422, 'validation_failed');
+        $badDate = $admin->request('POST', '/api/stockists', ['name' => 'Bad', 'drugLicenceValidUpto' => '2027-02-30']);
+        self::assertError($badDate, 422, 'validation_failed');
+        $badEmployee = $admin->request('POST', '/api/stockists', ['name' => 'Bad', 'assignedEmployeeId' => 999999]);
+        self::assertError($badEmployee, 422, 'validation_failed');
+        $badOffice = $admin->request('POST', '/api/stockists', ['name' => 'Bad', 'locationHeadquartersId' => 999999]);
+        self::assertError($badOffice, 422, 'validation_failed');
+
+        $updated = $admin->request('PATCH', '/api/stockists/' . $stockist['id'], [
+            'name' => 'Licensed Store', 'code' => 'LS-1', 'locationHeadquartersId' => '', 'assignedEmployeeId' => '',
+        ]);
+        self::assertSame(200, $updated['status'], $updated['raw']);
+        self::assertNull($updated['body']['data']['stockist']['locationHeadquartersId']);
+        self::assertNull($updated['body']['data']['stockist']['assignedEmployeeId']);
+        self::assertSame('DL-123', $updated['body']['data']['stockist']['drugLicenceNo']);
+    }
+
+    public function testRemovingAnEmployeeClearsAssignedToOnTheirStockists(): void
+    {
+        $admin = $this->signedInAs('admin', 'stockist-release@example.test');
+        $removedId = $admin->request('POST', '/api/sales-employees', [])['body']['data']['employee']['id'];
+        $keptId = $admin->request('POST', '/api/sales-employees', [])['body']['data']['employee']['id'];
+        $first = $admin->request('POST', '/api/stockists', ['name' => 'Release One', 'assignedEmployeeId' => $removedId]);
+        $second = $admin->request('POST', '/api/stockists', ['name' => 'Release Two', 'assignedEmployeeId' => $removedId]);
+        $other = $admin->request('POST', '/api/stockists', ['name' => 'Keep Me', 'assignedEmployeeId' => $keptId]);
+        foreach ([$first, $second, $other] as $created) {
+            self::assertSame(201, $created['status'], $created['raw']);
+        }
+
+        $deleted = $admin->request('POST', '/api/sales-employees/' . $removedId . '/delete', []);
+        self::assertSame(200, $deleted['status'], $deleted['raw']);
+
+        $byName = [];
+        foreach ($admin->request('GET', '/api/stockists')['body']['data']['stockists'] as $row) {
+            $byName[$row['name']] = $row['assignedEmployeeId'];
+        }
+        self::assertNull($byName['Release One']);
+        self::assertNull($byName['Release Two']);
+        self::assertSame((string) $keptId, (string) $byName['Keep Me']);
+
+        $audited = Database::connection()->prepare(
+            "SELECT COUNT(*) FROM audit_logs WHERE target_type = 'stockist' AND action = 'update' AND target_id IN (?, ?)"
+        );
+        $audited->execute([$first['body']['data']['stockist']['id'], $second['body']['data']['stockist']['id']]);
+        self::assertSame(2, (int) $audited->fetchColumn());
     }
 
     /** @return array<string, string> */
