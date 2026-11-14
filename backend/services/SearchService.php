@@ -17,21 +17,11 @@ final class SearchService
 {
     private const MAX_LENGTH = 80;
 
-    /** @var array<string, array{0: string, 1: string, 2: string}> kind => [group type, group label, detail] */
-    private const TERM_GROUPS = [
-        'group_category' => ['group-categories', 'Product group categories', 'Group category'],
-        'category' => ['categories', 'Product categories', 'Product category'],
-        'tag' => ['tags-badges', 'Product tags & badges', 'Tag'],
-        'badge' => ['tags-badges', 'Product tags & badges', 'Badge'],
-    ];
+    /** Products > Category page (Product Type and Product Group tables). */
+    private const CATEGORY_PATH = '/products/category';
 
-    /** @var array<string, string> */
-    private const TERM_PATHS = [
-        'group_category' => '/products/group-categories',
-        'category' => '/products/categories',
-        'tag' => '/products/tags-badges',
-        'badge' => '/products/tags-badges',
-    ];
+    /** Products > Product page (the product list). */
+    private const PRODUCT_PATH = '/products/list';
 
     public function __construct(
         private readonly SearchRepository $records = new SearchRepository(),
@@ -63,20 +53,15 @@ final class SearchService
         $like = '%' . addcslashes($query, '\\%_') . '%';
         $groups = [];
 
+        // The old group categories, categories, tags/badges, Master Sheet and
+        // Deleted Products pages are no longer in the app, so they are not searched.
         if (Authorization::can($user, 'catalogue.view')) {
-            foreach (['group_category', 'category'] as $kind) {
-                [$type, $label] = self::TERM_GROUPS[$kind];
-                $this->addGroup($groups, $type, $label, $this->terms($like, [$kind]));
-            }
-            $this->addGroup($groups, 'tags-badges', 'Product tags & badges', $this->terms($like, ['tag', 'badge']));
+            $this->addGroup($groups, 'product-types', 'Product types', $this->productCategories($like, 'type'));
+            $this->addGroup($groups, 'product-groups', 'Product groups', $this->productCategories($like, 'group'));
         }
 
         if (Authorization::can($user, 'products.view')) {
             $this->addGroup($groups, 'products', 'Products', $this->products($like));
-        }
-
-        if (Authorization::can($user, 'master_sheet.view')) {
-            $this->addGroup($groups, 'financial-years', 'Financial years', $this->years($like));
         }
 
         if (Authorization::can($user, 'sales_office.view')) {
@@ -87,9 +72,6 @@ final class SearchService
             $this->addGroup($groups, 'locations', 'Locations', $this->locations($like));
         }
 
-        if (Authorization::can($user, 'sales.view')) {
-            $this->addGroup($groups, 'sales', 'Sales entries', $this->sales($like));
-        }
 
         if (Authorization::can($user, 'users.view')) {
             $this->addGroup($groups, 'users', 'Users', $this->userRows($like));
@@ -193,68 +175,33 @@ final class SearchService
     }
 
     /**
-     * @param list<string> $kinds
+     * Product types or groups that are not deleted.
+     *
      * @return list<array<string, string>>
      */
-    private function terms(string $like, array $kinds): array
+    private function productCategories(string $like, string $kind): array
     {
-        $items = [];
-        foreach ($this->records->terms($like, $kinds) as $row) {
-            $kind = (string) $row['kind'];
-            if (!isset(self::TERM_GROUPS[$kind], self::TERM_PATHS[$kind])) {
-                continue;
-            }
-            $items[] = $this->item(
-                'term',
-                $row['id'],
-                (string) $row['name'],
-                $this->detail(self::TERM_GROUPS[$kind][2], $row['deleted_at'] !== null ? 'Deleted' : null),
-                self::TERM_PATHS[$kind],
-            );
-        }
-
-        return $items;
+        return array_map(fn (array $row): array => $this->item(
+            $kind === 'type' ? 'product_type' : 'product_group',
+            $row['id'],
+            (string) $row['name'],
+            $kind === 'type' ? 'Product type' : 'Product group',
+            self::CATEGORY_PATH,
+        ), $this->records->productCategories($like, $kind));
     }
 
-    /** @return list<array<string, string>> */
+    /** Active products only (by name or SKU). @return list<array<string, string>> */
     private function products(string $like): array
     {
-        return array_map(function (array $row): array {
-            $deleted = $row['deleted_at'] !== null;
-
-            return $this->item(
-                'product',
-                $row['id'],
-                (string) $row['name'],
-                $this->detail($deleted ? 'Deleted' : null, $row['code'] ?? null),
-                $deleted ? '/products/deleted' : '/products/list',
-            );
-        }, $this->records->products($like));
-    }
-
-    /** @return list<array<string, string>> */
-    private function years(string $like): array
-    {
         return array_map(fn (array $row): array => $this->item(
-            'year',
+            'product',
             $row['id'],
-            (string) $row['label'],
-            'Financial year',
-            '/products/master-sheet',
-        ), $this->records->years($like));
+            (string) $row['name'],
+            $this->detail($row['code'] ?? null, null),
+            self::PRODUCT_PATH,
+        ), $this->records->products($like));
     }
 
-    /** @return list<array<string, string>> */
-    private function sales(string $like): array
-    {
-        return array_map(fn (array $row): array => $this->item(
-            'sale',
-            $row['id'],
-            (string) $row['stockist_name'],
-            $this->detail($row['sales_month'] ?? null, $row['headquarters_name'] ?? null),
-            '/sales/stockist-sales',
-        ), $this->records->sales($like));
-    }
 
     /** @return list<array<string, string>> */
     private function userRows(string $like): array

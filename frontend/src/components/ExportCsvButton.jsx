@@ -44,7 +44,7 @@ export default function ExportCsvButton({
     <span className="export-csv">
       <button
         type="button"
-        className="btn btn-outline-secondary btn-icon export-csv__button"
+        className="btn export-csv__button"
         onClick={exportFile}
         disabled={busy || empty}
         aria-label={label}
@@ -53,7 +53,7 @@ export default function ExportCsvButton({
       >
         {busy
           ? <span className="spinner-border spinner-border-sm" aria-hidden="true" />
-          : <i className="bi bi-filetype-csv" aria-hidden="true" />}
+          : <i className="bi bi-filetype-csv export-csv__icon" aria-hidden="true" />}
       </button>
       {error && <span className="export-csv__error small text-danger" role="alert">{error}</span>}
     </span>

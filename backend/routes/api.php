@@ -16,8 +16,8 @@ use App\Controllers\EmployeeController;
 use App\Controllers\ErpController;
 use App\Controllers\HealthController;
 use App\Controllers\ImportController;
+use App\Controllers\ProductCategoryController;
 use App\Controllers\ProductController;
-use App\Controllers\SalesEntryController;
 use App\Controllers\SalesEmployeeController;
 use App\Controllers\SalesOfficeController;
 use App\Controllers\SearchController;
@@ -97,6 +97,15 @@ $router->patch('/api/catalogue-terms/{id}', [CatalogueController::class, 'update
 $router->post('/api/catalogue-terms/{id}/delete', [CatalogueController::class, 'delete'], [$auth, AuthMiddleware::can('catalogue.manage')]);
 $router->post('/api/catalogue-terms/{id}/restore', [CatalogueController::class, 'restore'], [$auth, AuthMiddleware::can('catalogue.restore')]);
 
+// Products > Category: Product Type and Product Group masters.
+$router->get('/api/product-categories', [ProductCategoryController::class, 'index'], [$auth, AuthMiddleware::can('catalogue.view')]);
+$router->post('/api/product-types', [ProductCategoryController::class, 'storeType'], [$auth, AuthMiddleware::can('catalogue.manage')]);
+$router->patch('/api/product-types/{id}', [ProductCategoryController::class, 'updateType'], [$auth, AuthMiddleware::can('catalogue.manage')]);
+$router->post('/api/product-types/{id}/delete', [ProductCategoryController::class, 'deleteType'], [$auth, AuthMiddleware::can('catalogue.manage')]);
+$router->post('/api/product-groups', [ProductCategoryController::class, 'storeGroup'], [$auth, AuthMiddleware::can('catalogue.manage')]);
+$router->patch('/api/product-groups/{id}', [ProductCategoryController::class, 'updateGroup'], [$auth, AuthMiddleware::can('catalogue.manage')]);
+$router->post('/api/product-groups/{id}/delete', [ProductCategoryController::class, 'deleteGroup'], [$auth, AuthMiddleware::can('catalogue.manage')]);
+
 $router->get('/api/products', [ProductController::class, 'index'], [$auth, AuthMiddleware::can('products.view')]);
 $router->post('/api/products', [ProductController::class, 'store'], [$auth, AuthMiddleware::can('products.manage')]);
 $router->patch('/api/products/{id}', [ProductController::class, 'update'], [$auth, AuthMiddleware::can('products.manage')]);
@@ -109,9 +118,6 @@ $router->post('/api/master-sheet/{year}/update-products', [ErpController::class,
 $router->post('/api/master-sheet/{year}/add-products', [ErpController::class, 'addSheetProducts'], [$auth, AuthMiddleware::can('master_sheet.update')]);
 $router->put('/api/master-sheet/{year}/{productId}', [ErpController::class, 'saveSheet'], [$auth, AuthMiddleware::can('master_sheet.update')]);
 
-$router->get('/api/sales-entries', [SalesEntryController::class, 'index'], [$auth, AuthMiddleware::can('sales.view')]);
-$router->post('/api/sales-entries', [SalesEntryController::class, 'store'], [$auth, AuthMiddleware::can('sales.create')]);
-$router->patch('/api/sales-entries/{id}', [SalesEntryController::class, 'update'], [$auth, AuthMiddleware::can('sales.update')]);
 
 // Excel data import (Super Admin and Admin). Upload validates and previews; confirm
 // takes a backup and applies the rows; rollback undoes a completed import once.

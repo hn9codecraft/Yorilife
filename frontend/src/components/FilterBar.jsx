@@ -43,8 +43,9 @@ export default function FilterBar({ search, children, actions, chips = [], onCle
         {children && <div id={controlsId} className={`filter-bar__controls${open ? ' is-open' : ''}`}>{children}</div>}
         {actions && <div className="filter-bar__actions">{actions}</div>}
       </div>
+      {(total > 0 || active > 0) && (
       <div className="filter-bar__summary">
-        {total != null && (
+        {total > 0 && (
           <p className="filter-bar__count" aria-live="polite">
             Showing <strong>{shown}</strong> of {total} {noun}
           </p>
@@ -65,6 +66,7 @@ export default function FilterBar({ search, children, actions, chips = [], onCle
           <button type="button" className="btn btn-link btn-sm filter-bar__clear" onClick={onClearAll}>Clear all</button>
         )}
       </div>
+      )}
     </div>
   )
 }

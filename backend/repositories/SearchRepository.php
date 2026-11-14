@@ -105,6 +105,21 @@ final class SearchRepository extends Repository
         );
     }
 
+    /** Product types ('type') or product groups ('group') that are not deleted. @return list<array<string, mixed>> */
+    public function productCategories(string $like, string $kind): array
+    {
+        $table = $kind === 'type' ? 'product_types' : 'product_groups';
+        $escape = self::ESCAPE;
+
+        return $this->many(
+            "SELECT id, name FROM {$table}
+             WHERE deleted_at IS NULL AND name LIKE ? {$escape}
+             ORDER BY name, id
+             LIMIT 6",
+            [$like]
+        );
+    }
+
     /** @return list<array<string, mixed>> */
     public function products(string $like): array
     {
@@ -112,7 +127,7 @@ final class SearchRepository extends Repository
 
         return $this->many(
             "SELECT id, name, code, deleted_at FROM products
-             WHERE name LIKE ? {$escape} OR code LIKE ? {$escape}
+             WHERE deleted_at IS NULL AND (name LIKE ? {$escape} OR code LIKE ? {$escape})
              ORDER BY name, id
              LIMIT 6",
             [$like, $like]
@@ -133,22 +148,4 @@ final class SearchRepository extends Repository
         );
     }
 
-    /** @return list<array<string, mixed>> */
-    public function sales(string $like): array
-    {
-        $escape = self::ESCAPE;
-
-        return $this->many(
-            "SELECT s.id, DATE_FORMAT(s.sales_month, '%Y-%m') AS sales_month,
-                    COALESCE(st.name, st.code) AS stockist_name, lh.name AS headquarters_name
-             FROM sales_entries s
-             JOIN stockists st ON st.id = s.stockist_id
-             LEFT JOIN location_headquarters lh ON lh.id = s.location_headquarters_id
-             WHERE st.name LIKE ? {$escape} OR st.code LIKE ? {$escape}
-                OR lh.name LIKE ? {$escape} OR DATE_FORMAT(s.sales_month, '%Y-%m') LIKE ? {$escape}
-             ORDER BY s.sales_month, st.name, s.id
-             LIMIT 6",
-            [$like, $like, $like, $like]
-        );
-    }
 }

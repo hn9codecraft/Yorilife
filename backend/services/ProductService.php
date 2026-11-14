@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Repositories\ProductCategoryRepository;
 use App\Repositories\ProductRepository;
 use App\Utils\HttpException;
 
@@ -22,11 +23,15 @@ final class ProductService
                 'name' => $parsed['name'],
                 'code' => $parsed['code'],
                 'category_id' => $parsed['categoryId'],
+                'product_type_id' => $parsed['productTypeId'],
+                'product_group_id' => $parsed['productGroupId'],
+                'packaging_unit' => $parsed['packagingUnit'],
                 'strip' => $parsed['strip'],
                 'pack' => $parsed['pack'],
                 'mrp' => $parsed['mrp'],
                 'ptr' => $parsed['ptr'],
                 'pts' => $parsed['pts'],
+                'net_rate' => $parsed['netRate'],
                 'scheme' => $parsed['scheme']['text'],
                 'scheme_buy_qty' => $parsed['scheme']['buy'],
                 'scheme_free_qty' => $parsed['scheme']['free'],
@@ -65,11 +70,15 @@ final class ProductService
                 'name' => $parsed['name'],
                 'code' => $parsed['code'],
                 'category_id' => $parsed['categoryId'],
+                'product_type_id' => $parsed['productTypeId'],
+                'product_group_id' => $parsed['productGroupId'],
+                'packaging_unit' => $parsed['packagingUnit'],
                 'strip' => $parsed['strip'],
                 'pack' => $parsed['pack'],
                 'mrp' => $parsed['mrp'],
                 'ptr' => $parsed['ptr'],
                 'pts' => $parsed['pts'],
+                'net_rate' => $parsed['netRate'],
                 'scheme' => $parsed['scheme']['text'],
                 'scheme_buy_qty' => $parsed['scheme']['buy'],
                 'scheme_free_qty' => $parsed['scheme']['free'],
@@ -156,9 +165,33 @@ final class ProductService
         Input::onlyFields($input, [
             'name', 'code', 'groupCategoryId', 'categoryId', 'scheme',
             'strip', 'pack', 'mrp', 'ptr', 'pts', 'tagIds', 'badgeIds',
+            // Product List (Products > Product) fields.
+            'sku', 'productTypeId', 'productGroupId', 'packagingUnit', 'netRate',
         ], $errors);
         $name = Input::text($input, 'name', 'product name', 200, $errors);
-        $code = Input::optionalText($input, 'code', 'product code', 50, $errors);
+        // SKU is stored in products.code (unique among active products).
+        // "sku" is the Product List field; "code" is kept for older clients.
+        if (array_key_exists('sku', $input)) {
+            $code = Input::optionalText($input, 'sku', 'SKU', 50, $errors);
+        } elseif (array_key_exists('code', $input) || $current === null) {
+            $code = Input::optionalText($input, 'code', 'product code', 50, $errors);
+        } else {
+            $code = $current['code'] ?? null;
+        }
+        $packagingUnit = array_key_exists('packagingUnit', $input)
+            ? Input::optionalText($input, 'packagingUnit', 'packaging unit', 100, $errors)
+            : ($current['packaging_unit'] ?? null);
+        $netRate = array_key_exists('netRate', $input)
+            ? Input::money($input, 'netRate', 'Net rate', $errors)
+            : (isset($current['net_rate']) && $current['net_rate'] !== null && $current['net_rate'] !== ''
+                ? number_format((float) $current['net_rate'], 2, '.', '')
+                : null);
+        $productTypeId = array_key_exists('productTypeId', $input)
+            ? $this->optionalId($input['productTypeId'], 'productTypeId', 'product type', $errors)
+            : (isset($current['product_type_id']) && $current['product_type_id'] !== null ? (int) $current['product_type_id'] : null);
+        $productGroupId = array_key_exists('productGroupId', $input)
+            ? $this->optionalId($input['productGroupId'], 'productGroupId', 'product group', $errors)
+            : (isset($current['product_group_id']) && $current['product_group_id'] !== null ? (int) $current['product_group_id'] : null);
         // Commercial fields: when omitted on edit, keep the stored value.
         $strip = array_key_exists('strip', $input)
             ? Input::optionalText($input, 'strip', 'strip', 50, $errors)
@@ -207,8 +240,27 @@ final class ProductService
         if ($scheme['text'] !== null && mb_strlen($scheme['text']) > 50) {
             $errors['scheme'] = 'Scheme must be 50 characters or fewer.';
         }
+        // Product List money fields are DECIMAL(12,2): at most 10 digits before the point.
+        foreach (['mrp' => [$mrp, 'MRP'], 'ptr' => [$ptr, 'PTR'], 'pts' => [$pts, 'PTS'], 'netRate' => [$netRate, 'Net rate']] as $field => [$amount, $label]) {
+            if (array_key_exists($field, $input) && $amount !== null && !isset($errors[$field]) && (float) $amount > 9999999999.99) {
+                $errors[$field] = "{$label} is too large.";
+            }
+        }
         if ($errors !== []) {
             throw HttpException::validation($errors);
+        }
+        if (array_key_exists('sku', $input) && $code !== null && $this->records->activeCodeTaken($code, $current !== null ? (int) $current['id'] : null)) {
+            throw HttpException::validation(['sku' => 'An active product already uses this SKU.']);
+        }
+        foreach (['type' => [$productTypeId, 'productTypeId'], 'group' => [$productGroupId, 'productGroupId']] as $kind => [$refId, $field]) {
+            if ($refId === null) {
+                continue;
+            }
+            $ref = (new ProductCategoryRepository($kind))->find($refId);
+            $unchanged = $current !== null && (int) ($current[$kind === 'type' ? 'product_type_id' : 'product_group_id'] ?? 0) === $refId;
+            if ($ref === null || ($ref['deleted_at'] !== null && !$unchanged)) {
+                throw HttpException::validation([$field => $kind === 'type' ? 'Choose a product type from the list.' : 'Choose a product group from the list.']);
+            }
         }
 
         $lookupIds = array_values(array_filter([$groupId, $categoryId, ...$tagIds, ...$badgeIds], static fn ($id) => $id !== null));
@@ -253,11 +305,15 @@ final class ProductService
             'name' => $name,
             'code' => $code,
             'category_id' => $categoryId,
+            'product_type_id' => $productTypeId,
+            'product_group_id' => $productGroupId,
+            'packaging_unit' => $packagingUnit,
             'strip' => $strip,
             'pack' => $pack,
             'mrp' => $mrp,
             'ptr' => $ptr,
             'pts' => $pts,
+            'net_rate' => $netRate,
             'scheme' => $scheme['text'],
         ], $links);
 
@@ -265,6 +321,10 @@ final class ProductService
             'name' => $name,
             'code' => $code,
             'categoryId' => $categoryId,
+            'productTypeId' => $productTypeId,
+            'productGroupId' => $productGroupId,
+            'packagingUnit' => $packagingUnit,
+            'netRate' => $netRate,
             'strip' => $strip,
             'pack' => $pack,
             'mrp' => $mrp,
@@ -309,11 +369,15 @@ final class ProductService
             'Code' => ($product['code'] ?? null) !== null && $product['code'] !== '' ? $product['code'] : null,
             'Group category' => $groupName,
             'Category' => $category['name'] ?? null,
+            'Product type' => $this->categoryName('type', $product['product_type_id'] ?? null),
+            'Product group' => $this->categoryName('group', $product['product_group_id'] ?? null),
+            'Packaging unit' => ($product['packaging_unit'] ?? null) !== null && $product['packaging_unit'] !== '' ? $product['packaging_unit'] : null,
             'Strip' => ($product['strip'] ?? null) !== null && $product['strip'] !== '' ? $product['strip'] : null,
             'Pack' => ($product['pack'] ?? null) !== null && $product['pack'] !== '' ? $product['pack'] : null,
             'MRP' => ($product['mrp'] ?? null) !== null && $product['mrp'] !== '' ? (string) $product['mrp'] : null,
             'PTR' => ($product['ptr'] ?? null) !== null && $product['ptr'] !== '' ? (string) $product['ptr'] : null,
             'PTS' => ($product['pts'] ?? null) !== null && $product['pts'] !== '' ? (string) $product['pts'] : null,
+            'Net rate' => ($product['net_rate'] ?? null) !== null && $product['net_rate'] !== '' ? number_format((float) $product['net_rate'], 2, '.', '') : null,
             'Scheme' => ($product['scheme'] ?? null) !== null && $product['scheme'] !== '' ? $product['scheme'] : null,
             'Tags' => $this->termList($links['tag'], $terms),
             'Badges' => $this->termList($links['badge'], $terms),
@@ -354,6 +418,15 @@ final class ProductService
         }
 
         return $changes;
+    }
+
+    private function categoryName(string $kind, mixed $id): ?string
+    {
+        if ($id === null || $id === '') {
+            return null;
+        }
+
+        return (new ProductCategoryRepository($kind))->find((int) $id)['name'] ?? null;
     }
 
     /** @param array<string, string> $errors */

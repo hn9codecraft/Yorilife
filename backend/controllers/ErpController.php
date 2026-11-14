@@ -7,12 +7,12 @@ namespace App\Controllers;
 use App\Repositories\CatalogueRepository;
 use App\Repositories\MasterSheetRepository;
 use App\Repositories\ProductRepository;
-use App\Repositories\SalesEntryRepository;
 use App\Repositories\SalesOfficeRepository;
 use App\Services\ErpPresenter;
 use App\Services\SalesOfficeService;
 use App\Services\Input;
 use App\Services\MasterSheetService;
+use App\Services\ProductCategoryService;
 use App\Services\Presenter;
 use App\Utils\JsonResponse;
 use App\Utils\Request;
@@ -55,12 +55,13 @@ final class ErpController
             'locations' => (new SalesOfficeService($office))->listedLocations(),
             'hierarchy' => ErpPresenter::salesOfficeHierarchy($managers, $headquarters, $stockists),
             'terms' => array_map(ErpPresenter::term(...), (new CatalogueRepository())->all()),
+            'productTypes' => (new ProductCategoryService('type'))->list(),
+            'productGroups' => (new ProductCategoryService('group'))->list(),
             'products' => $presentedProducts,
             'productHistory' => ErpPresenter::productHistory($products->changes(), $sheets->changes()),
             'financialYears' => array_column($sheets->years(), 'label'),
             'masterSheet' => $masterSheet === [] ? new \stdClass() : $masterSheet,
             'masterSheetHistory' => array_map(ErpPresenter::sheetChange(...), $sheets->changes()),
-            'sales' => array_map(ErpPresenter::sales(...), (new SalesEntryRepository())->all()),
         ]);
     }
 

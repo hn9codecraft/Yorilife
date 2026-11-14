@@ -13,8 +13,6 @@
  *   productHistory      { id, productId, productName, action, changes: [{ field, from, to }], at, by }
  *   masterSheet         { [year]: { [productId]: { inclusion: 'included'|'excluded', scheme, updatedAt } } }
  *   masterSheetHistory  { id, year, productId, productName, field, from, to, at, by }
- *   sales         { id, month: 'YYYY-MM', headquartersId, stockistId,
- *                   achievementValue, bonus, deduction, finalValue, createdAt, updatedAt }
  *
  * Deletion is always soft (deletedAt timestamp); nothing is ever removed.
  * The reducer is pure: ids and timestamps arrive on the action.
@@ -26,11 +24,12 @@ export const initialErpState = {
   stockists: [],
   locations: [],
   terms: [],
+  productTypes: [],
+  productGroups: [],
   products: [],
   productHistory: [],
   masterSheet: {},
   masterSheetHistory: [],
-  sales: [],
 }
 
 function upsert(list, record) {

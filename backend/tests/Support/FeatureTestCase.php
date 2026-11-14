@@ -77,6 +77,8 @@ abstract class FeatureTestCase extends TestCase
             'product_changes' => 'DELETE FROM product_changes',
             'product_terms' => 'DELETE FROM product_terms',
             'products' => 'DELETE FROM products',
+            'product_types' => 'DELETE FROM product_types',
+            'product_groups' => 'DELETE FROM product_groups',
         ] as $table => $sql) {
             if (in_array($table, $existing, true)) {
                 $pdo->exec($sql);

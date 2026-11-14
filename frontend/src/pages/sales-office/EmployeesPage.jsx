@@ -4,7 +4,7 @@ import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
-import SearchInput from '../../components/SearchInput.jsx'
+import FilterBar from '../../components/FilterBar.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import { FormRow, LabelNote, MultiSelectField, SelectField, TextField } from '../../components/FormField.jsx'
@@ -316,33 +316,22 @@ export default function EmployeesPage() {
       <DataStatusNotice />
       {error && <div className="alert alert-danger" role="alert">{error}</div>}
       <TableCard
-        title={`Employees (${shown.length})`}
-        toolbar={(
-          <>
-            <SearchInput value={query} onChange={setQuery} label="Search employees" placeholder="Search name, code, phone, email, or manager" />
-            <select className="form-select form-select-sm toolbar__select" aria-label="Designation" value={designation} onChange={(event) => setDesignation(event.target.value)}>
-              <option value="">All designations</option>
-              {DESIGNATIONS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
-            </select>
-            <select
-              className="form-select form-select-sm toolbar__select"
-              aria-label="State"
-              value={stateId}
-              onChange={(event) => {
-                const next = event.target.value
-                setStateId(next)
-                if (headquartersId && !headquartersChoices(locations, next).some((choice) => choice.value === headquartersId)) {
-                  setHeadquartersId('')
-                }
-              }}
-            >
-              <option value="">All states</option>
-              {locations.map((location) => <option key={location.id} value={String(location.id)}>{location.name}</option>)}
-            </select>
-            <select className="form-select form-select-sm toolbar__select" aria-label="HQ" value={headquartersId} onChange={(event) => setHeadquartersId(event.target.value)}>
-              <option value="">All headquarters</option>
-              {headquarters.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
-            </select>
+        title={`Employees (${rows?.length ?? 0})`}
+      >
+        <FilterBar
+          label="Filter employees"
+          search={{ value: query, onChange: setQuery, label: 'Search employees', placeholder: 'Search name, code or phone' }}
+          chips={[
+            query && { key: 'q', label: `Search: ${query}`, onRemove: () => setQuery('') },
+            designation && { key: 'designation', label: `Designation: ${DESIGNATIONS.find((item) => item.code === designation)?.label ?? designation}`, onRemove: () => setDesignation('') },
+            stateId && { key: 'state', label: `State: ${locations.find((location) => String(location.id) === stateId)?.name ?? stateId}`, onRemove: () => { setStateId(''); setHeadquartersId('') } },
+            headquartersId && { key: 'hq', label: `HQ: ${headquarters.find((choice) => choice.value === headquartersId)?.label ?? headquartersId}`, onRemove: () => setHeadquartersId('') },
+          ].filter(Boolean)}
+          onClearAll={() => { setQuery(''); setDesignation(''); setStateId(''); setHeadquartersId('') }}
+          shown={shown.length}
+          total={rows?.length ?? 0}
+          noun="employees"
+          actions={(
             <SalesOfficeCsv
               module="employee"
               records={shown.map((row) => ({
@@ -360,9 +349,32 @@ export default function EmployeesPage() {
                 })),
               }))}
             />
-          </>
-        )}
-      >
+          )}
+        >
+            <select className="form-select filter-bar__control" aria-label="Designation" value={designation} onChange={(event) => setDesignation(event.target.value)}>
+              <option value="">All designations</option>
+              {DESIGNATIONS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+            </select>
+            <select
+              className="form-select filter-bar__control"
+              aria-label="State"
+              value={stateId}
+              onChange={(event) => {
+                const next = event.target.value
+                setStateId(next)
+                if (headquartersId && !headquartersChoices(locations, next).some((choice) => choice.value === headquartersId)) {
+                  setHeadquartersId('')
+                }
+              }}
+            >
+              <option value="">All states</option>
+              {locations.map((location) => <option key={location.id} value={String(location.id)}>{location.name}</option>)}
+            </select>
+            <select className="form-select filter-bar__control" aria-label="HQ" value={headquartersId} onChange={(event) => setHeadquartersId(event.target.value)}>
+              <option value="">All headquarters</option>
+              {headquarters.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
+            </select>
+        </FilterBar>
         <DataTable
           caption="Employees"
           columns={columns}

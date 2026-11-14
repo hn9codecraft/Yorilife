@@ -8,8 +8,10 @@ declare(strict_types=1);
  * Sprint 3: user management. Sprint 4 (owner-approved defaults): business
  * modules — Super Admin and Admin have full access; Sales Manager and Sales
  * User may only view the business screens. Only Admin / Super Admin restore.
- * There are no delete permissions for headquarters, managers, stockists or
- * sales entries (not part of Sprint 4).
+ * There are no delete permissions for headquarters, managers or stockists
+ * (not part of Sprint 4). The old Sales Management content (sales entries)
+ * was removed on 2026-11-14 with sales.create / sales.update; the group stays
+ * and sales.view opens its pages (Bonus Calc, coming soon).
  *
  * `rank` prevents privilege escalation: a user may only manage accounts and
  * assign roles ranked BELOW their own (Super Admin may manage everyone).
@@ -21,7 +23,7 @@ $business = [
     'products.view', 'products.manage', 'products.delete', 'products.restore',
     'financial_years.manage',
     'master_sheet.view', 'master_sheet.update',
-    'sales.view', 'sales.create', 'sales.update',
+    'sales.view',
     'imports.manage',
     'announcements.view', 'announcements.manage', 'announcements.publish', 'announcements.reports',
 ];
@@ -36,8 +38,8 @@ return [
         'users.assign_role' => 'Change a user’s role',
         'sales_office.view' => 'View headquarters, employees, managers and stockists',
         'sales_office.manage' => 'Add and edit headquarters, employees, managers and stockists',
-        'catalogue.view' => 'View product group categories and product categories',
-        'catalogue.manage' => 'Create, edit and delete catalogue terms',
+        'catalogue.view' => 'View product types and product groups (Products > Category)',
+        'catalogue.manage' => 'Create, edit and delete product types and product groups',
         'catalogue.restore' => 'Restore deleted catalogue terms',
         'products.view' => 'View products and product history',
         'products.manage' => 'Add and edit products',
@@ -46,9 +48,7 @@ return [
         'financial_years.manage' => 'Add financial years',
         'master_sheet.view' => 'View the Master Product Sheet and its history',
         'master_sheet.update' => 'Update Master Product Sheet entries',
-        'sales.view' => 'View sales entries',
-        'sales.create' => 'Add sales entries',
-        'sales.update' => 'Edit sales entries',
+        'sales.view' => 'Open the Sales Management pages (Bonus Calc)',
         'imports.manage' => 'Import Sales Office CSV files, download import files and backups, and roll imports back',
         'announcements.view' => 'See announcements, templates and the employee list',
         'announcements.manage' => 'Create and edit announcement drafts, templates and the employee list',

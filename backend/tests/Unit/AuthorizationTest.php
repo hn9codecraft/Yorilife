@@ -19,7 +19,7 @@ final class AuthorizationTest extends TestCase
         $all = array_keys((require dirname(__DIR__, 2) . '/config/permissions.php')['permissions']);
         self::assertSame($all, Authorization::permissionsFor('super_admin'));
         self::assertContains('users.assign_role', $all);
-        self::assertContains('sales.update', $all);
+        self::assertNotContains('sales.update', $all, 'Sales Management permissions were removed');
     }
 
     public function testSalesRolesHaveNoAdministrativePermissions(): void

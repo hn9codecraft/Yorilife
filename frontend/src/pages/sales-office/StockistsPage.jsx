@@ -457,7 +457,7 @@ export default function StockistsPage() {
         confirmLabel="Delete"
         onConfirm={() => actions.deleteStockist(deleting.id)}
       >
-        Delete {stockistLabel(deleting)}? Sales entries for this stockist are removed with it.
+        Delete {stockistLabel(deleting)}?
       </ConfirmDialog>
 
       <ConfirmDialog
@@ -470,7 +470,7 @@ export default function StockistsPage() {
           selection.clear()
         }}
       >
-        Delete {selection.count} stockists? Sales entries for these stockists are removed with them.
+        Delete {selection.count} stockists?
       </ConfirmDialog>
 
       <Modal

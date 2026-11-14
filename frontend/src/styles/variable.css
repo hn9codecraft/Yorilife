@@ -177,6 +177,47 @@
   --table-truncate-max: 20rem;                 /* long text cut with … + tooltip */
   --table-chip-max-width: 10rem;
 
+  --table-col-money: 7.5rem;                   /* MRP / PTR / amounts, right-aligned */
+  --table-col-auto: 6rem;                      /* columns without a width, for the table min-width */
+  --table-col-actions: 5.5rem;                 /* pinned Actions column: sized to its buttons (width 1%) */
+  --table-col-pinned-min: 8.75rem;             /* pinned first column: sizes to content ... */
+  --table-col-pinned-max: 17.5rem;             /* ... up to this, then … + tooltip */
+
+  /* ---- Standard list toolbar (FilterBar, SearchInput, SearchableSelect,
+     ExportCsvButton). Every list uses the same control size. ---- */
+  --control-height: 2.5rem;                    /* inputs, selects, icon buttons (40px) */
+  --control-radius: var(--radius-sm);
+  --control-padding-x: 0.75rem;
+  --control-icon-offset: 0.75rem;              /* search / caret icon from the edge */
+  --control-icon-space: 2.25rem;               /* input padding next to an icon */
+  --toolbar-gap: var(--space-2);
+  --toolbar-padding-y: var(--space-3);
+  --toolbar-padding-x: var(--space-4);
+  --toolbar-search-min: 15rem;                 /* fits "Search name or SKU" */
+  --toolbar-search-max: 24rem;
+  --toolbar-control-min: 11rem;                /* dropdown filters */
+  --toolbar-control-max: 16rem;
+  --toolbar-icon-button-size: var(--control-height);
+  --toolbar-icon-size: 1.25rem;
+  --toolbar-icon-button-color: var(--color-text);
+  --toolbar-icon-button-border: var(--color-border-strong);
+  --toolbar-icon-button-hover-bg: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  --toolbar-icon-button-hover-color: var(--color-link-hover);
+  --toolbar-icon-button-disabled-color: var(--color-text-subtle);
+  --toolbar-icon-button-disabled-bg: var(--color-surface-muted);
+
+  /* ---- List card header (TableCard / TableSection) ---- */
+  --table-card-header-padding-y: var(--space-3);
+  --table-card-header-padding-x: var(--space-4);
+  --table-card-header-min-height: 3.5rem;
+
+  /* ---- Empty table state (DataTable -> EmptyState) ---- */
+  --table-empty-min-height: 10rem;              /* ~160px */
+  --table-empty-padding: var(--space-8) var(--space-4);
+
+  /* ---- Stacked list cards (components/TableSection.jsx) ---- */
+  --table-section-gap: var(--space-8);         /* space between stacked list cards (32px) */
+
   /* ---- Breakpoints (reference only — CSS vars can't be used in @media).
      Mirror Bootstrap 5: sm 576, md 768, lg 992, xl 1200, xxl 1400. ---- */
   --breakpoint-sm: 576px;

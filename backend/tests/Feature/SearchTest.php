@@ -28,6 +28,8 @@ final class SearchTest extends FeatureTestCase
         $category = $this->term($admin, ['kind' => 'category', 'name' => 'Zephyr Category', 'parentId' => $group]);
         $tag = $this->term($admin, ['kind' => 'tag', 'name' => 'Zephyr Tag']);
         self::assertSame(200, $admin->request('POST', "/api/catalogue-terms/{$tag}/delete", [])['status']);
+        self::assertSame(201, $admin->request('POST', '/api/product-types', ['name' => 'Zephyr Type'])['status']);
+        self::assertSame(201, $admin->request('POST', '/api/product-groups', ['name' => 'Zephyr Focus'])['status']);
 
         $active = $admin->request('POST', '/api/products', [
             'name' => '100% Pure Zephyr', 'code' => 'ZEP-100', 'groupCategoryId' => $group, 'categoryId' => $category, 'scheme' => '',
@@ -71,16 +73,6 @@ final class SearchTest extends FeatureTestCase
             'name' => 'Zephyr Store', 'code' => 'ZEP-ST', 'headquartersId' => $hq['body']['data']['headquarters']['id'],
         ]);
         self::assertSame(201, $stockist['status'], $stockist['raw']);
-        $sale = $admin->request('POST', '/api/sales-entries', [
-            'month' => '2026-04',
-            'headquartersId' => $hq['body']['data']['headquarters']['id'],
-            'stockistId' => $stockist['body']['data']['stockist']['id'],
-            'achievementValue' => 100,
-            'bonus' => 10,
-            'deduction' => 5,
-            'finalValue' => 77.5,
-        ]);
-        self::assertSame(201, $sale['status'], $sale['raw']);
         self::assertSame(201, $admin->request('POST', '/api/financial-years', ['label' => '2098-2099'])['status']);
 
         $found = $admin->request('GET', '/api/search?q=' . rawurlencode('Zephyr'));
@@ -91,26 +83,26 @@ final class SearchTest extends FeatureTestCase
         self::assertStringNotContainsString('9000000099', $found['raw']);
 
         $byType = $this->byType($found);
-        self::assertSame(['/products/group-categories'], array_column($byType['group-categories'], 'path'));
-        self::assertSame(['/products/categories'], array_column($byType['categories'], 'path'));
-        self::assertSame('/products/tags-badges', $byType['tags-badges'][0]['path']);
-        self::assertStringContainsString('Deleted', $byType['tags-badges'][0]['detail']);
+        // Old catalogue terms (group categories, categories, tags) are no longer searched.
+        self::assertArrayNotHasKey('group-categories', $byType);
+        self::assertArrayNotHasKey('categories', $byType);
+        self::assertArrayNotHasKey('tags-badges', $byType);
+        self::assertSame(['/products/category'], array_column($byType['product-types'], 'path'));
+        self::assertSame(['/products/category'], array_column($byType['product-groups'], 'path'));
         self::assertSame('/products/list', $this->named($byType['products'], '100% Pure Zephyr')['path']);
-        self::assertSame('/products/deleted', $this->named($byType['products'], 'Retired Zephyr')['path']);
+        self::assertSame(['100% Pure Zephyr'], array_column($byType['products'], 'label'), 'deleted products are not listed');
         self::assertSame('/sales-office/hierarchy', $byType['headquarters'][0]['path']);
         self::assertSame('/sales-office/stockists', $byType['stockists'][0]['path']);
         self::assertSame('/sales-office/hierarchy', $this->named($byType['managers'], 'Zephyr Third')['path']);
         self::assertStringContainsString('zephyr.third@example.test', $this->named($byType['managers'], 'Zephyr Third')['detail']);
         self::assertSame('/sales-office/hierarchy', $this->named($byType['managers'], 'Zephyr Second')['path']);
         self::assertSame('/sales-office/hierarchy', $this->named($byType['managers'], 'Zephyr First')['path']);
-        self::assertSame('/sales/stockist-sales', $byType['sales'][0]['path']);
-        self::assertSame('Zephyr Store', $byType['sales'][0]['label']);
-        self::assertStringContainsString('2026-04', $byType['sales'][0]['detail']);
+        self::assertArrayNotHasKey('sales', $byType, 'Sales Management was removed');
         self::assertArrayNotHasKey('financial-years', $byType);
         self::assertArrayNotHasKey('users', $byType);
 
         $year = $admin->request('GET', '/api/search?q=' . rawurlencode('2098-2099'));
-        self::assertSame('/products/master-sheet', $this->byType($year)['financial-years'][0]['path']);
+        self::assertArrayNotHasKey('financial-years', $this->byType($year), 'the Master Sheet page is no longer in the app');
         $people = $admin->request('GET', '/api/search?q=' . rawurlencode('search-admin@'));
         self::assertSame('/system/users', $this->named($this->byType($people)['users'], 'Admin')['path']);
         self::assertStringNotContainsString('password_hash', $people['raw']);

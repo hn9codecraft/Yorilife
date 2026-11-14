@@ -3,7 +3,7 @@ import PageShell from '../../components/PageShell.jsx'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
-import SearchInput from '../../components/SearchInput.jsx'
+import FilterBar from '../../components/FilterBar.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import { SelectField, TextField } from '../../components/FormField.jsx'
@@ -110,8 +110,23 @@ export default function EmployeesPage() {
   return (
     <PageShell actions={canManage && <button type="button" className="btn btn-primary" onClick={() => open(null)}><i className="bi bi-person-plus" aria-hidden="true" /> Add employee</button>}>
       {error && <div className="alert alert-danger" role="alert">{error}</div>}
-      <TableCard title={`Employees (${shown.length})`} toolbar={<SearchInput value={query} onChange={setQuery} label="Search employees" placeholder="Search name, email, phone or role" />}>
-        <DataTable caption="Employees" columns={columns} rows={shown} emptyText={rows === null ? 'Loading...' : 'No employees yet.'} />
+      <TableCard title={`Employees (${rows?.length ?? 0})`}>
+        <FilterBar
+          label="Filter employees"
+          search={{ value: query, onChange: setQuery, label: 'Search employees', placeholder: 'Search name, email, phone or role' }}
+          chips={query ? [{ key: 'q', label: `Search: ${query}`, onRemove: () => setQuery('') }] : []}
+          onClearAll={() => setQuery('')}
+          shown={shown.length}
+          total={rows?.length ?? 0}
+          noun="employees"
+        />
+        <DataTable
+          caption="Employees"
+          columns={columns}
+          rows={shown}
+          emptyText={rows === null ? 'Loading…' : rows.length ? 'No employees match your search' : 'No employees yet'}
+          emptyHint={rows?.length ? 'Try a different search.' : null}
+        />
       </TableCard>
       <FormModal
         open={editing !== null}

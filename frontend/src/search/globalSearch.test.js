@@ -10,10 +10,10 @@ test('page search is empty until there is a query', () => {
 })
 
 test('page search matches a menu label and keeps the group trail', () => {
-  const [match] = searchPages('stockist sales', allow)
-  assert.equal(match.label, 'Stockist Sales')
-  assert.equal(match.path, '/sales/stockist-sales')
-  assert.equal(match.detail, 'Sales Management')
+  const [match] = searchPages('stockist entry', allow)
+  assert.equal(match.label, 'Stockist Entry')
+  assert.equal(match.path, '/sales-office/stockists')
+  assert.equal(match.detail, 'Sales Office')
 })
 
 test('page search matches a group label and skips pages the user cannot open', () => {
@@ -26,7 +26,7 @@ test('page search matches a group label and skips pages the user cannot open', (
 test('page search stays in menu order and caps the list', () => {
   const pages = searchPages('sales', allow)
   assert.equal(pages.length, 8)
-  assert.deepEqual(pages.slice(0, 2).map((item) => item.label), ['Stockist Sales', 'Monthly Sales'])
+  assert.deepEqual(pages.slice(0, 2).map((item) => item.label), ['Bonus Calc', 'Stockist Entry'])
 })
 
 test('record groups drop off-app paths and blank groups', () => {

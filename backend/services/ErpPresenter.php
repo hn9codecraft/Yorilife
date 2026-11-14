@@ -224,18 +224,36 @@ final class ErpPresenter
      * @param list<int> $tagIds
      * @param list<int> $badgeIds
      */
+    /** Product Type / Product Group row, with how many active products use it. */
+    public static function productCategory(array $row, int $productCount = 0): array
+    {
+        return [
+            'id' => Presenter::id($row['id']),
+            'name' => $row['name'],
+            'productCount' => $productCount,
+            'createdAt' => Presenter::iso($row['created_at']),
+            'updatedAt' => Presenter::iso($row['updated_at']),
+            'deletedAt' => Presenter::iso($row['deleted_at']),
+        ];
+    }
+
     public static function product(array $row, array $tagIds = [], array $badgeIds = []): array
     {
         return [
             'id' => Presenter::id($row['id']),
             'name' => $row['name'],
             'code' => $row['code'],
+            'sku' => $row['code'],
             'categoryId' => Presenter::id($row['category_id']),
+            'productTypeId' => Presenter::id($row['product_type_id'] ?? null),
+            'productGroupId' => Presenter::id($row['product_group_id'] ?? null),
+            'packagingUnit' => $row['packaging_unit'] ?? null,
             'strip' => $row['strip'] ?? null,
             'pack' => $row['pack'] ?? null,
             'mrp' => self::money($row['mrp'] ?? null),
             'ptr' => self::money($row['ptr'] ?? null),
             'pts' => self::money($row['pts'] ?? null),
+            'netRate' => self::money($row['net_rate'] ?? null),
             'scheme' => $row['scheme'] ?? null,
             'tagIds' => array_map(Presenter::id(...), $tagIds),
             'badgeIds' => array_map(Presenter::id(...), $badgeIds),
@@ -329,23 +347,6 @@ final class ErpPresenter
         ];
     }
 
-    /** @param array<string, mixed> $row */
-    public static function sales(array $row): array
-    {
-        return [
-            'id' => Presenter::id($row['id']),
-            'month' => substr((string) $row['sales_month'], 0, 7),
-            'headquartersId' => Presenter::id($row['headquarters_id'] ?? null),
-            'locationHeadquartersId' => Presenter::id($row['location_headquarters_id'] ?? null),
-            'stockistId' => Presenter::id($row['stockist_id']),
-            'achievementValue' => self::money($row['achievement_value']),
-            'bonus' => self::money($row['bonus']),
-            'deduction' => self::money($row['deduction']),
-            'finalValue' => self::money($row['final_value']),
-            'createdAt' => Presenter::iso($row['created_at']),
-            'updatedAt' => Presenter::iso($row['updated_at']),
-        ];
-    }
 
     public static function termKindIn(string $kind): ?string
     {
