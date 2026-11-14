@@ -125,7 +125,6 @@ export default function HierarchyPage() {
                                                 <NodeLabel
                                                   type="Headquarters"
                                                   name={office.headquarters.name}
-                                                  code={office.headquarters.code}
                                                   count={office.stockists.length}
                                                   countLabel="stockists"
                                                 />

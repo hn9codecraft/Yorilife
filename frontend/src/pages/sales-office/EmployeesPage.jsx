@@ -9,6 +9,9 @@ import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import { FormRow, LabelNote, MultiSelectField, SelectField, TextField } from '../../components/FormField.jsx'
 import SearchableSelect from '../../components/SearchableSelect.jsx'
+import SalesOfficeCsv from '../../components/SalesOfficeCsv.jsx'
+import { CellStack, ChipList } from '../../components/TableCells.jsx'
+import { joinCell } from '../../utils/csv.js'
 import useFormState from '../../hooks/useFormState.js'
 import usePermission from '../../data/usePermission.js'
 import useErpData from '../../data/useErpData.js'
@@ -26,18 +29,21 @@ function managerFields(employee) {
   return fields
 }
 
-function tagList(items, labelOf = (item) => item.name) {
-  if (!items?.length) return '—'
-  return (
-    <ul className="pill-list">
-      {items.map((item) => <li key={item.id} className="pill">{labelOf(item)}</li>)}
-    </ul>
-  )
+function stateChips(locations) {
+  return <ChipList label="States" items={(locations ?? []).map((location) => ({ key: location.id, label: location.name }))} />
 }
 
-function headquartersTags(offices) {
+function headquartersChips(offices) {
   const many = new Set((offices ?? []).map((office) => office.locationId)).size > 1
-  return tagList(offices, (office) => (many && office.locationName ? `${office.name} (${office.locationName})` : office.name))
+  return (
+    <ChipList
+      label="Headquarters"
+      items={(offices ?? []).map((office) => ({
+        key: office.id,
+        label: many && office.locationName ? `${office.name} (${office.locationName})` : office.name,
+      }))}
+    />
+  )
 }
 
 function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
@@ -190,17 +196,14 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
 }
 
 function managerSummary(managers) {
-  if (!managers?.length) return '—'
   return (
-    <ul className="employee-managers">
-      {managers.map((manager) => (
-        <li key={manager.designation}>
-          <span className="employee-managers__role">{manager.designation}</span>
-          {' '}
-          {manager.employeeName || manager.employeeCode || '—'}
-        </li>
-      ))}
-    </ul>
+    <ChipList
+      label="Reports to"
+      items={(managers ?? []).map((manager) => {
+        const who = manager.employeeName || manager.employeeCode
+        return { key: manager.designation, label: who ? `${manager.designation}: ${who}` : '' }
+      })}
+    />
   )
 }
 
@@ -261,19 +264,31 @@ export default function EmployeesPage() {
   }
 
   const columns = [
-    { key: 'name', header: 'Name', render: (row) => <strong className="fw-semibold">{fullName(row.firstName, row.lastName) || '—'}</strong> },
-    { key: 'code', header: 'Employee Code', nowrap: true, render: (row) => row.employeeCode || '—' },
-    { key: 'designation', header: 'Designation', render: (row) => designationLabel(row.designation) || '—' },
-    { key: 'state', header: 'State', render: (row) => tagList(row.locations) },
-    { key: 'hq', header: 'HQ', render: (row) => headquartersTags(row.headquarters) },
-    { key: 'phone', header: 'Phone Number', nowrap: true, render: (row) => row.phone || '—' },
-    { key: 'email', header: 'Email', render: (row) => row.email || '—' },
-    { key: 'managers', header: 'Managers', render: (row) => managerSummary(row.managers) },
+    {
+      key: 'name',
+      header: 'Employee',
+      width: 'lg',
+      sticky: 'start',
+      render: (row) => <CellStack strong primary={fullName(row.firstName, row.lastName) || ''} secondary={row.employeeCode} />,
+    },
+    { key: 'designation', header: 'Designation', width: 'sm', truncate: true, render: (row) => designationLabel(row.designation) },
+    { key: 'state', header: 'State', width: 'md', render: (row) => stateChips(row.locations) },
+    { key: 'hq', header: 'HQ', width: 'lg', render: (row) => headquartersChips(row.headquarters) },
+    {
+      key: 'contact',
+      header: 'Contact',
+      width: 'md',
+      render: (row) => (row.phone || row.email
+        ? <CellStack primary={row.phone || ''} secondary={row.email} title={[row.phone, row.email].filter(Boolean).join(' · ')} />
+        : null),
+    },
+    { key: 'managers', header: 'Reports To', width: 'lg', render: (row) => managerSummary(row.managers) },
     ...(canManage ? [{
       key: 'actions',
       header: 'Actions',
       align: 'end',
       nowrap: true,
+      sticky: 'end',
       render: (row) => {
         const label = fullName(row.firstName, row.lastName) || row.employeeCode || 'employee'
         return (
@@ -328,6 +343,23 @@ export default function EmployeesPage() {
               <option value="">All headquarters</option>
               {headquarters.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
             </select>
+            <SalesOfficeCsv
+              module="employee"
+              records={shown.map((row) => ({
+                'First name': row.firstName ?? '',
+                'Last name': row.lastName ?? '',
+                'Employee code': row.employeeCode ?? '',
+                Designation: designationLabel(row.designation) || '',
+                States: joinCell((row.locations ?? []).map((location) => location.name)),
+                Headquarters: joinCell((row.headquarters ?? []).map((office) => office.name)),
+                'Phone number': row.phone ?? '',
+                Email: row.email ?? '',
+                'Reports to': joinCell((row.managers ?? []).map((manager) => {
+                  const who = manager.employeeName || manager.employeeCode
+                  return who ? `${manager.designation}: ${who}` : ''
+                })),
+              }))}
+            />
           </>
         )}
       >
@@ -335,6 +367,8 @@ export default function EmployeesPage() {
           caption="Employees"
           columns={columns}
           rows={shown}
+          striped
+          scroll
           emptyText={rows === null ? 'Loading...' : rows.length ? 'No employees match your search.' : 'No employees yet.'}
           empty={rows !== null && rows.length === 0 && (
             <div className="card-body">

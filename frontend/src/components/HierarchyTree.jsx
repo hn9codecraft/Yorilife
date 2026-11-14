@@ -30,7 +30,7 @@ export default function HierarchyTree({ branch, highlightStockistId }) {
   const { managers, headquarters, stockists } = branch
   const leaf = (
     <li>
-      <NodeLabel type="Headquarters" name={headquarters.name} code={headquarters.code} />
+      <NodeLabel type="Headquarters" name={headquarters.name} />
       {stockists.length > 0 ? (
         <ul className="hierarchy-stockists">
           {stockists.map((stockist) => {

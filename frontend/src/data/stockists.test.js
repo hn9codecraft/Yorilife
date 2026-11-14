@@ -16,7 +16,7 @@ test('stockist options show the headquarter and can be limited to one headquarte
   ]
   const all = stockistOptions(stockists, locations)
   assert.deepEqual(all.map((option) => option.label), ['Alpha (A1) — Surat', 'Beta'])
-  assert.deepEqual(all[0].keywords, ['A1', 'Surat', 'SRT', 'Gujarat'])
+  assert.deepEqual(all[0].keywords, ['A1', 'Surat', 'Gujarat'])
   assert.deepEqual(stockistOptions(stockists, locations, '5').map((option) => option.value), ['1'])
 })
 
@@ -53,7 +53,7 @@ test('headquarter options come from the state list with the state name', () => {
     { id: 1, name: 'Gujarat', headquarters: [{ id: 5, name: 'Surat', code: 'HQ-5' }, { id: 4, name: 'Ahmedabad', code: null }] },
     { id: 2, name: 'Goa', headquarters: [] },
   ]
-  assert.deepEqual(headquarterOptions(locations).map((option) => option.label), ['Ahmedabad — Gujarat', 'Surat (HQ-5) — Gujarat'])
+  assert.deepEqual(headquarterOptions(locations).map((option) => option.label), ['Ahmedabad — Gujarat', 'Surat — Gujarat'])
   assert.equal(findHeadquarter(locations, '5').stateName, 'Gujarat')
   assert.equal(findHeadquarter(locations, ''), null)
 })

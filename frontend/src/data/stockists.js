@@ -39,8 +39,7 @@ export function headquarterOptions(locations) {
   const options = []
   for (const location of locations ?? []) {
     for (const office of location.headquarters ?? []) {
-      const name = office.code ? `${office.name} (${office.code})` : office.name
-      options.push({ value: String(office.id), label: `${name} — ${location.name}` })
+      options.push({ value: String(office.id), label: `${office.name} — ${location.name}` })
     }
   }
   return options.sort((a, b) => a.label.localeCompare(b.label))
@@ -92,7 +91,7 @@ export function stockistOptions(stockists, locations, headquarterId = '') {
       return {
         value: String(stockist.id),
         label: office ? `${withCode} — ${office.name}` : withCode,
-        keywords: [stockist.code, office?.name, office?.code, office?.stateName].filter(Boolean),
+        keywords: [stockist.code, office?.name, office?.stateName].filter(Boolean),
       }
     })
     .sort((a, b) => a.label.localeCompare(b.label))

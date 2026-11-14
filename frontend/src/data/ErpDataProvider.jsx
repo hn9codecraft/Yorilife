@@ -121,15 +121,12 @@ export default function ErpDataProvider({ children }) {
       },
 
       createLocationHeadquarters(values) {
-        const body = {
-          locationId: values.locationId,
-          name: values.name,
-          code: values.code,
-          address: values.address,
-          pincode: values.pincode,
-          phone: values.phone,
-          email: values.email,
-        }
+        // The Headquarter List form sends only state + name. Optional fields are sent
+        // only when given, so stored code/address/contact values are kept on edit.
+        const body = { locationId: values.locationId, name: values.name }
+        ;['code', 'address', 'pincode', 'phone', 'email'].forEach((key) => {
+          if (values[key] !== undefined) body[key] = values[key]
+        })
         return values.id
           ? save(`/api/location-headquarters/${values.id}`, 'PATCH', body)
           : save('/api/location-headquarters', 'POST', body)
