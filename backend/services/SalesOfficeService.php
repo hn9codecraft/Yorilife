@@ -291,15 +291,19 @@ final class SalesOfficeService
             $errors['locationId'] = 'Choose a state from the list.';
         }
         $current = $currentId === null ? null : $this->records->findLocationHeadquarters($currentId);
+        // The Headquarter List form only has state + name. Code, address, pincode, phone and
+        // email are still accepted (import / API) but optional: a field that is not sent keeps
+        // its stored value on edit (nothing is wiped) and is empty on create.
+        $kept = static fn (string $column): ?string => $current === null || $current[$column] === null ? null : (string) $current[$column];
         // Any code may be typed (no fixed format); it must be unique among headquarters.
-        $code = Input::optionalText($input, 'code', 'headquarters code', 50, $errors);
-        $address = Input::optionalText($input, 'address', 'address', 255, $errors);
-        $pincode = self::digits($input['pincode'] ?? null);
-        $phone = self::optionalPhone($input['phone'] ?? null, $errors);
-        if ($pincode !== null && !preg_match('/^[1-9][0-9]{5}$/', $pincode)) {
+        $code = array_key_exists('code', $input) ? Input::optionalText($input, 'code', 'headquarters code', 50, $errors) : $kept('code');
+        $address = array_key_exists('address', $input) ? Input::optionalText($input, 'address', 'address', 255, $errors) : $kept('address');
+        $pincode = array_key_exists('pincode', $input) ? self::digits($input['pincode']) : $kept('pincode');
+        $phone = array_key_exists('phone', $input) ? self::optionalPhone($input['phone'], $errors) : $kept('phone');
+        if (array_key_exists('pincode', $input) && $pincode !== null && !preg_match('/^[1-9][0-9]{5}$/', $pincode)) {
             $errors['pincode'] = 'Enter a 6-digit pincode.';
         }
-        $email = self::optionalEmail($input['email'] ?? null, $errors);
+        $email = array_key_exists('email', $input) ? self::optionalEmail($input['email'], $errors) : $kept('email');
         if ($locationId !== null && $name !== null) {
             foreach ($this->records->locationHeadquartersGrouped()[$locationId] ?? [] as $office) {
                 if ($currentId !== null && (int) $office['id'] === $currentId) {
@@ -311,11 +315,12 @@ final class SalesOfficeService
             }
         }
         $this->fail($errors);
-        $sameCode = $code === null ? null : $this->records->findLocationHeadquartersByCode($code);
+        $checkCode = array_key_exists('code', $input) ? $code : null;
+        $sameCode = $checkCode === null ? null : $this->records->findLocationHeadquartersByCode($checkCode);
         if ($sameCode !== null && ($currentId === null || (int) $sameCode['id'] !== $currentId)) {
             throw HttpException::validation(['code' => 'This code is already in use.']);
         }
-        $officeCode = $code === null ? null : $this->records->findHeadquartersByCode($code);
+        $officeCode = $checkCode === null ? null : $this->records->findHeadquartersByCode($checkCode);
         $linked = $currentId === null ? null : $this->records->findHeadquartersByLocationOffice($currentId);
         if ($officeCode !== null && ($linked === null || (int) $officeCode['id'] !== (int) $linked['id'])) {
             throw HttpException::validation(['code' => 'This code is already in use.']);

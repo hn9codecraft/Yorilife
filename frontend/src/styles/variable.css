@@ -157,6 +157,26 @@
   --transition-fast: 150ms ease-in-out;
   --transition-base: 220ms ease-in-out;
 
+  /* ---- Data tables (components/DataTable.jsx, theme.css "Data tables") --
+     Colours derive from the surface/text tokens, so dark mode follows. */
+  --table-font-size: var(--font-size-sm);
+  --table-header-font-size: var(--font-size-xs);
+  --table-secondary-font-size: var(--font-size-xs);
+  --table-cell-padding-y: 0.625rem;
+  --table-cell-padding-x: 0.75rem;
+  --table-row-height: 3.25rem;                 /* min height of a body row */
+  --table-stripe-bg: color-mix(in srgb, var(--color-surface-muted) 45%, var(--color-surface));
+  --table-sticky-bg: var(--color-surface);
+  --table-sticky-shadow: rgba(var(--color-text-rgb), 0.14);
+  --table-scroll-max-height: max(22rem, calc(100vh - 17rem));
+  --table-select-col-width: 2.75rem;
+  --table-col-sm: 7rem;                        /* column min-widths */
+  --table-col-md: 10rem;
+  --table-col-lg: 13rem;
+  --table-col-xl: 17rem;
+  --table-truncate-max: 20rem;                 /* long text cut with … + tooltip */
+  --table-chip-max-width: 10rem;
+
   /* ---- Breakpoints (reference only — CSS vars can't be used in @media).
      Mirror Bootstrap 5: sm 576, md 768, lg 992, xl 1200, xxl 1400. ---- */
   --breakpoint-sm: 576px;

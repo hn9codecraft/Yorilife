@@ -353,7 +353,7 @@ final class SalesOfficeRepository extends Repository
     public function locationHeadquartersGrouped(): array
     {
         $grouped = [];
-        foreach ($this->many('SELECT id, location_id, name, code, address, pincode, phone, email FROM location_headquarters ORDER BY location_id, position, id') as $row) {
+        foreach ($this->many('SELECT id, location_id, name, code, address, pincode, phone, email, created_at, updated_at FROM location_headquarters ORDER BY location_id, position, id') as $row) {
             $grouped[(int) $row['location_id']][] = [
                 'id' => (int) $row['id'],
                 'name' => $row['name'],
@@ -362,6 +362,8 @@ final class SalesOfficeRepository extends Repository
                 'pincode' => $row['pincode'],
                 'phone' => $row['phone'],
                 'email' => $row['email'],
+                'created_at' => $row['created_at'],
+                'updated_at' => $row['updated_at'],
             ];
         }
 

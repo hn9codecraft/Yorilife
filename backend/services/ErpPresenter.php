@@ -173,6 +173,8 @@ final class ErpPresenter
                     'pincode' => $office['pincode'] ?? null,
                     'phone' => $office['phone'] ?? null,
                     'email' => $office['email'] ?? null,
+                    'createdAt' => isset($office['created_at']) ? Presenter::iso($office['created_at']) : null,
+                    'updatedAt' => isset($office['updated_at']) ? Presenter::iso($office['updated_at']) : null,
                 ],
                 $headquarters,
             ),

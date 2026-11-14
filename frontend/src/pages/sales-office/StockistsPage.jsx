@@ -6,8 +6,8 @@ import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
-import SearchInput from '../../components/SearchInput.jsx'
-import ListFilter from '../../components/ListFilter.jsx'
+import FilterBar from '../../components/FilterBar.jsx'
+import useUrlFilters from '../../hooks/useUrlFilters.js'
 import SalesOfficeCsv from '../../components/SalesOfficeCsv.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
@@ -15,12 +15,15 @@ import Modal from '../../components/Modal.jsx'
 import HierarchyTree from '../../components/HierarchyTree.jsx'
 import { FormRow, LabelNote, TextField } from '../../components/FormField.jsx'
 import SearchableSelect from '../../components/SearchableSelect.jsx'
+import { CellStack, StatusTag } from '../../components/TableCells.jsx'
+import { designationLabel } from '../../data/designations.js'
+import { LICENCE_FILTERS, STOCKIST_FILTER_DEFAULTS, UNASSIGNED, filterStockists } from '../../data/stockistFilters.js'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
 import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
 import { api } from '../../api/client.js'
-import { buildHeadquartersBranch, byName, findById, matchesFilters } from '../../data/selectors.js'
+import { buildHeadquartersBranch, byName, findById } from '../../data/selectors.js'
 import {
   STOCKIST_LICENCES,
   employeeLabel,
@@ -176,19 +179,19 @@ function StockistForm({ formId, record, stockists, headquarters, employees, onSa
 }
 
 function LicenceCell({ number, validUpto, today }) {
-  if (!number && !validUpto) return '—'
+  if (!number && !validUpto) return null
   const status = licenceStatus(validUpto, today)
   return (
-    <div>
-      <div>{number || '—'}</div>
-      {validUpto && (
-        <div className="small text-body-secondary text-nowrap">
-          Valid up to {formatDate(validUpto)}
-          {status === 'expired' && <span className="badge bg-danger-subtle text-danger-emphasis ms-1">Expired</span>}
-          {status === 'soon' && <span className="badge bg-warning-subtle text-warning-emphasis ms-1">Expiring soon</span>}
-        </div>
+    <CellStack
+      primary={number || ''}
+      secondary={validUpto && (
+        <>
+          <span className="text-nowrap">Valid up to {formatDate(validUpto)}</span>
+          {status === 'expired' && <StatusTag tone="danger">Expired</StatusTag>}
+          {status === 'soon' && <StatusTag tone="warning" title="Expires within 30 days">Expiring</StatusTag>}
+        </>
       )}
-    </div>
+    />
   )
 }
 
@@ -196,8 +199,7 @@ export default function StockistsPage() {
   const { state, actions } = useErpData()
   const canManage = usePermission('sales_office.manage')
   const editor = useEditor()
-  const [query, setQuery] = useState('')
-  const [filters, setFilters] = useState({ stateIds: [], reportIds: [] })
+  const [filters, setFilter, clearFilters] = useUrlFilters(STOCKIST_FILTER_DEFAULTS)
   const [viewing, setViewing] = useState({ open: false, id: null })
   const [deleting, setDeleting] = useState(null)
   const [deletingMany, setDeletingMany] = useState(false)
@@ -227,33 +229,57 @@ export default function StockistsPage() {
   const officeOf = (stockist) => findHeadquarter(locations, stockist.locationHeadquartersId)
   const employeeOf = (stockist) => employees.find((employee) => String(employee.id) === String(stockist.assignedEmployeeId ?? ''))
 
-  const needle = query.trim().toLowerCase()
-  const rows = state.stockists
-    .filter((stockist) => {
-      const office = officeOf(stockist)
-      const haystack = [
-        stockist.name, stockist.code, stockist.address, stockist.pincode, stockist.phone, stockist.email,
-        office?.name, office?.stateName, employeeLabel(employeeOf(stockist)),
-        ...STOCKIST_LICENCES.map((licence) => stockist[licence.number]),
-      ].filter(Boolean).join(' ').toLowerCase()
-      return (!needle || haystack.includes(needle)) && matchesFilters(office ? [office.stateId] : [], null, filters)
-    })
-    .sort(byName)
+  const rows = filterStockists(state.stockists, filters, { officeOf, today }).sort(byName)
+
+  // Filter choices. Headquarters narrow to the chosen state.
+  const stateOptions = locations.map((location) => ({ value: String(location.id), label: location.name, keywords: [location.code].filter(Boolean) }))
+  const hqOptions = headquarterOptions(filters.state ? locations.filter((location) => String(location.id) === filters.state) : locations)
+  const assignedOptions = [
+    { value: UNASSIGNED, label: 'Unassigned' },
+    ...sortedEmployees.map((employee) => ({ value: String(employee.id), label: employeeLabel(employee), keywords: [employee.employeeCode].filter(Boolean) })),
+  ]
+  const labelFor = (options, value) => options.find((option) => option.value === value)?.label ?? value
+  const chips = [
+    filters.q && { key: 'q', label: `Search: ${filters.q}` },
+    filters.hq && { key: 'hq', label: `Headquarter: ${findHeadquarter(locations, filters.hq)?.name ?? labelFor(hqOptions, filters.hq)}` },
+    filters.state && { key: 'state', label: `State: ${labelFor(stateOptions, filters.state)}` },
+    filters.assigned && { key: 'assigned', label: `Assigned To: ${labelFor(assignedOptions, filters.assigned)}` },
+    filters.licence && { key: 'licence', label: `Licence: ${labelFor(LICENCE_FILTERS, filters.licence)}` },
+  ].filter(Boolean).map((chip) => ({ ...chip, onRemove: () => setFilter(chip.key, '') }))
+  const chooseState = (value) => {
+    const office = findHeadquarter(locations, filters.hq)
+    const keepHq = !value || !office || String(office.stateId) === value
+    setFilter({ state: value, hq: keepHq ? filters.hq : '' })
+  }
   const selection = useRowSelection(rows)
   const viewed = findById(state.stockists, viewing.id)
 
   const columns = [
-    { key: 'name', header: 'Stockist', render: (s) => <strong className="fw-semibold">{stockistLabel(s)}</strong> },
-    { key: 'code', header: 'Code', nowrap: true, render: (s) => s.code || '—' },
-    { key: 'hq', header: 'Headquarter', render: (s) => officeOf(s)?.name ?? '—' },
-    { key: 'state', header: 'State', render: (s) => officeOf(s)?.stateName ?? '—' },
-    { key: 'assigned', header: 'Assigned To', render: (s) => (s.assignedEmployeeId ? employeeLabel(employeeOf(s)) || '—' : '—') },
-    { key: 'address', header: 'Address', render: (s) => [s.address, s.pincode].filter(Boolean).join(' - ') || '—' },
-    { key: 'phone', header: 'Phone Number', nowrap: true, render: (s) => s.phone || '—' },
-    { key: 'email', header: 'Email', render: (s) => s.email || '—' },
+    { key: 'name', header: 'Stockist', width: 'lg', sticky: 'start', render: (s) => <CellStack strong primary={stockistLabel(s)} secondary={s.name ? s.code : null} /> },
+    {
+      key: 'hq',
+      header: 'Headquarter',
+      width: 'md',
+      render: (s) => {
+        const office = officeOf(s)
+        return office ? <CellStack primary={office.name} secondary={office.stateName} /> : null
+      },
+    },
+    {
+      key: 'assigned',
+      header: 'Assigned To',
+      width: 'md',
+      render: (s) => {
+        const employee = s.assignedEmployeeId ? employeeOf(s) : null
+        return employee ? <CellStack primary={employeeLabel(employee)} secondary={designationLabel(employee.designation)} /> : null
+      },
+    },
+    { key: 'address', header: 'Address', width: 'lg', render: (s) => (s.address || s.pincode ? <CellStack primary={s.address || ''} secondary={s.pincode} /> : null) },
+    { key: 'contact', header: 'Contact', width: 'md', render: (s) => (s.phone || s.email ? <CellStack primary={s.phone || ''} secondary={s.email} title={[s.phone, s.email].filter(Boolean).join(' · ')} /> : null) },
     ...STOCKIST_LICENCES.map((licence) => ({
       key: licence.key,
       header: licence.label,
+      width: 'lg',
       render: (s) => <LicenceCell number={s[licence.number]} validUpto={s[licence.validUpto]} today={today} />,
     })),
     {
@@ -261,6 +287,7 @@ export default function StockistsPage() {
       header: 'Actions',
       align: 'end',
       nowrap: true,
+      sticky: 'end',
       render: (s) => (
         <div className="table-actions">
           {s.headquartersId && (
@@ -297,15 +324,16 @@ export default function StockistsPage() {
 
       <TableCard
         title={`Stockists (${state.stockists.length})`}
-        toolbar={
-          <>
-            <SearchInput value={query} onChange={setQuery} label="Search stockists" placeholder="Search name, code or licence" />
-            <ListFilter
-              locations={locations}
-              reports={null}
-              applied={filters}
-              onApply={setFilters}
-            />
+      >
+        <FilterBar
+          label="Filter stockists"
+          search={{ value: filters.q, onChange: (value) => setFilter('q', value), label: 'Search stockists', placeholder: 'Search name, code, phone or email' }}
+          chips={chips}
+          onClearAll={() => clearFilters()}
+          shown={rows.length}
+          total={state.stockists.length}
+          noun="stockists"
+          actions={(
             <SalesOfficeCsv
               module="stockist"
               records={rows.map((stockist) => {
@@ -313,7 +341,8 @@ export default function StockistsPage() {
                 return {
                   'Stockist name': stockist.name ?? '',
                   'Stockist code': stockist.code ?? '',
-                  Headquarter: office ? (office.code || office.name) : '',
+                  Headquarter: office?.name ?? '',
+
                   State: office?.stateName ?? '',
                   'Assigned to': stockist.assignedEmployeeId ? employeeLabel(employeeOf(stockist)) : '',
                   Address: stockist.address ?? '',
@@ -329,14 +358,59 @@ export default function StockistsPage() {
                 }
               })}
             />
-          </>
-        }
-      >
+          )}
+        >
+          <SearchableSelect
+            id="stockist-filter-hq"
+            label="Headquarter"
+            labelHidden
+            value={filters.hq}
+            onChange={(value) => setFilter('hq', value)}
+            options={hqOptions}
+            placeholder="All headquarters"
+            noResultsText="No headquarter matches"
+            className="filter-bar__control"
+          />
+          <SearchableSelect
+            id="stockist-filter-state"
+            label="State"
+            labelHidden
+            value={filters.state}
+            onChange={chooseState}
+            options={stateOptions}
+            placeholder="All states"
+            noResultsText="No state matches"
+            className="filter-bar__control"
+          />
+          <SearchableSelect
+            id="stockist-filter-assigned"
+            label="Assigned To"
+            labelHidden
+            value={filters.assigned}
+            onChange={(value) => setFilter('assigned', value)}
+            options={assignedOptions}
+            placeholder="All employees"
+            noResultsText="No employee matches"
+            missingLabel="Employee no longer listed"
+            className="filter-bar__control"
+          />
+          <select
+            className="form-select filter-bar__control"
+            aria-label="Licence status"
+            value={filters.licence}
+            onChange={(event) => setFilter('licence', event.target.value)}
+          >
+            <option value="">All licence statuses</option>
+            {LICENCE_FILTERS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </FilterBar>
         {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption="Stockists"
           columns={columns}
           rows={rows}
+          striped
+          scroll
           selection={canManage ? {
             isSelected: (stockist) => selection.isSelected(stockist.id),
             onToggle: (stockist) => selection.toggle(stockist.id),

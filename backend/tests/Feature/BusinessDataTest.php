@@ -779,6 +779,44 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertNull($nameless['body']['data']['stockist']['name']);
     }
 
+    public function testHeadquarterSavedWithOnlyStateAndNameKeepsStoredDetails(): void
+    {
+        $admin = $this->signedInAs('admin', 'hq-name-only@example.test');
+        $locations = $admin->request('GET', '/api/locations')['body']['data']['locations'];
+        $gujarat = $locations[0]['id'];
+        $full = $admin->request('POST', '/api/location-headquarters', [
+            'locationId' => $gujarat, 'name' => 'Keep Details', 'code' => 'KD-1', 'address' => '1 Test Road',
+            'pincode' => '380001', 'phone' => '9000000777', 'email' => 'keep@example.test',
+        ]);
+        self::assertSame(201, $full['status'], $full['raw']);
+        $find = static function (array $response, string $name): ?array {
+            foreach ($response['body']['data']['locations'] as $location) {
+                foreach ($location['headquarters'] as $office) {
+                    if ($office['name'] === $name) {
+                        return $office;
+                    }
+                }
+            }
+
+            return null;
+        };
+        $office = $find($full, 'Keep Details');
+        self::assertNotNull($office);
+        self::assertNotNull($office['updatedAt']);
+
+        // The form now sends only state + name: stored code, address and contact stay.
+        $renamed = $admin->request('PATCH', '/api/location-headquarters/' . $office['id'], ['locationId' => $gujarat, 'name' => 'Kept Details']);
+        self::assertSame(200, $renamed['status'], $renamed['raw']);
+        $kept = $find($renamed, 'Kept Details');
+        self::assertSame(['KD-1', '1 Test Road', '380001', '9000000777', 'keep@example.test'], [$kept['code'], $kept['address'], $kept['pincode'], $kept['phone'], $kept['email']]);
+
+        $minimal = $admin->request('POST', '/api/location-headquarters', ['locationId' => $gujarat, 'name' => 'Name Only HQ']);
+        self::assertSame(201, $minimal['status'], $minimal['raw']);
+        $duplicate = $admin->request('POST', '/api/location-headquarters', ['locationId' => $gujarat, 'name' => ' name only hq ']);
+        self::assertError($duplicate, 422, 'validation_failed');
+        self::assertArrayHasKey('name', $duplicate['body']['error']['details']['fields']);
+    }
+
     public function testSalesEntryTakesTheHeadquarterFromTheStockist(): void
     {
         $admin = $this->signedInAs('admin', 'sales-hq-list@example.test');

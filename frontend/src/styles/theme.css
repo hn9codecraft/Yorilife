@@ -398,15 +398,17 @@ pre code {
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-text);
+  color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  /* Same weight and colour as the sibling page links (.sidebar-link), not bold */
+  font-weight: var(--font-weight-regular);
   line-height: 1.35;
   text-align: left;
   transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .sidebar-subgroup__toggle:hover {
+  color: var(--color-text);
   background-color: var(--color-surface-hover);
 }
 
@@ -415,9 +417,9 @@ pre code {
   min-width: 0;
 }
 
+/* The open page inside is already highlighted, so the subgroup only gets the navy colour */
 .sidebar-subgroup.is-active > .sidebar-subgroup__toggle {
   color: var(--color-secondary);
-  font-weight: var(--font-weight-semibold);
 }
 
 .sidebar-subgroup .sidebar-group__list {
@@ -1363,18 +1365,18 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   --bs-table-hover-color: var(--color-text);
   --bs-table-striped-bg: var(--color-surface-muted);
   margin-bottom: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--table-font-size);
   vertical-align: middle;
 }
 
 .table > :not(caption) > * > * {
-  padding: 0.5rem 0.625rem;
+  padding: var(--table-cell-padding-y) var(--table-cell-padding-x);
 }
 
 .table > thead th {
   background-color: var(--color-surface-muted);
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--table-header-font-size);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -1466,6 +1468,251 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
 .table .numeric {
   font-variant-numeric: tabular-nums;
 }
+
+/* ==== Data tables: widths, sticky header/columns, cells ================
+   Options on DataTable columns (components/DataTable.jsx):
+     width: 'sm' | 'md' | 'lg' | 'xl'  -> min-width from --table-col-*
+     sticky: 'start' | 'end'           -> pinned while scrolling sideways
+     truncate: true                    -> one line, … and a tooltip
+   key 'actions' is always compact, right-aligned and on one line.
+   Table props: striped, scroll (sticky header inside a max-height box).
+   Cell helpers live in components/TableCells.jsx. */
+.table > tbody > tr:not(.table-subrow) > td {
+  height: var(--table-row-height);
+}
+
+/* Zebra rows (Bootstrap paints --bs-table-bg-type with an inset shadow) */
+.table--striped > tbody > tr:nth-of-type(even) > * {
+  --bs-table-bg-type: var(--table-stripe-bg);
+}
+
+.table-col--sm { min-width: var(--table-col-sm); }
+.table-col--md { min-width: var(--table-col-md); }
+.table-col--lg { min-width: var(--table-col-lg); }
+.table-col--xl { min-width: var(--table-col-xl); }
+
+.table-col--actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.table-col--actions .table-actions {
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/* Separate borders so cell borders move with sticky cells (collapsed
+   borders belong to the table and stay behind while cells scroll). */
+.table-container > .table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Solid colour of each body row, per state. Pinned cells paint this as
+   their background so scrolled content never shows through them.
+   Order matters: stripe < hover < selected < selected + hover. */
+.table > tbody > tr > * {
+  --table-row-bg: var(--table-sticky-bg);
+}
+
+.table--striped > tbody > tr:nth-of-type(even) > * {
+  --table-row-bg: var(--table-stripe-bg);
+}
+
+.table-hover > tbody > tr:hover > * {
+  --table-row-bg: var(--color-surface-hover);
+}
+
+.table > tbody > tr.is-selected > * {
+  --table-row-bg: var(--color-primary-50);
+}
+
+.table-hover > tbody > tr.is-selected:hover > * {
+  --table-row-bg: var(--color-primary-100);
+}
+
+/* Sticky header: the wrapper scrolls both ways inside a max height */
+.table-container--scroll {
+  max-height: var(--table-scroll-max-height);
+  overflow: auto;
+}
+
+.table-container--scroll > .table > thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* Pinned first / last columns (and the select column before a pinned first
+   column). Layers: header corners 4 > header 3 > pinned body cells 2 > body. */
+.table > :not(caption) > tr > .table-col--sticky-start,
+.table > :not(caption) > tr > .table-col--sticky-end,
+.table--sticky-start > :not(caption) > tr > .table-select-cell {
+  position: sticky;
+  z-index: 2;
+  background-color: var(--table-row-bg, var(--table-sticky-bg));
+  box-shadow: none;
+}
+
+.table--sticky-start > :not(caption) > tr > .table-select-cell,
+.table > :not(caption) > tr > .table-col--sticky-start {
+  left: 0;
+}
+
+.table--has-select > :not(caption) > tr > .table-col--sticky-start {
+  left: var(--table-select-col-width);
+}
+
+.table > :not(caption) > tr > .table-col--sticky-end {
+  right: 0;
+}
+
+.table > thead > tr > th.table-col--sticky-start,
+.table > thead > tr > th.table-col--sticky-end,
+.table--sticky-start > thead > tr > th.table-select-cell {
+  z-index: 4;
+  background-color: var(--color-surface-muted);
+}
+
+/* Edge shadow only while content is hidden behind a pinned column
+   (DataTable sets is-scrolled-start / has-more-end on the wrapper). */
+.table-container.is-scrolled-start > .table > :not(caption) > tr > .table-col--sticky-start {
+  box-shadow: 6px 0 8px -6px var(--table-sticky-shadow);
+}
+
+.table-container.has-more-end > .table > :not(caption) > tr > .table-col--sticky-end {
+  box-shadow: -6px 0 8px -6px var(--table-sticky-shadow);
+}
+
+.table-select-cell {
+  width: var(--table-select-col-width);
+  min-width: var(--table-select-col-width);
+  max-width: var(--table-select-col-width);
+}
+/* One line with an ellipsis; the full text is in the title tooltip */
+.table-truncate {
+  display: block;
+  max-width: var(--table-truncate-max);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Count cells (e.g. Stockists per headquarter); a count can link to the filtered list */
+.table-count,
+.table-count-link {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+}
+
+.table-count.is-zero {
+  color: var(--color-text-subtle);
+  font-weight: var(--font-weight-regular);
+}
+
+.table-count-link {
+  display: inline-block;
+  min-width: 2rem;
+  padding: 0.0625rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary-50);
+  color: var(--color-on-subtle);
+  text-align: center;
+  text-decoration: none;
+}
+
+.table-count-link:hover {
+  background-color: var(--color-primary-100);
+}
+
+.table-count-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Empty value placeholder */
+.table-empty-value {
+  color: var(--color-text-subtle);
+}
+
+/* Primary text with muted secondary text under it (e.g. name / code) */
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.cell-stack__primary {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.cell-stack--strong .cell-stack__primary {
+  font-weight: var(--font-weight-semibold);
+}
+
+.cell-stack__secondary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--table-secondary-font-size);
+}
+
+/* Compact chips with a +N overflow chip */
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-block;
+  max-width: var(--table-chip-max-width);
+  padding: 0.0625rem var(--space-2);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--table-secondary-font-size);
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip--more {
+  border-style: dashed;
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+  cursor: help;
+}
+
+/* Status tag (Expired / Expiring / Active): text + colour, never colour alone */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.0625rem 0.45rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--table-secondary-font-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.status-tag--danger { background-color: var(--color-danger-bg); color: var(--color-danger-text); }
+.status-tag--warning { background-color: var(--color-warning-bg); color: var(--color-warning-text); }
+.status-tag--success { background-color: var(--color-success-bg); color: var(--color-success-text); }
+.status-tag--neutral { background-color: var(--color-surface-muted); color: var(--color-text-muted); }
 
 /* ==== Badges & status labels ========================================== */
 .badge {
@@ -1763,6 +2010,198 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
 
 .toolbar__field {
   min-width: 0;
+}
+
+/* ==== Filters (components/FilterBar.jsx) ===============================
+   One row of search + filter controls + actions that wraps on desktop;
+   on phones the controls fold behind a "Filters" button. Below it:
+   "Showing X of Y", removable chips for active filters and Clear all. */
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.filter-bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.filter-bar__row > .search-field {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  max-width: 22rem;
+}
+
+.filter-bar__controls {
+  display: flex;
+  flex: 999 1 30rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.filter-bar__control {
+  flex: 1 1 11rem;
+  min-width: 10rem;
+  max-width: 16rem;
+}
+
+select.filter-bar__control {
+  width: auto;
+}
+
+.filter-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.filter-bar__toggle {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filter-bar__badge {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+.filter-bar__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1.75rem;
+}
+
+.filter-bar__count {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.filter-bar__count strong {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.filter-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  max-width: 18rem;
+  padding: 0.0625rem 0.125rem 0.0625rem 0.6rem;
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary-50);
+  color: var(--color-on-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.filter-chip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-chip__remove {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+}
+
+.filter-chip__remove:hover {
+  background-color: var(--color-primary-100);
+}
+
+.filter-chip__remove:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.filter-bar__clear {
+  padding: 0;
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 767.98px) {
+  .filter-bar__row > .search-field {
+    flex: 1 1 0;
+    max-width: none;
+  }
+
+  .filter-bar__toggle {
+    display: inline-flex;
+  }
+
+  .filter-bar__controls {
+    display: none;
+    flex: 1 1 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-bar__controls.is-open {
+    display: flex;
+  }
+
+  .filter-bar__control,
+  select.filter-bar__control {
+    width: 100%;
+    max-width: none;
+  }
+
+  .filter-bar__actions {
+    margin-left: 0;
+  }
+}
+
+/* Icon-only Export CSV button (components/ExportCsvButton.jsx) */
+.export-csv {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+
+.export-csv__error {
+  max-width: 16rem;
 }
 
 .list-filter {
@@ -2686,7 +3125,8 @@ legend.form-label {
     max-width: none;
   }
 
-  .toolbar > .list-filter--panel {
+  .toolbar > .list-filter--panel,
+  .toolbar > .export-csv {
     width: auto;
   }
 
@@ -2811,6 +3251,34 @@ legend.form-label {
   .table-container:has(td[data-label]) tr.table-subrow td {
     display: block;
     text-align: left;
+  }
+
+  .table-container--scroll:has(td[data-label]) {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .table-container:has(td[data-label]) td {
+    position: static;
+    height: auto;
+    min-width: 0;
+    max-width: none;
+    box-shadow: none;
+  }
+
+  .table-container:has(td[data-label]) .table-truncate {
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .table-container:has(td[data-label]) .cell-stack {
+    align-items: flex-end;
+  }
+
+  .table-container:has(td[data-label]) .cell-stack__secondary,
+  .table-container:has(td[data-label]) .chip-list {
+    justify-content: flex-end;
   }
 }
 

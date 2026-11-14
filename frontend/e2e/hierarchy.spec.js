@@ -1,4 +1,4 @@
-import { api, expect, reseed, seedManagerChain, signIn, test, USERS } from './helpers.js'
+import { api, chooseOption, expect, reseed, seedManagerChain, signIn, test, USERS } from './helpers.js'
 
 test.beforeEach(() => {
   reseed()
@@ -25,15 +25,11 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   await page.goto('/sales-office/headquarter-list')
   await page.getByRole('button', { name: 'Add headquarter' }).click()
   const locationModal = page.locator('.modal.show')
-  await locationModal.getByLabel('State').selectOption('Gujarat')
-  await locationModal.getByLabel('Headquarters name').fill('Chain HQ')
-  await locationModal.getByLabel('Headquarters address').fill('1 Chain Road')
-  await locationModal.getByLabel('Pincode').fill('380001')
-  await locationModal.getByLabel('Phone number').fill('9000000201')
-  await locationModal.getByLabel('Email').fill('chain-hq@example.test')
+  await chooseOption(locationModal, 'State', 'Gujarat')
+  await locationModal.getByLabel('Headquarter Name').fill('Chain HQ')
   await locationModal.getByRole('button', { name: 'Save' }).click()
   const locationTable = page.getByRole('table', { name: 'Headquarters' })
-  await expect(locationTable.locator('tbody tr', { hasText: 'Chain HQ' })).toContainText('HQ-001')
+  await expect(locationTable.locator('tbody tr', { hasText: 'Chain HQ' })).toContainText('Gujarat')
   await page.reload()
   await expect(locationTable.locator('tbody tr', { hasText: 'Chain HQ' })).toContainText('chain-hq@example.test')
 
@@ -49,7 +45,7 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   const stockist = page.locator('.modal.show')
   await stockist.getByLabel('Stockist name').fill('Chain Stockist')
   await expect(stockist.getByLabel('Stockist code')).toHaveValue('001')
-  await stockist.getByLabel('Headquarters').selectOption({ label: 'Chain HQ (HQ-001)' })
+  await stockist.getByLabel('Headquarters').selectOption({ label: 'Chain HQ — Gujarat' })
   await stockist.getByLabel('Address').fill('1 Chain Road')
   await stockist.getByLabel('Pincode').fill('380001')
   await stockist.getByLabel('Phone number').fill('12452724')
@@ -57,13 +53,12 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   await stockist.getByRole('button', { name: 'Save' }).click()
   const stockistRow = page.locator('tbody tr', { hasText: 'Chain Stockist' })
   await expect(stockistRow).toHaveCount(1)
-  await expect(page.getByRole('table', { name: 'Stockists' }).locator('thead th')).toHaveText(['', 'Stockist', 'Code', 'Headquarters', 'State', 'Address', 'Pincode', 'Phone Number', 'Email', 'Actions'])
+  await expect(page.getByRole('table', { name: 'Stockists' }).locator('thead th')).toHaveText(['', 'Stockist', 'Headquarter', 'Assigned To', 'Address', 'Contact', 'Drug Licence', 'Food Licence', 'FSSAI Licence', 'Actions'])
   await expect(stockistRow).toContainText('ST-001')
   await expect(stockistRow).toContainText('Gujarat')
   await expect(stockistRow).toContainText('12452724')
-  await page.getByRole('button', { name: 'Filter list' }).click()
-  const stockistFilter = page.getByRole('dialog', { name: 'Filter list' })
-  await expect(stockistFilter.getByText('State', { exact: true })).toBeVisible()
+  const stockistFilter = page.getByRole('search', { name: 'Filter stockists' })
+  await expect(stockistFilter.getByRole('combobox', { name: 'State' })).toBeVisible()
   await expect(stockistFilter.getByText('Reports To', { exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
 
@@ -95,12 +90,8 @@ test('deleting a headquarters office keeps the headquarter list row', async ({ p
   await page.goto('/sales-office/headquarter-list')
   await page.getByRole('button', { name: 'Add headquarter' }).click()
   const locationModal = page.locator('.modal.show')
-  await locationModal.getByLabel('State').selectOption('Gujarat')
-  await locationModal.getByLabel('Headquarters name').fill('Delete HQ')
-  await locationModal.getByLabel('Headquarters address').fill('1 Delete Road')
-  await locationModal.getByLabel('Pincode').fill('380001')
-  await locationModal.getByLabel('Phone number').fill('9000000301')
-  await locationModal.getByLabel('Email').fill('delete-hq@example.test')
+  await chooseOption(locationModal, 'State', 'Gujarat')
+  await locationModal.getByLabel('Headquarter Name').fill('Delete HQ')
   await locationModal.getByRole('button', { name: 'Save' }).click()
 
   const locations = (await api(page, 'GET', '/api/locations')).locations
@@ -114,7 +105,7 @@ test('deleting a headquarters office keeps the headquarter list row', async ({ p
   await page.getByRole('button', { name: 'Add stockist' }).click()
   const stockist = page.locator('.modal.show')
   await stockist.getByLabel('Stockist name').fill('Delete Stockist')
-  await stockist.getByLabel('Headquarters').selectOption({ label: 'Delete HQ (HQ-001)' })
+  await stockist.getByLabel('Headquarters').selectOption({ label: 'Delete HQ — Gujarat' })
   await stockist.getByRole('button', { name: 'Save' }).click()
   await expect(page.locator('tbody tr', { hasText: 'Delete Stockist' })).toHaveCount(1)
 
@@ -124,7 +115,7 @@ test('deleting a headquarters office keeps the headquarter list row', async ({ p
 
   await page.goto('/sales-office/headquarter-list')
   const locationRow = page.getByRole('table', { name: 'Headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })
-  await expect(locationRow).toContainText('HQ-001')
+  await expect(locationRow).toContainText('Gujarat')
   await locationRow.getByRole('button', { name: 'Delete Delete HQ' }).click()
   await page.getByRole('dialog', { name: 'Delete headquarter' }).getByRole('button', { name: 'Delete' }).click()
   await expect(page.getByRole('table', { name: 'Headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })).toHaveCount(0)

@@ -1,8 +1,18 @@
-/** Export columns and file names for the Sales Office lists. */
+/** Export columns and file names for the Sales Office lists (see components/SalesOfficeCsv.jsx). */
 export const SALES_OFFICE_CSV = {
+  state: {
+    filename: 'states',
+    headers: ['State name', 'Location code', 'Headquarters'],
+  },
   headquarter: {
     filename: 'headquarters',
-    headers: ['Headquarter name', 'State', 'Headquarter code', 'Address', 'Pincode', 'Phone number', 'Email'],
+    headers: ['Headquarter name', 'State', 'State code', 'Stockists', 'Employees', 'Last updated'],
+  },
+  employee: {
+    filename: 'employees',
+    headers: [
+      'First name', 'Last name', 'Employee code', 'Designation', 'States', 'Headquarters', 'Phone number', 'Email', 'Reports to',
+    ],
   },
   stockist: {
     filename: 'stockists',

@@ -116,6 +116,7 @@ export const NAV_MENU = [
     icon: 'bi-buildings',
     basePath: '/sales-office',
     items: [
+      // Order requested by the owner: Stockist Entry, Employee List, Headquarter List, State List.
       {
         path: '/sales-office/stockists',
         label: 'Stockist Entry',
@@ -129,16 +130,16 @@ export const NAV_MENU = [
         description: 'Employees with an optional name, designation, states, headquarters, and the managers they report to.',
       },
       {
-        path: '/sales-office/locations',
-        label: 'State List',
-        icon: 'bi-geo-alt',
-        description: 'States and location codes. Headquarters for each state are on the Headquarter List.',
-      },
-      {
         path: '/sales-office/headquarter-list',
         label: 'Headquarter List',
         icon: 'bi-geo',
         description: 'Headquarters that belong to a state, with address and contact details.',
+      },
+      {
+        path: '/sales-office/locations',
+        label: 'State List',
+        icon: 'bi-geo-alt',
+        description: 'States and location codes. Headquarters for each state are on the Headquarter List.',
       },
       // Excel data import for the Sales Office lists (Super Admin and Admin only).
       {

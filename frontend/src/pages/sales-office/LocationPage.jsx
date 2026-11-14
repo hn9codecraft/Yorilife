@@ -7,6 +7,8 @@ import DataTable from '../../components/DataTable.jsx'
 import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
+import SalesOfficeCsv from '../../components/SalesOfficeCsv.jsx'
+import { ChipList } from '../../components/TableCells.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import { LabelNote, TextField } from '../../components/FormField.jsx'
@@ -15,6 +17,7 @@ import useEditor from '../../hooks/useEditor.js'
 import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
 import { matchesSearch } from '../../data/selectors.js'
+import { joinCell } from '../../utils/csv.js'
 
 function StateForm({ formId, record, locations, onSave }) {
   const form = useFormState(
@@ -63,12 +66,21 @@ export default function LocationPage() {
   const selection = useRowSelection(rows)
 
   const columns = [
-    { key: 'name', header: 'State Name', render: (location) => <strong className="fw-semibold">{location.name}</strong> },
-    { key: 'code', header: 'Location Code', nowrap: true, render: (location) => location.code || '—' },
+    { key: 'name', header: 'State Name', width: 'md', sticky: 'start', truncate: true, render: (location) => <strong className="fw-semibold">{location.name}</strong>, title: (location) => location.name },
+    { key: 'code', header: 'Location Code', width: 'sm', nowrap: true, render: (location) => location.code },
+    {
+      key: 'headquarters',
+      header: 'Headquarters',
+      width: 'xl',
+      render: (location) => (
+        <ChipList label="Headquarters" max={3} items={(location.headquarters ?? []).map((office) => ({ key: office.id, label: office.name }))} />
+      ),
+    },
     {
       key: 'actions',
       header: 'Actions',
       align: 'end',
+      sticky: 'end',
       render: (location) => (
         canManage ? (
           <div className="table-actions">
@@ -95,13 +107,27 @@ export default function LocationPage() {
       <DataStatusNotice />
       <TableCard
         title={`States (${locations.length})`}
-        toolbar={<SearchInput value={query} onChange={setQuery} label="Search states" placeholder="Search state name or code" />}
+        toolbar={(
+          <>
+            <SearchInput value={query} onChange={setQuery} label="Search states" placeholder="Search state name or code" />
+            <SalesOfficeCsv
+              module="state"
+              records={rows.map((location) => ({
+                'State name': location.name ?? '',
+                'Location code': location.code ?? '',
+                Headquarters: joinCell((location.headquarters ?? []).map((office) => office.name)),
+              }))}
+            />
+          </>
+        )}
       >
         {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption="States"
           columns={columns}
           rows={rows}
+          striped
+          scroll
           selection={canManage ? {
             isSelected: (location) => selection.isSelected(location.id),
             onToggle: (location) => selection.toggle(location.id),
