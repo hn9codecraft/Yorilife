@@ -206,6 +206,29 @@ Inclusion changes for a year. Scheme changes are stored once in `product_changes
 
 Whether there can be more than one entry per stockist per month (a unique key on `stockist_id` + `sales_month`) is still to be confirmed.
 
+## Bonus Calc
+
+Separate from `sales_entries`. A financial year is stored as `2026-27` (April–March). Calendar months are 1–12.
+
+### `bonus_calc_rows`
+Who is on the Bonus Calc list for one financial year. `deleted_at` removes them from that list only; the Sales Office employee stays. The same employee cannot be active twice in one year (`active_employee_year`).
+
+| Column | Type | Notes |
+| ------ | ---- | ----- |
+| financial_year | CHAR(7) | e.g. `2026-27` |
+| sales_employee_id | FK → sales_employees | |
+| deleted_at | DATETIME NULL | Soft delete |
+
+### `bonus_calc_lines`
+One saved product row for a financial year, employee, month, stockist and product. MRP, PTR, PTS, scheme, packaging and net rate are copied from the product the first time the line is saved and are not rewritten. `bonus_amount` = product sales × that net rate, rounded half up to two decimal places. A missing net rate counts as zero. Total product is not stored; it is opening quantity + new purchase.
+
+| Column | Type | Notes |
+| ------ | ---- | ----- |
+| month | TINYINT | 1–12 |
+| opening_qty, new_purchase_qty, product_sales_qty | DECIMAL(12,2) | Not negative |
+| net_rate | DECIMAL(12,2) NULL | Snapshot used for the bonus |
+| bonus_amount | DECIMAL(16,2) | Stored so later price changes do not alter the month |
+
 ## Imports
 
 ### `import_batches`

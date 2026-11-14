@@ -7,11 +7,14 @@ declare(strict_types=1);
  *
  * Sprint 3: user management. Sprint 4 (owner-approved defaults): business
  * modules — Super Admin and Admin have full access; Sales Manager and Sales
- * User may only view the business screens. Only Admin / Super Admin restore.
+ * User may only view the business screens, except Bonus Calc, which a Sales
+ * Manager may edit. Only Admin / Super Admin restore.
  * There are no delete permissions for headquarters, managers or stockists
  * (not part of Sprint 4). The old Sales Management content (sales entries)
- * was removed on 2026-11-14 with sales.create / sales.update; the group stays
- * and sales.view opens its pages (Bonus Calc, coming soon).
+ * was removed on 2026-11-14 with sales.create / sales.update. Bonus Calc
+ * uses sales.view to open the pages and sales.manage to edit them.
+ * sales.manage is held by Super Admin, Admin and Sales Manager — the roles
+ * that could create and update sales — and not by Sales User.
  *
  * `rank` prevents privilege escalation: a user may only manage accounts and
  * assign roles ranked BELOW their own (Super Admin may manage everyone).
@@ -23,7 +26,7 @@ $business = [
     'products.view', 'products.manage', 'products.delete', 'products.restore',
     'financial_years.manage',
     'master_sheet.view', 'master_sheet.update',
-    'sales.view',
+    'sales.view', 'sales.manage',
     'imports.manage',
     'announcements.view', 'announcements.manage', 'announcements.publish', 'announcements.reports',
 ];
@@ -48,7 +51,8 @@ return [
         'financial_years.manage' => 'Add financial years',
         'master_sheet.view' => 'View the Master Product Sheet and its history',
         'master_sheet.update' => 'Update Master Product Sheet entries',
-        'sales.view' => 'Open the Sales Management pages (Bonus Calc)',
+        'sales.view' => 'Open Bonus Calc and its month sheets',
+        'sales.manage' => 'Add employees to Bonus Calc and enter month quantities',
         'imports.manage' => 'Import Sales Office CSV files, download import files and backups, and roll imports back',
         'announcements.view' => 'See announcements, templates and the employee list',
         'announcements.manage' => 'Create and edit announcement drafts, templates and the employee list',
@@ -66,7 +70,7 @@ return [
             'rank' => 80,
             'permissions' => ['users.view', 'users.create', 'users.update', 'users.change_status', 'users.assign_role', 'audit.view', 'settings.view', 'settings.edit', 'privacy.manage', ...$business],
         ],
-        'sales_manager' => ['rank' => 50, 'permissions' => $viewOnly],
+        'sales_manager' => ['rank' => 50, 'permissions' => [...$viewOnly, 'sales.manage']],
         'sales_user' => ['rank' => 10, 'permissions' => $viewOnly],
     ],
 ];

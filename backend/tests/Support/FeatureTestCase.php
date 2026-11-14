@@ -48,6 +48,8 @@ abstract class FeatureTestCase extends TestCase
     {
         $existing = $pdo->query('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN);
         foreach ([
+            'bonus_calc_lines' => 'DELETE FROM bonus_calc_lines',
+            'bonus_calc_rows' => 'DELETE FROM bonus_calc_rows',
             'user_recovery_codes' => 'DELETE FROM user_recovery_codes',
             'user_totp' => 'DELETE FROM user_totp',
             'api_tokens' => 'DELETE FROM api_tokens',
