@@ -97,7 +97,7 @@ final class SearchTest extends FeatureTestCase
         self::assertStringContainsString('Deleted', $byType['tags-badges'][0]['detail']);
         self::assertSame('/products/list', $this->named($byType['products'], '100% Pure Zephyr')['path']);
         self::assertSame('/products/deleted', $this->named($byType['products'], 'Retired Zephyr')['path']);
-        self::assertSame('/sales-office/headquarters', $byType['headquarters'][0]['path']);
+        self::assertSame('/sales-office/hierarchy', $byType['headquarters'][0]['path']);
         self::assertSame('/sales-office/stockists', $byType['stockists'][0]['path']);
         self::assertSame('/sales-office/hierarchy', $this->named($byType['managers'], 'Zephyr Third')['path']);
         self::assertStringContainsString('zephyr.third@example.test', $this->named($byType['managers'], 'Zephyr Third')['detail']);

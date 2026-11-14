@@ -10,7 +10,7 @@ import NotFoundPage from './pages/NotFoundPage.jsx'
 import HierarchyPage from './pages/sales-office/HierarchyPage.jsx'
 import StockistsPage from './pages/sales-office/StockistsPage.jsx'
 import LocationPage from './pages/sales-office/LocationPage.jsx'
-import HeadquartersPage from './pages/sales-office/HeadquartersPage.jsx'
+import HeadquarterListPage from './pages/sales-office/HeadquarterListPage.jsx'
 import CatalogueTermsPage from './pages/products/CatalogueTermsPage.jsx'
 import ProductsPage from './pages/products/ProductsPage.jsx'
 import MasterSheetPage from './pages/products/MasterSheetPage.jsx'
@@ -44,8 +44,8 @@ const PAGE_ELEMENTS = {
   '/products/change-history': <ChangeHistoryPage module="products" />,
   '/sales-office/employees': <SalesEmployeesPage />,
   '/sales-office/stockists': <StockistsPage />,
-  '/sales-office/headquarters': <HeadquartersPage />,
   '/sales-office/locations': <LocationPage />,
+  '/sales-office/headquarter-list': <HeadquarterListPage />,
   '/sales/stockist-sales': <SalesPage variant="entry" />,
   '/sales/monthly': <SalesPage variant="monthly" />,
   '/sales/by-headquarters': <SalesPage variant="byHeadquarters" />,

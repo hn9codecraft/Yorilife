@@ -46,12 +46,13 @@ final class SearchRepository extends Repository
         $escape = self::ESCAPE;
 
         return $this->many(
-            "SELECT id, name, employee_code, designation FROM sales_employees
+            "SELECT id, first_name, last_name, name, employee_code, designation FROM sales_employees
              WHERE deleted_at IS NULL
-               AND (name LIKE ? {$escape} OR employee_code LIKE ? {$escape} OR email LIKE ? {$escape} OR phone LIKE ? {$escape})
-             ORDER BY (name IS NULL), name, id
+               AND (first_name LIKE ? {$escape} OR last_name LIKE ? {$escape} OR name LIKE ? {$escape}
+                    OR employee_code LIKE ? {$escape} OR email LIKE ? {$escape} OR phone LIKE ? {$escape})
+             ORDER BY (first_name IS NULL AND last_name IS NULL), first_name, last_name, id
              LIMIT 6",
-            [$like, $like, $like, $like]
+            [$like, $like, $like, $like, $like, $like]
         );
     }
 

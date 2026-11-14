@@ -41,6 +41,19 @@ final class SalesEmployeeService
         return array_slice($codes, 0, $index === false ? 0 : $index);
     }
 
+    public static function fullName(?string $first, ?string $last): ?string
+    {
+        $parts = [];
+        foreach ([$first, $last] as $part) {
+            $part = trim($part ?? '');
+            if ($part !== '') {
+                $parts[] = $part;
+            }
+        }
+
+        return $parts === [] ? null : implode(' ', $parts);
+    }
+
     /** @return list<array<string, mixed>> */
     public function list(): array
     {
@@ -51,7 +64,7 @@ final class SalesEmployeeService
     public function create(array $input): array
     {
         $values = $this->validate($input, null);
-        $id = $this->repository->insert($values['fields'], $values['managers']);
+        $id = $this->repository->insert($values['fields'], $values['managers'], $values['locationIds'], $values['headquartersIds']);
         $created = $this->repository->find($id);
         AuditLogger::record([
             'module' => 'sales_office',
@@ -70,7 +83,7 @@ final class SalesEmployeeService
     {
         $current = $this->repository->find($id) ?? throw HttpException::notFound('Employee not found.');
         $values = $this->validate($input, $current);
-        $this->repository->update($id, $values['fields'], $values['managers'], $values['fields']['designation']);
+        $this->repository->update($id, $values['fields'], $values['managers'], $values['fields']['designation'], $values['locationIds'], $values['headquartersIds']);
         $updated = $this->repository->find($id);
         AuditLogger::record([
             'module' => 'sales_office',
@@ -104,18 +117,22 @@ final class SalesEmployeeService
     /**
      * A missing key on update keeps the stored value. An empty string clears it.
      * Manager slots that are no longer above the designation are dropped.
+     * Headquarters outside the chosen states are dropped when the states change
+     * and the headquarters list itself was not sent.
      *
      * @param array<string, mixed> $input
      * @param array<string, mixed>|null $current
-     * @return array{fields: array<string, mixed>, managers: array<string, int>}
+     * @return array{fields: array<string, mixed>, managers: array<string, int>, locationIds: list<int>, headquartersIds: list<int>}
      */
     private function validate(array $input, ?array $current): array
     {
         $errors = [];
         Input::onlyFields($input, [
-            'name', 'employeeCode', 'phone', 'email', 'designation', 'locationId', 'locationHeadquartersId', 'managers',
+            'firstName', 'lastName', 'employeeCode', 'phone', 'email', 'designation',
+            'locationIds', 'locationHeadquartersIds', 'managers',
         ], $errors);
-        $name = $this->textValue($input, 'name', 'name', 150, 'name', $current, $errors);
+        $first = $this->textValue($input, 'firstName', 'first name', 150, 'first_name', $current, $errors);
+        $last = $this->textValue($input, 'lastName', 'last name', 150, 'last_name', $current, $errors);
         $code = $this->textValue($input, 'employeeCode', 'employee code', 100, 'employee_code', $current, $errors);
         $phone = $this->textValue($input, 'phone', 'phone number', 30, 'phone', $current, $errors);
         $email = $this->textValue($input, 'email', 'email', 254, 'email', $current, $errors);
@@ -126,23 +143,33 @@ final class SalesEmployeeService
             }
         }
         $designation = $this->designation($input, $current, $errors);
-        $locationId = $this->foreignId($input, 'locationId', 'location_id', $current, $errors, 'Choose a state from the list.', $this->repository->locationExists(...));
-        $headquartersId = $this->foreignId(
+        $locationIds = $this->placeIds(
             $input,
-            'locationHeadquartersId',
-            'location_headquarters_id',
+            'locationIds',
+            $current,
+            $errors,
+            'Choose a state from the list.',
+            $this->repository->locationExists(...),
+            static fn (array $row): array => array_map(static fn (array $link): int => (int) $link['location_id'], $row['states'] ?? []),
+        );
+        $headquartersProvided = array_key_exists('locationHeadquartersIds', $input);
+        $headquartersIds = $this->placeIds(
+            $input,
+            'locationHeadquartersIds',
             $current,
             $errors,
             'Choose a headquarters from the list.',
             fn (int $id): bool => $this->repository->locationHeadquarters($id) !== null,
+            static fn (array $row): array => array_map(static fn (array $link): int => (int) $link['location_headquarters_id'], $row['headquarters'] ?? []),
         );
-        if ($locationId !== null && $headquartersId !== null && !isset($errors['locationHeadquartersId'])) {
-            $office = $this->repository->locationHeadquarters($headquartersId);
-            if ($office === null || (int) $office['location_id'] !== $locationId) {
-                $errors['locationHeadquartersId'] = 'Choose a headquarters in the selected state.';
-            }
+        if (!$headquartersProvided && $current !== null && array_key_exists('locationIds', $input)) {
+            $headquartersIds = $this->headquartersInStates($headquartersIds, $locationIds);
+        }
+        if ($headquartersProvided && !isset($errors['locationHeadquartersIds']) && !isset($errors['locationIds'])) {
+            $this->assertHeadquartersInStates($headquartersIds, $locationIds, $errors);
         }
         $employeeId = $current === null ? null : (int) $current['id'];
+        $this->assertUnique($code, $phone, $email, $employeeId, $errors);
         $managers = $this->managerAssignments($input, $designation, $employeeId, $current, $errors);
         if ($errors !== []) {
             throw HttpException::validation($errors);
@@ -151,16 +178,20 @@ final class SalesEmployeeService
 
         return [
             'fields' => [
-                'name' => $name,
+                'first_name' => $first,
+                'last_name' => $last,
+                'name' => self::fullName($first, $last),
                 'employee_code' => $code,
                 'phone' => $phone,
                 'email' => $email,
                 'designation' => $designation,
-                'location_id' => $locationId,
-                'location_headquarters_id' => $headquartersId,
+                'location_id' => null,
+                'location_headquarters_id' => null,
                 'updated_at' => $now,
             ] + ($current === null ? ['created_at' => $now] : []),
             'managers' => $managers,
+            'locationIds' => $locationIds,
+            'headquartersIds' => $headquartersIds,
         ];
     }
 
@@ -209,34 +240,83 @@ final class SalesEmployeeService
      * @param array<string, mixed>|null $current
      * @param array<string, string> $errors
      * @param callable(int): bool $exists
+     * @param callable(array<string, mixed>): list<int> $currentIds
+     * @return list<int>
      */
-    private function foreignId(array $input, string $field, string $column, ?array $current, array &$errors, string $message, callable $exists): ?int
+    private function placeIds(array $input, string $field, ?array $current, array &$errors, string $message, callable $exists, callable $currentIds): array
     {
         if ($current !== null && !array_key_exists($field, $input)) {
-            return isset($current[$column]) && $current[$column] !== null ? (int) $current[$column] : null;
+            return $currentIds($current);
+        }
+        if (!array_key_exists($field, $input) || $input[$field] === null) {
+            return [];
+        }
+        $ids = Input::idList($input[$field]);
+        if ($ids === null) {
+            $errors[$field] = $message;
+
+            return [];
+        }
+        foreach ($ids as $id) {
+            if (!$exists($id)) {
+                $errors[$field] = $message;
+
+                return [];
+            }
         }
 
-        return $this->optionalForeignId($input, $field, $errors, $message, $exists);
+        return $ids;
     }
 
     /**
-     * @param array<string, mixed> $input
-     * @param array<string, string> $errors
-     * @param callable(int): bool $exists
+     * @param list<int> $headquartersIds
+     * @param list<int> $locationIds
+     * @return list<int>
      */
-    private function optionalForeignId(array $input, string $field, array &$errors, string $message, callable $exists): ?int
+    private function headquartersInStates(array $headquartersIds, array $locationIds): array
     {
-        if (!array_key_exists($field, $input) || $input[$field] === null || $input[$field] === '') {
-            return null;
+        $allowed = array_flip($locationIds);
+        $kept = [];
+        foreach ($headquartersIds as $id) {
+            $office = $this->repository->locationHeadquarters($id);
+            if ($office !== null && isset($allowed[(int) $office['location_id']])) {
+                $kept[] = $id;
+            }
         }
-        $id = Input::id($input[$field]);
-        if ($id === null || !$exists($id)) {
-            $errors[$field] = $message;
 
-            return null;
+        return $kept;
+    }
+
+    /**
+     * @param list<int> $headquartersIds
+     * @param list<int> $locationIds
+     * @param array<string, string> $errors
+     */
+    private function assertHeadquartersInStates(array $headquartersIds, array $locationIds, array &$errors): void
+    {
+        $allowed = array_flip($locationIds);
+        foreach ($headquartersIds as $id) {
+            $office = $this->repository->locationHeadquarters($id);
+            if ($office === null || !isset($allowed[(int) $office['location_id']])) {
+                $errors['locationHeadquartersIds'] = 'Choose a headquarters in a selected state.';
+
+                return;
+            }
         }
+    }
 
-        return $id;
+    /** @param array<string, string> $errors */
+    private function assertUnique(?string $code, ?string $phone, ?string $email, ?int $exceptId, array &$errors): void
+    {
+        if ($code !== null && !isset($errors['employeeCode']) && $this->repository->codeTaken($code, $exceptId)) {
+            $errors['employeeCode'] = 'This employee code is already used.';
+        }
+        if ($phone !== null && !isset($errors['phone']) && $this->repository->phoneTaken($phone, $exceptId)) {
+            $errors['phone'] = 'This phone number is already used.';
+        }
+        if ($email !== null && !isset($errors['email']) && $this->repository->emailTaken($email, $exceptId)) {
+            $errors['email'] = 'This email is already used.';
+        }
     }
 
     /**
@@ -332,25 +412,50 @@ final class SalesEmployeeService
                     'designation' => $code,
                     'designationLabel' => $label,
                     'employeeId' => (int) $link['manager_employee_id'],
-                    'employeeName' => $link['manager_name'],
+                    'employeeName' => self::fullName(
+                        $link['manager_first_name'] !== null ? (string) $link['manager_first_name'] : null,
+                        $link['manager_last_name'] !== null ? (string) $link['manager_last_name'] : null,
+                    ) ?? ($link['manager_name'] !== null && $link['manager_name'] !== '' ? (string) $link['manager_name'] : null),
                     'employeeCode' => $link['manager_code'],
                 ];
             }
         }
 
+        $locations = [];
+        foreach ($row['states'] ?? [] as $link) {
+            $locations[] = [
+                'id' => (int) $link['location_id'],
+                'name' => $link['location_name'],
+            ];
+        }
+        $headquarters = [];
+        foreach ($row['headquarters'] ?? [] as $link) {
+            $headquarters[] = [
+                'id' => (int) $link['location_headquarters_id'],
+                'name' => $link['headquarters_name'],
+                'code' => $link['headquarters_code'],
+                'locationId' => (int) $link['location_id'],
+                'locationName' => $link['location_name'],
+            ];
+        }
+
         return [
             'id' => (int) $row['id'],
-            'name' => $row['name'],
+            'firstName' => $row['first_name'],
+            'lastName' => $row['last_name'],
+            'name' => self::fullName(
+                $row['first_name'] !== null ? (string) $row['first_name'] : null,
+                $row['last_name'] !== null ? (string) $row['last_name'] : null,
+            ),
             'employeeCode' => $row['employee_code'],
             'phone' => $row['phone'],
             'email' => $row['email'],
             'designation' => $row['designation'],
             'designationLabel' => $row['designation'] === null ? null : (self::DESIGNATIONS[$row['designation']] ?? null),
-            'locationId' => $row['location_id'] === null ? null : (int) $row['location_id'],
-            'locationName' => $row['location_name'] ?? null,
-            'locationHeadquartersId' => $row['location_headquarters_id'] === null ? null : (int) $row['location_headquarters_id'],
-            'locationHeadquartersName' => $row['headquarters_name'] ?? null,
-            'locationHeadquartersCode' => $row['headquarters_code'] ?? null,
+            'locationIds' => array_column($locations, 'id'),
+            'locations' => $locations,
+            'locationHeadquartersIds' => array_column($headquarters, 'id'),
+            'headquarters' => $headquarters,
             'managers' => $managers,
             'updatedAt' => UtcTime::iso($row['updated_at']),
         ];
@@ -359,8 +464,15 @@ final class SalesEmployeeService
     /** @param array<string, mixed> $row */
     private static function label(array $row): string
     {
-        $name = trim((string) ($row['name'] ?? ''));
-        if ($name !== '') {
+        $name = self::fullName(
+            isset($row['first_name']) && $row['first_name'] !== null ? (string) $row['first_name'] : null,
+            isset($row['last_name']) && $row['last_name'] !== null ? (string) $row['last_name'] : null,
+        );
+        if ($name === null) {
+            $stored = trim((string) ($row['name'] ?? ''));
+            $name = $stored === '' ? null : $stored;
+        }
+        if ($name !== null) {
             return $name;
         }
         $code = trim((string) ($row['employee_code'] ?? ''));

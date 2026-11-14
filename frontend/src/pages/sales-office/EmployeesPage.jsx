@@ -7,12 +7,13 @@ import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
-import { SelectField, TextField } from '../../components/FormField.jsx'
+import { MultiSelectField, SelectField, TextField } from '../../components/FormField.jsx'
 import useFormState from '../../hooks/useFormState.js'
 import usePermission from '../../data/usePermission.js'
 import useErpData from '../../data/useErpData.js'
 import { api } from '../../api/client.js'
 import { DESIGNATIONS, clearManagerSlots, designationLabel, designationsAbove } from '../../data/designations.js'
+import { employeeLabel, fullName, headquartersChoices, headquartersInStates } from '../../data/employees.js'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -24,30 +25,31 @@ function managerFields(employee) {
   return fields
 }
 
-function headquartersChoices(locations, stateId) {
-  const choices = []
-  for (const location of locations ?? []) {
-    if (stateId && String(location.id) !== String(stateId)) continue
-    for (const office of location.headquarters ?? []) {
-      choices.push({
-        value: String(office.id),
-        label: stateId ? office.name : `${office.name} (${location.name})`,
-      })
-    }
-  }
-  return choices.sort((a, b) => a.label.localeCompare(b.label))
+function tagList(items, labelOf = (item) => item.name) {
+  if (!items?.length) return '—'
+  return (
+    <ul className="pill-list">
+      {items.map((item) => <li key={item.id} className="pill">{labelOf(item)}</li>)}
+    </ul>
+  )
+}
+
+function headquartersTags(offices) {
+  const many = new Set((offices ?? []).map((office) => office.locationId)).size > 1
+  return tagList(offices, (office) => (many && office.locationName ? `${office.name} (${office.locationName})` : office.name))
 }
 
 function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
   const form = useFormState(
     {
-      name: employee?.name ?? '',
+      firstName: employee?.firstName ?? '',
+      lastName: employee?.lastName ?? '',
       employeeCode: employee?.employeeCode ?? '',
       phone: employee?.phone ?? '',
       email: employee?.email ?? '',
       designation: employee?.designation ?? '',
-      locationId: employee?.locationId ? String(employee.locationId) : '',
-      locationHeadquartersId: employee?.locationHeadquartersId ? String(employee.locationHeadquartersId) : '',
+      locationIds: (employee?.locationIds ?? []).map(String),
+      locationHeadquartersIds: (employee?.locationHeadquartersIds ?? []).map(String),
       ...managerFields(employee),
     },
     (values) => {
@@ -58,7 +60,7 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
   )
   const { values, errors, set, setMany, fieldId } = form
   const above = designationsAbove(values.designation)
-  const headquarters = headquartersChoices(locations, values.locationId)
+  const headquarters = headquartersChoices(locations, values.locationIds, { requireState: true })
 
   const onDesignation = (code) => {
     const slots = Object.fromEntries(DESIGNATIONS.map((item) => [item.code, values[`manager${item.code}`]]))
@@ -68,9 +70,11 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
     setMany(patch)
   }
 
-  const onState = (locationId) => {
-    const stillThere = headquartersChoices(locations, locationId).some((choice) => choice.value === values.locationHeadquartersId)
-    setMany({ locationId, locationHeadquartersId: stillThere ? values.locationHeadquartersId : '' })
+  const onStates = (locationIds) => {
+    setMany({
+      locationIds,
+      locationHeadquartersIds: headquartersInStates(values.locationHeadquartersIds, locations, locationIds),
+    })
   }
 
   return (
@@ -84,13 +88,14 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
           managers[item.code] = body[`manager${item.code}`] ? Number(body[`manager${item.code}`]) : null
         }
         const payload = {
-          name: body.name.trim() || null,
+          firstName: body.firstName.trim() || null,
+          lastName: body.lastName.trim() || null,
           employeeCode: body.employeeCode.trim() || null,
           phone: body.phone.trim() || null,
           email: body.email.trim() || null,
           designation: body.designation || null,
-          locationId: body.locationId ? Number(body.locationId) : null,
-          locationHeadquartersId: body.locationHeadquartersId ? Number(body.locationHeadquartersId) : null,
+          locationIds: body.locationIds.map(Number),
+          locationHeadquartersIds: body.locationHeadquartersIds.map(Number),
           managers,
         }
         const data = employee
@@ -99,8 +104,9 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
         onSaved(data.employee)
       })}
     >
-      <TextField id={fieldId('name')} label="Name" value={values.name} onChange={set('name')} error={errors.name} maxLength={150} className="col-12 col-md-6" />
-      <TextField id={fieldId('employeeCode')} label="Employee Code" value={values.employeeCode} onChange={set('employeeCode')} error={errors.employeeCode} maxLength={100} autoComplete="off" help="Type the code. It is not generated." className="col-12 col-md-6" />
+      <TextField id={fieldId('firstName')} label="First Name" value={values.firstName} onChange={set('firstName')} error={errors.firstName} maxLength={150} className="col-12 col-md-6" />
+      <TextField id={fieldId('lastName')} label="Last Name" value={values.lastName} onChange={set('lastName')} error={errors.lastName} maxLength={150} className="col-12 col-md-6" />
+      <TextField id={fieldId('employeeCode')} label="Employee Code" value={values.employeeCode} onChange={set('employeeCode')} error={errors.employeeCode} maxLength={100} autoComplete="off" className="col-12 col-md-6" />
       <TextField id={fieldId('phone')} type="tel" label="Phone Number" value={values.phone} onChange={set('phone')} error={errors.phone} maxLength={30} className="col-12 col-md-6" />
       <TextField id={fieldId('email')} type="email" label="Email" value={values.email} onChange={set('email')} error={errors.email} maxLength={254} className="col-12 col-md-6" />
       <SelectField
@@ -113,25 +119,27 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
         options={DESIGNATIONS.map((item) => ({ value: item.code, label: item.label }))}
         className="col-12"
       />
-      <SelectField
-        id={fieldId('locationId')}
+      <MultiSelectField
+        id={fieldId('locationIds')}
         label="State"
-        value={values.locationId}
-        onChange={onState}
-        error={errors.locationId}
-        placeholder={locations.length ? 'Not set' : 'No states yet'}
+        value={values.locationIds}
+        onChange={onStates}
+        error={errors.locationIds}
+        placeholder={locations.length ? 'None selected' : 'No states yet'}
+        emptyText={locations.length ? 'No matches.' : 'No states yet.'}
         options={locations.map((location) => ({ value: String(location.id), label: location.name }))}
         className="col-12 col-md-6"
       />
-      <SelectField
-        id={fieldId('locationHeadquartersId')}
+      <MultiSelectField
+        id={fieldId('locationHeadquartersIds')}
         label="HQ"
-        value={values.locationHeadquartersId}
-        onChange={set('locationHeadquartersId')}
-        error={errors.locationHeadquartersId}
-        placeholder={headquarters.length ? 'Not set' : 'No headquarters yet'}
+        value={values.locationHeadquartersIds}
+        onChange={set('locationHeadquartersIds')}
+        error={errors.locationHeadquartersIds}
+        placeholder={headquarters.length ? 'None selected' : 'No headquarters yet'}
+        emptyText={values.locationIds.length ? 'No headquarters for the selected states.' : 'Choose a state to see its headquarters.'}
         options={headquarters}
-        help={values.locationId ? 'Headquarters for the selected state.' : 'All headquarters. Choose a state to narrow the list.'}
+        help={values.locationIds.length ? 'Headquarters for the selected states.' : 'Choose one or more states to see headquarters.'}
         className="col-12 col-md-6"
       />
       {above.length > 0 && (
@@ -143,10 +151,7 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
               const field = `manager${item.code}`
               const options = employees
                 .filter((person) => person.designation === item.code && person.id !== employee?.id)
-                .map((person) => ({
-                  value: String(person.id),
-                  label: person.name || person.employeeCode || `Employee ${person.id}`,
-                }))
+                .map((person) => ({ value: String(person.id), label: employeeLabel(person) }))
               return (
                 <SelectField
                   key={item.code}
@@ -218,13 +223,17 @@ export default function EmployeesPage() {
     const q = query.trim().toLowerCase()
     return (rows ?? []).filter((row) => {
       if (designation && row.designation !== designation) return false
-      if (stateId && String(row.locationId ?? '') !== stateId) return false
-      if (headquartersId && String(row.locationHeadquartersId ?? '') !== headquartersId) return false
+      if (stateId && !(row.locationIds ?? []).some((id) => String(id) === stateId)) return false
+      if (headquartersId && !(row.locationHeadquartersIds ?? []).some((id) => String(id) === headquartersId)) return false
       if (!q) return true
       const managers = (row.managers ?? []).map((manager) => `${manager.designation} ${manager.employeeName ?? ''} ${manager.employeeCode ?? ''}`).join(' ')
+      const places = [
+        ...(row.locations ?? []).map((location) => location.name),
+        ...(row.headquarters ?? []).map((office) => `${office.name} ${office.locationName ?? ''}`),
+      ]
       const haystack = [
-        row.name, row.employeeCode, row.phone, row.email, designationLabel(row.designation),
-        row.locationName, row.locationHeadquartersName, managers,
+        fullName(row.firstName, row.lastName), row.employeeCode, row.phone, row.email, designationLabel(row.designation),
+        ...places, managers,
       ].filter(Boolean).join(' ').toLowerCase()
       return haystack.includes(q)
     })
@@ -236,11 +245,11 @@ export default function EmployeesPage() {
   }
 
   const columns = [
-    { key: 'name', header: 'Name', render: (row) => <strong className="fw-semibold">{row.name || '—'}</strong> },
+    { key: 'name', header: 'Name', render: (row) => <strong className="fw-semibold">{fullName(row.firstName, row.lastName) || '—'}</strong> },
     { key: 'code', header: 'Employee Code', nowrap: true, render: (row) => row.employeeCode || '—' },
     { key: 'designation', header: 'Designation', render: (row) => designationLabel(row.designation) || '—' },
-    { key: 'state', header: 'State', render: (row) => row.locationName || '—' },
-    { key: 'hq', header: 'HQ', render: (row) => row.locationHeadquartersName || '—' },
+    { key: 'state', header: 'State', render: (row) => tagList(row.locations) },
+    { key: 'hq', header: 'HQ', render: (row) => headquartersTags(row.headquarters) },
     { key: 'phone', header: 'Phone Number', nowrap: true, render: (row) => row.phone || '—' },
     { key: 'email', header: 'Email', render: (row) => row.email || '—' },
     { key: 'managers', header: 'Managers', render: (row) => managerSummary(row.managers) },
@@ -250,7 +259,7 @@ export default function EmployeesPage() {
       align: 'end',
       nowrap: true,
       render: (row) => {
-        const label = row.name || row.employeeCode || 'employee'
+        const label = fullName(row.firstName, row.lastName) || row.employeeCode || 'employee'
         return (
           <div className="table-actions">
             <button type="button" className="btn btn-sm btn-outline-secondary btn-icon" aria-label={`Edit ${label}`} title="Edit" onClick={() => open(row)}>
@@ -349,7 +358,7 @@ export default function EmployeesPage() {
           setVersion((value) => value + 1)
         }}
       >
-        Remove {deleting?.name || deleting?.employeeCode || 'this employee'} from the employee list?
+        Remove {fullName(deleting?.firstName, deleting?.lastName) || deleting?.employeeCode || 'this employee'} from the employee list?
       </ConfirmDialog>
     </PageShell>
   )

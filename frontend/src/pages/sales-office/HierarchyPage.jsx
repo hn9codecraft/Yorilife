@@ -126,7 +126,6 @@ export default function HierarchyPage() {
                                                   type="Headquarters"
                                                   name={office.headquarters.name}
                                                   code={office.headquarters.code}
-                                                  to="/sales-office/headquarters"
                                                   count={office.stockists.length}
                                                   countLabel="stockists"
                                                 />

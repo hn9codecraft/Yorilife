@@ -115,7 +115,7 @@ final class SearchService
             $row['id'],
             (string) $row['name'],
             $this->detail($row['code'] ?? null, $row['state'] ?? null),
-            '/sales-office/headquarters',
+            '/sales-office/hierarchy',
         ), $this->records->headquarters($like));
     }
 
@@ -142,7 +142,13 @@ final class SearchService
     {
         $items = [];
         foreach ($this->records->salesEmployees($like) as $row) {
-            $label = trim((string) ($row['name'] ?? ''));
+            $label = SalesEmployeeService::fullName(
+                isset($row['first_name']) ? ($row['first_name'] !== null ? (string) $row['first_name'] : null) : null,
+                isset($row['last_name']) ? ($row['last_name'] !== null ? (string) $row['last_name'] : null) : null,
+            ) ?? '';
+            if ($label === '') {
+                $label = trim((string) ($row['name'] ?? ''));
+            }
             if ($label === '') {
                 $label = trim((string) ($row['employee_code'] ?? ''));
             }

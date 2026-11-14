@@ -2000,7 +2000,49 @@ legend.form-label {
 .pill-list {
   display: inline-flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: 0.125rem var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.pill__label {
+  overflow-wrap: anywhere;
+}
+
+.pill__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: -0.125rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.pill__remove:hover,
+.pill__remove:focus-visible {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
 }
 
 /* ==== Change history (old → new) ====================================== */
@@ -2050,6 +2092,20 @@ legend.form-label {
 .employee-managers__role {
   color: var(--color-text-muted);
   font-weight: var(--font-weight-semibold);
+}
+
+.multi-select__placeholder {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.multi-select__pills {
+  margin-bottom: var(--space-2);
+}
+
+.multi-select .form-control {
+  margin-bottom: var(--space-2);
 }
 
 /* ==== Sales Office hierarchy ========================================== */
@@ -2722,6 +2778,10 @@ legend.form-label {
 
   .table-container:has(td[data-label]) .table-actions {
     flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .table-container:has(td[data-label]) .pill-list {
     justify-content: flex-end;
   }
 

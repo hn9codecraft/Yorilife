@@ -89,6 +89,8 @@ abstract class FeatureTestCase extends TestCase
             $pdo->exec('DELETE FROM catalogue_terms');
         }
         foreach ([
+            'sales_employee_headquarters' => 'DELETE FROM sales_employee_headquarters',
+            'sales_employee_states' => 'DELETE FROM sales_employee_states',
             'sales_employee_managers' => 'DELETE FROM sales_employee_managers',
             'sales_employees' => 'DELETE FROM sales_employees',
             'manager_states' => 'DELETE FROM manager_states',
