@@ -35,14 +35,24 @@ final class AuthorizationTest extends TestCase
         }
     }
 
-    public function testSalesRolesMayOnlyViewBusinessScreens(): void
+    public function testSalesUserMayOnlyViewBusinessScreens(): void
     {
         $expected = ['sales_office.view', 'catalogue.view', 'products.view', 'master_sheet.view', 'sales.view'];
-        foreach (['sales_manager', 'sales_user'] as $role) {
-            self::assertSame($expected, Authorization::permissionsFor($role), $role);
-            foreach (['sales_office.manage', 'catalogue.manage', 'catalogue.restore', 'products.manage', 'products.delete', 'products.restore', 'financial_years.manage', 'master_sheet.update', 'sales.create', 'sales.update'] as $permission) {
-                self::assertFalse(Authorization::can(self::user($role), $permission), "{$role} {$permission}");
-            }
+        self::assertSame($expected, Authorization::permissionsFor('sales_user'));
+        self::assertFalse(Authorization::can(self::user('sales_user'), 'sales.manage'));
+        foreach (['sales_office.manage', 'catalogue.manage', 'catalogue.restore', 'products.manage', 'products.delete', 'products.restore', 'financial_years.manage', 'master_sheet.update', 'sales.create', 'sales.update'] as $permission) {
+            self::assertFalse(Authorization::can(self::user('sales_user'), $permission), $permission);
+        }
+    }
+
+    public function testSalesManagerCanEditBonusCalcAndOnlyViewTheOtherScreens(): void
+    {
+        $expected = ['sales_office.view', 'catalogue.view', 'products.view', 'master_sheet.view', 'sales.view', 'sales.manage'];
+        self::assertSame($expected, Authorization::permissionsFor('sales_manager'));
+        self::assertTrue(Authorization::can(self::user('sales_manager'), 'sales.manage'));
+        self::assertTrue(Authorization::can(self::user('sales_manager'), 'sales.view'));
+        foreach (['sales_office.manage', 'products.manage', 'master_sheet.update', 'sales.create', 'sales.update'] as $permission) {
+            self::assertFalse(Authorization::can(self::user('sales_manager'), $permission), $permission);
         }
     }
 

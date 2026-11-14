@@ -181,7 +181,8 @@ test('group URLs redirect to their first page; removed Headquarters Dashboard is
     await expect(page, from).toHaveURL(to)
   }
   await page.goto('/sales/bonus-calc')
-  await expect(page.getByRole('heading', { name: 'Bonus Calc is coming soon' })).toBeVisible()
+  await expect(page.locator('h1.page-header__title')).toHaveText('Bonus Calc')
+  await expect(page.getByRole('heading', { name: /Financial Year 2026-27/ })).toBeVisible()
   await page.goto('/dashboard/headquarters')
   await expect(page.locator('h1.page-header__title')).toHaveText('Page not found')
   for (const gone of ['/sales/stockist-sales', '/sales/monthly', '/sales/by-headquarters', '/sales/by-stockist', '/sales/calculation-history', '/sales-office/headquarters', '/reports', '/reports/headquarters', '/reports/stockists', '/reports/monthly-sales', '/reports/product-performance', '/products/group-categories', '/products/categories', '/products/tags-badges', '/products/master-sheet', '/products/deleted', '/products/change-history']) {

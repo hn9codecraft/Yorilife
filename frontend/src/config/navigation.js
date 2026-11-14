@@ -56,7 +56,7 @@ export const NAV_MENU = [
         label: 'Bonus Calc',
         icon: 'bi-calculator',
         permission: 'sales.view',
-        description: 'Bonus calculation (coming soon).',
+        description: 'Monthly bonus by employee, stockist and product for a financial year.',
       },
     ],
   },
@@ -248,6 +248,12 @@ export const STANDALONE_PAGES = [
 // Routes with an id in the path (not in the sidebar). `parent` is the menu
 // item highlighted while the page is open.
 export const DYNAMIC_PAGES = [
+  {
+    pattern: /^\/sales\/bonus-calc\/\d{4}-\d{2}\/\d+\/(?:[1-9]|1[0-2])$/,
+    label: 'Bonus month',
+    description: 'Opening stock, purchases and bonus for one employee and month.',
+    parent: '/sales/bonus-calc',
+  },
   {
     pattern: /^\/announcements\/\d+\/edit$/,
     label: 'Edit Announcement',

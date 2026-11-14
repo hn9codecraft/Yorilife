@@ -14,6 +14,7 @@ import HeadquarterListPage from './pages/sales-office/HeadquarterListPage.jsx'
 import ProductCategoryPage from './pages/products/ProductCategoryPage.jsx'
 import ProductListPage from './pages/products/ProductListPage.jsx'
 import BonusCalcPage from './pages/sales/BonusCalcPage.jsx'
+import BonusCalcMonthPage from './pages/sales/BonusCalcMonthPage.jsx'
 import UsersPage from './pages/system/UsersPage.jsx'
 import AuditLogsPage from './pages/system/AuditLogsPage.jsx'
 import ChangeHistoryPage from './pages/system/ChangeHistoryPage.jsx'
@@ -109,6 +110,7 @@ export const router = createBrowserRouter([
       ...moduleRoutes,
       ...groupRedirects,
       { path: '/account/security', element: <SecurityPage /> },
+      { path: '/sales/bonus-calc/:fy/:employeeId/:month', element: <RequirePermission permission="sales.view"><BonusCalcMonthPage /></RequirePermission> },
       { path: '/sales-office/hierarchy', element: <HierarchyPage /> },
       { path: '/announcements/:id', element: <RequirePermission permission="announcements.view"><AnnouncementDetailPage /></RequirePermission> },
       { path: '/announcements/:id/edit', element: <RequirePermission permission="announcements.manage"><AnnouncementFormPage key="edit" /></RequirePermission> },

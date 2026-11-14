@@ -182,6 +182,8 @@
   --table-col-actions: 5.5rem;                 /* pinned Actions column: sized to its buttons (width 1%) */
   --table-col-pinned-min: 8.75rem;             /* pinned first column: sizes to content ... */
   --table-col-pinned-max: 17.5rem;             /* ... up to this, then … + tooltip */
+  --bonus-qty-width: 6.5rem;                   /* quantity inputs on a Bonus Calc month sheet */
+  --bonus-total-bg: var(--color-secondary-50); /* total row on a Bonus Calc stockist table */
 
   /* ---- Standard list toolbar (FilterBar, SearchInput, SearchableSelect,
      ExportCsvButton). Every list uses the same control size. ---- */

@@ -3281,6 +3281,85 @@ legend.form-label {
   font-size: var(--font-size-xs);
 }
 
+/* ==== Bonus Calc (Sales Management) =====================================
+   Month cells on the financial-year table, and the quantity inputs and
+   total row on a month sheet. Money columns stay right-aligned through
+   DataTable (width: 'money'). Pinned columns keep the shared sticky rules. */
+.bonus-month {
+  display: inline-flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-link);
+  font: inherit;
+  line-height: inherit;
+  text-align: right;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.bonus-month:hover {
+  color: var(--color-link-hover);
+}
+
+.bonus-month__empty {
+  color: var(--color-text-subtle);
+  font-weight: var(--font-weight-regular);
+  text-decoration: none;
+}
+
+.bonus-note,
+.bonus-stockist-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.bonus-note {
+  margin-bottom: var(--space-3);
+}
+
+.bonus-month-filters {
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.bonus-month-filters .filter-bar {
+  border-bottom: 0;
+}
+
+.bonus-stockist-note {
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+.bonus-sheet .table > tbody > tr > td {
+  height: auto;
+}
+
+.bonus-qty {
+  width: var(--bonus-qty-width);
+  max-width: 100%;
+  margin-left: auto;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bonus-sheet .table--striped > tbody > tr.bonus-total > * {
+  --bs-table-bg-type: var(--bonus-total-bg);
+  --table-row-bg: var(--bonus-total-bg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.bonus-sheet .table--striped > tbody > tr.bonus-total > .table-col--sticky-start {
+  background-color: var(--bonus-total-bg);
+}
+
 /* ==========================================================================
    5. Utilities — only helpers Bootstrap does not already provide.
    Prefer Bootstrap utilities (.d-flex, .gap-*, .mb-*, .text-*) first.

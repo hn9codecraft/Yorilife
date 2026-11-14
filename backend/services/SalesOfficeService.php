@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Repositories\BonusCalcRepository;
 use App\Repositories\SalesEmployeeRepository;
 use App\Repositories\SalesOfficeRepository;
 use App\Utils\HttpException;
@@ -155,6 +156,12 @@ final class SalesOfficeService
             throw HttpException::notFound('Stockist not found.');
         }
         $current = $this->records->findStockist($id);
+        if ((new BonusCalcRepository())->stockistLineCount($id) > 0) {
+            throw HttpException::validation(
+                ['record' => 'This stockist has Bonus Calc entries. Those months still use it, so it cannot be deleted.'],
+                'This stockist is used in Bonus Calc.'
+            );
+        }
         $this->records->deleteStockist($id);
         AuditLogger::record(['module' => 'sales_office', 'action' => 'delete', 'targetType' => 'stockist', 'targetId' => $id, 'targetLabel' => $current['name'] ?? null]);
     }

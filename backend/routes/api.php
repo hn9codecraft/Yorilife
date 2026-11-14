@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AnnouncementController;
+use App\Controllers\BonusCalcController;
 use App\Controllers\ApiTokenController;
 use App\Controllers\PrivacyController;
 use App\Controllers\RetentionController;
@@ -113,6 +114,16 @@ $router->post('/api/products/{id}/delete', [ProductController::class, 'delete'],
 $router->post('/api/products/{id}/restore', [ProductController::class, 'restore'], [$auth, AuthMiddleware::can('products.restore')]);
 
 $router->post('/api/financial-years', [ErpController::class, 'storeYear'], [$auth, AuthMiddleware::can('financial_years.manage')]);
+
+// Bonus Calc. Every sales role can open it; Super Admin, Admin and Sales Manager edit it.
+$bonusView = AuthMiddleware::can('sales.view');
+$bonusManage = AuthMiddleware::can('sales.manage');
+$router->get('/api/bonus-calc', [BonusCalcController::class, 'index'], [$auth, $bonusView]);
+$router->post('/api/bonus-calc/rows', [BonusCalcController::class, 'store'], [$auth, $bonusManage]);
+$router->patch('/api/bonus-calc/rows/{id}', [BonusCalcController::class, 'update'], [$auth, $bonusManage]);
+$router->post('/api/bonus-calc/rows/{id}/delete', [BonusCalcController::class, 'delete'], [$auth, $bonusManage]);
+$router->get('/api/bonus-calc/{financialYear}/{employeeId}/{month}', [BonusCalcController::class, 'showMonth'], [$auth, $bonusView]);
+$router->put('/api/bonus-calc/{financialYear}/{employeeId}/{month}', [BonusCalcController::class, 'saveMonth'], [$auth, $bonusManage]);
 $router->get('/api/master-sheet/{year}/scan', [ErpController::class, 'scanSheet'], [$auth, AuthMiddleware::can('master_sheet.update')]);
 $router->post('/api/master-sheet/{year}/update-products', [ErpController::class, 'updateSheetProducts'], [$auth, AuthMiddleware::can('master_sheet.update')]);
 $router->post('/api/master-sheet/{year}/add-products', [ErpController::class, 'addSheetProducts'], [$auth, AuthMiddleware::can('master_sheet.update')]);

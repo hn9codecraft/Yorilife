@@ -98,7 +98,7 @@ function useScrollEdges(ref, deps) {
 }
 
 
-export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, scroll = false, scrollAfter = 10 }) {
+export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, rowClassName = null, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, scroll = false, scrollAfter = 10 }) {
   const boxRef = useRef(null)
   const showEmpty = rows.length === 0 && Boolean(empty)
   useScrollEdges(boxRef, [showEmpty, rows.length, columns.length])
@@ -173,7 +173,7 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
               const after = renderAfterRow?.(row)
               return (
               <Fragment key={rowKey(row)}>
-              <tr className={selection?.isSelected(row) ? 'is-selected' : undefined}>
+              <tr className={[selection?.isSelected(row) ? 'is-selected' : '', rowClassName?.(row)].filter(Boolean).join(' ') || undefined}>
                 {selection && (
                   <td className="table-select-cell" data-label="Select">
                     <SelectCheckbox

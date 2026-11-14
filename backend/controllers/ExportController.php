@@ -21,7 +21,7 @@ final class ExportController
         $errors = [];
         UserValidator::onlyFields($input, ['kind', 'filename', 'rowCount'], $errors);
         $kind = $input['kind'] ?? null;
-        if (!in_array($kind, ['sales_office_csv', 'product_categories_csv', 'products_csv'], true)) {
+        if (!in_array($kind, ['sales_office_csv', 'product_categories_csv', 'products_csv', 'bonus_calc_csv', 'bonus_calc_month_csv'], true)) {
             $errors['kind'] = 'Choose a known export.';
         }
         $filename = is_string($input['filename'] ?? null) ? basename($input['filename']) : '';
@@ -43,6 +43,7 @@ final class ExportController
         Authorization::authorize($request->user, match ($kind) {
             'product_categories_csv' => 'catalogue.view',
             'products_csv' => 'products.view',
+            'bonus_calc_csv', 'bonus_calc_month_csv' => 'sales.view',
             default => 'sales_office.view',
         });
         ExportAudit::record((string) $kind, $filename, (int) $count);
