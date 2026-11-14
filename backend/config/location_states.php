@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * States managed on the Location page and assigned to 3rd line managers.
+ * States managed on the State List and assigned to 3rd line managers.
  * Headquarters still use the full list in states.php. Keep this list in the
  * same order as the INSERT in 2026_11_01_000009_locations.sql.
  *

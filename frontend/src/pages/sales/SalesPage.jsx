@@ -190,8 +190,8 @@ export default function SalesPage({ variant }) {
         <div className="alert alert-info" role="note">
           <i className="bi bi-info-circle-fill" aria-hidden="true" />
           <div>
-            Sales are recorded per stockist. Add a <Link to="/sales-office/headquarters">headquarters</Link> and
-            a <Link to="/sales-office/stockists">stockist</Link> first.
+            Sales are recorded per stockist. Add a headquarters office with Data Import, then
+            a <Link to="/sales-office/stockists">stockist</Link>.
           </div>
         </div>
       )}

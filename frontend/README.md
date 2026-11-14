@@ -48,7 +48,7 @@ src/
     PreviewNotice.jsx      "Preview — not saved" banner on every data screen
     EmptyState.jsx, LoadingIndicator.jsx, BrandLogo.jsx
   pages/
-    sales-office/          HeadquartersPage, EmployeesPage, StockistsPage
+    sales-office/          EmployeesPage, LocationPage (State List), HeadquarterListPage, StockistsPage
     products/              CatalogueTermsPage (categories, tags, badges), ProductsPage (list + deleted),
                            ProductHistoryPage, MasterSheetPage
     sales/SalesPage.jsx    Sales entry, Monthly, by Headquarters, by Stockist (one component, 4 variants)
@@ -120,7 +120,7 @@ Sidebar order (approved):
 | 2 | Products | `/products/group-categories`, `/products/categories`, `/products/tags-badges`, `/products/list`, `/products/master-sheet`, `/products/deleted`, `/products/change-history` |
 | 3 | Sales Management | `/sales/stockist-sales`, `/sales/monthly`, `/sales/by-headquarters`, `/sales/by-stockist`, `/sales/calculation-history` |
 |   | Sales Office > Data Import | `/imports/data`, `/imports/history` (Super Admin and Admin) |
-| 4 | Sales Office | `/sales-office/stockists`, `/sales-office/headquarters`, `/sales-office/employees`, `/sales-office/locations` (`/sales-office/hierarchy` stays reachable and is not in the menu) |
+| 4 | Sales Office | `/sales-office/stockists`, `/sales-office/employees`, `/sales-office/locations` (State List), `/sales-office/headquarter-list` (`/sales-office/hierarchy` stays reachable and is not in the menu) |
 | 5 | Application Details | `/sales-app/overview`, `/sales-app/submission-status`, `/sales-app/history` (the former "Sales Application" pages; contents to be confirmed) |
 | 6 | Announcements (link) | `/announcements` (placeholder) |
 | 7 | System & Audit | `/system/users` (permission `users.view`), `/system/audit-logs`, `/system/change-history`, `/system/settings` |

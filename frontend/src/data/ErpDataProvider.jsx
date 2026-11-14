@@ -60,24 +60,6 @@ export default function ErpDataProvider({ children }) {
       reload: load,
 
       saveRecord(collection, values) {
-        if (collection === 'headquarters') {
-          const body = values.locationHeadquartersId
-            ? {
-                locationHeadquartersId: values.locationHeadquartersId,
-                parentManagerId: values.parentManagerId,
-              }
-            : {
-                name: values.name,
-                address: values.address,
-                pincode: values.pincode,
-                phone: values.phone,
-                code: values.code ?? '',
-                email: values.email ?? '',
-                parentManagerId: values.parentManagerId,
-                locationId: values.locationId,
-              }
-          return values.id ? save(`/api/headquarters/${values.id}`, 'PATCH', body) : save('/api/headquarters', 'POST', body)
-        }
         if (collection === 'locations') {
           const body = { name: values.name, code: values.code }
           return values.id ? save(`/api/locations/${values.id}`, 'PATCH', body) : save('/api/locations', 'POST', body)
@@ -151,17 +133,12 @@ export default function ErpDataProvider({ children }) {
         return save(`/api/location-headquarters/${id}/delete`, 'POST', {})
       },
 
-      deleteHeadquarters(id) {
-        return save(`/api/headquarters/${id}/delete`, 'POST', {})
-      },
-
       deleteStockist(id) {
         return save(`/api/stockists/${id}/delete`, 'POST', {})
       },
 
       async deleteMany(resource, ids) {
         const paths = {
-          headquarters: (id) => `/api/headquarters/${id}/delete`,
           stockists: (id) => `/api/stockists/${id}/delete`,
           locations: (id) => `/api/locations/${id}/delete`,
           locationHeadquarters: (id) => `/api/location-headquarters/${id}/delete`,

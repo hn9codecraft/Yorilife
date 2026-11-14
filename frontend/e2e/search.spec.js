@@ -24,7 +24,7 @@ test('Enter opens the highlighted page and leaves breadcrumbs on the page', asyn
   await expect(search).toHaveValue('')
 })
 
-test('a location record opens Location, Escape closes suggestions, and a miss is empty', async ({ page }) => {
+test('a location record opens State List, Escape closes suggestions, and a miss is empty', async ({ page }) => {
   const search = searchBox(page)
   await search.fill('Gujarat')
   const option = page.getByRole('option', { name: /^Gujarat/ })
@@ -33,8 +33,8 @@ test('a location record opens Location, Escape closes suggestions, and a miss is
   await expect(option).toBeHidden()
   await search.press('Enter')
   await expect(page).toHaveURL('/sales-office/locations')
-  await expect(page.locator('h1.page-header__title')).toHaveText('Location')
-  await expect(page.locator('.breadcrumb-item').last()).toHaveText('Location')
+  await expect(page.locator('h1.page-header__title')).toHaveText('State List')
+  await expect(page.locator('.breadcrumb-item').last()).toHaveText('State List')
   await expect(page.getByLabel('Search states')).toBeVisible()
 
   await search.fill('zzz-no-such-record')

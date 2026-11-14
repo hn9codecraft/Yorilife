@@ -123,22 +123,22 @@ export const NAV_MENU = [
         description: 'Stockists and the headquarters each one is mapped to.',
       },
       {
-        path: '/sales-office/headquarters',
-        label: 'Headquarters',
-        icon: 'bi-building',
-        description: 'Headquarters linked to a location headquarters and a 1st line manager.',
-      },
-      {
         path: '/sales-office/employees',
         label: 'Employee List',
         icon: 'bi-people',
-        description: 'Employees with an optional designation, state, headquarters, and the managers they report to.',
+        description: 'Employees with an optional name, designation, states, headquarters, and the managers they report to.',
       },
       {
         path: '/sales-office/locations',
-        label: 'Location',
+        label: 'State List',
         icon: 'bi-geo-alt',
-        description: 'States, location codes, and the headquarters names configured for each state.',
+        description: 'States and location codes. Headquarters for each state are on the Headquarter List.',
+      },
+      {
+        path: '/sales-office/headquarter-list',
+        label: 'Headquarter List',
+        icon: 'bi-geo',
+        description: 'Headquarters that belong to a state, with address and contact details.',
       },
       // Excel data import for the Sales Office lists (Super Admin and Admin only).
       {
