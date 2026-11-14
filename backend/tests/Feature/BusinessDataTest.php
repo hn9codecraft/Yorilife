@@ -746,6 +746,69 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertSame(2, (int) $audited->fetchColumn());
     }
 
+    public function testHeadquarterListAcceptsAnyCodeAndOptionalContact(): void
+    {
+        $admin = $this->signedInAs('admin', 'hq-free-code@example.test');
+        $gujarat = $admin->request('GET', '/api/locations')['body']['data']['locations'][0]['id'];
+        $minimal = $admin->request('POST', '/api/location-headquarters', ['locationId' => $gujarat, 'name' => 'Only Name']);
+        self::assertSame(201, $minimal['status'], $minimal['raw']);
+        $free = $admin->request('POST', '/api/location-headquarters', [
+            'locationId' => $gujarat, 'name' => 'Surat North', 'code' => 'Surat/N 7', 'pincode' => '395001',
+        ]);
+        self::assertSame(201, $free['status'], $free['raw']);
+        $codes = [];
+        foreach ($free['body']['data']['locations'] as $location) {
+            foreach ($location['headquarters'] as $office) {
+                $codes[$office['name']] = [$office['code'], $office['pincode']];
+            }
+        }
+        self::assertSame(['Surat/N 7', '395001'], $codes['Surat North']);
+        self::assertNull($codes['Only Name'][0]);
+
+        $duplicate = $admin->request('POST', '/api/location-headquarters', ['locationId' => $gujarat, 'name' => 'Other', 'code' => ' surat/n 7 ']);
+        self::assertError($duplicate, 422, 'validation_failed');
+        self::assertArrayHasKey('code', $duplicate['body']['error']['details']['fields']);
+        $badPin = $admin->request('POST', '/api/location-headquarters', ['locationId' => $gujarat, 'name' => 'Bad Pin', 'pincode' => '12']);
+        self::assertError($badPin, 422, 'validation_failed');
+        self::assertArrayHasKey('pincode', $badPin['body']['error']['details']['fields']);
+
+        $state = $admin->request('POST', '/api/locations', ['name' => 'No Code State', 'code' => '']);
+        self::assertSame(201, $state['status'], $state['raw']);
+        $nameless = $admin->request('POST', '/api/stockists', ['code' => 'NO-NAME-1']);
+        self::assertSame(201, $nameless['status'], $nameless['raw']);
+        self::assertNull($nameless['body']['data']['stockist']['name']);
+    }
+
+    public function testSalesEntryTakesTheHeadquarterFromTheStockist(): void
+    {
+        $admin = $this->signedInAs('admin', 'sales-hq-list@example.test');
+        $gujarat = $admin->request('GET', '/api/locations')['body']['data']['locations'][0]['id'];
+        $office = $admin->request('POST', '/api/location-headquarters', ['locationId' => $gujarat, 'name' => 'Sales HQ', 'code' => 'SHQ']);
+        self::assertSame(201, $office['status'], $office['raw']);
+        $officeId = null;
+        foreach ($office['body']['data']['locations'] as $location) {
+            foreach ($location['headquarters'] as $row) {
+                if ($row['code'] === 'SHQ') {
+                    $officeId = $row['id'];
+                }
+            }
+        }
+        $stockist = $admin->request('POST', '/api/stockists', ['name' => 'New HQ Store', 'locationHeadquartersId' => $officeId]);
+        self::assertSame(201, $stockist['status'], $stockist['raw']);
+        $stockistId = $stockist['body']['data']['stockist']['id'];
+        self::assertNull($stockist['body']['data']['stockist']['headquartersId']);
+
+        $sale = $admin->request('POST', '/api/sales-entries', ['month' => '2026-10', 'stockistId' => $stockistId, 'finalValue' => 50]);
+        self::assertSame(201, $sale['status'], $sale['raw']);
+        $entry = $sale['body']['data']['sale'] ?? null;
+        self::assertNotNull($entry, $sale['raw']);
+        self::assertSame((string) $officeId, (string) $entry['locationHeadquartersId']);
+        self::assertNull($entry['headquartersId']);
+
+        self::assertError($admin->request('POST', '/api/sales-entries', ['month' => '2026-10', 'stockistId' => $stockistId]), 422, 'validation_failed');
+        self::assertError($admin->request('POST', '/api/sales-entries', ['month' => '2026-11']), 422, 'validation_failed');
+    }
+
     /** @return array<string, string> */
     private function hq(string $name, string $code, string $parentId): array
     {

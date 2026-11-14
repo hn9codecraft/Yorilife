@@ -7,7 +7,8 @@ import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
-import { MultiSelectField, SelectField, TextField } from '../../components/FormField.jsx'
+import { FormRow, LabelNote, MultiSelectField, SelectField, TextField } from '../../components/FormField.jsx'
+import SearchableSelect from '../../components/SearchableSelect.jsx'
 import useFormState from '../../hooks/useFormState.js'
 import usePermission from '../../data/usePermission.js'
 import useErpData from '../../data/useErpData.js'
@@ -106,9 +107,16 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
     >
       <TextField id={fieldId('firstName')} label="First Name" value={values.firstName} onChange={set('firstName')} error={errors.firstName} maxLength={150} className="col-12 col-md-6" />
       <TextField id={fieldId('lastName')} label="Last Name" value={values.lastName} onChange={set('lastName')} error={errors.lastName} maxLength={150} className="col-12 col-md-6" />
-      <TextField id={fieldId('employeeCode')} label="Employee Code" value={values.employeeCode} onChange={set('employeeCode')} error={errors.employeeCode} maxLength={100} autoComplete="off" className="col-12 col-md-6" />
-      <TextField id={fieldId('phone')} type="tel" label="Phone Number" value={values.phone} onChange={set('phone')} error={errors.phone} maxLength={30} className="col-12 col-md-6" />
-      <TextField id={fieldId('email')} type="email" label="Email" value={values.email} onChange={set('email')} error={errors.email} maxLength={254} className="col-12 col-md-6" />
+      <TextField
+        id={fieldId('employeeCode')}
+        label={<LabelNote label="Employee Code" note="must be unique" />}
+        value={values.employeeCode}
+        onChange={set('employeeCode')}
+        error={errors.employeeCode}
+        maxLength={100}
+        autoComplete="off"
+        className="col-12 col-md-6"
+      />
       <SelectField
         id={fieldId('designation')}
         label="Designation"
@@ -117,8 +125,12 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
         error={errors.designation}
         placeholder="Not set"
         options={DESIGNATIONS.map((item) => ({ value: item.code, label: item.label }))}
-        className="col-12"
+        className="col-12 col-md-6"
       />
+      <FormRow>
+        <TextField id={fieldId('email')} type="email" label={<LabelNote label="Email" note="must be unique" />} value={values.email} onChange={set('email')} error={errors.email} maxLength={254} className="col-12 col-md-6" />
+        <TextField id={fieldId('phone')} type="tel" label={<LabelNote label="Phone Number" note="must be unique" />} value={values.phone} onChange={set('phone')} error={errors.phone} maxLength={30} className="col-12 col-md-6" />
+      </FormRow>
       <MultiSelectField
         id={fieldId('locationIds')}
         label="State"
@@ -132,35 +144,39 @@ function EmployeeForm({ formId, employee, employees, locations, onSaved }) {
       />
       <MultiSelectField
         id={fieldId('locationHeadquartersIds')}
-        label="HQ"
+        label={<LabelNote label="HQ" note="for the selected states" />}
+        ariaLabel="HQ"
         value={values.locationHeadquartersIds}
         onChange={set('locationHeadquartersIds')}
         error={errors.locationHeadquartersIds}
         placeholder={headquarters.length ? 'None selected' : 'No headquarters yet'}
         emptyText={values.locationIds.length ? 'No headquarters for the selected states.' : 'Choose a state to see its headquarters.'}
         options={headquarters}
-        help={values.locationIds.length ? 'Headquarters for the selected states.' : 'Choose one or more states to see headquarters.'}
         className="col-12 col-md-6"
       />
       {above.length > 0 && (
         <fieldset className="col-12">
-          <legend className="form-label mb-1">Reports to</legend>
-          <p className="form-text mt-0">Optional. Each list is everyone with that designation. Choosing one does not fill or limit the others.</p>
+          <legend className="form-label mb-1">
+            <LabelNote label="Reports to" note="each list is independent; choosing one does not fill the others" />
+          </legend>
           <div className="row g-3">
             {above.map((item) => {
               const field = `manager${item.code}`
               const options = employees
                 .filter((person) => person.designation === item.code && person.id !== employee?.id)
-                .map((person) => ({ value: String(person.id), label: employeeLabel(person) }))
+                .map((person) => ({ value: String(person.id), label: employeeLabel(person), keywords: [person.employeeCode].filter(Boolean) }))
               return (
-                <SelectField
+                <SearchableSelect
                   key={item.code}
                   id={fieldId(field)}
                   label={item.label}
                   value={values[field]}
                   onChange={set(field)}
                   error={errors[field]}
-                  placeholder={options.length ? 'Not set' : 'No employees with this designation yet'}
+                  placeholder={options.length ? 'Search or select' : 'No employees with this designation yet'}
+                  noResultsText="No employee matches"
+                  missingLabel="Employee no longer listed"
+                  disabled={options.length === 0}
                   options={options}
                   className="col-12 col-md-6"
                 />

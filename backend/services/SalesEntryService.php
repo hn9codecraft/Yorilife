@@ -11,6 +11,11 @@ use App\Utils\HttpException;
 /**
  * Sales entries are stored as entered. Final value is never derived from
  * achievement, bonus or deduction.
+ *
+ * An entry is for one stockist and one month. Its Headquarter comes from the
+ * stockist's Headquarter (State / Headquarter List) when the stockist is
+ * chosen; the older headquarters link is copied only when the stockist still
+ * has one. A client may still send headquartersId; it is ignored.
  */
 final class SalesEntryService
 {
@@ -27,15 +32,7 @@ final class SalesEntryService
         $fields['entered_by'] = (int) $actor['id'];
         $id = $this->records->insert($fields);
         $created = $this->records->find($id);
-        EntityHistory::recordDiff('sales_entry', $id, 'Sales entry #' . $id, [], [
-            'Month' => $created['sales_month'],
-            'Headquarters' => $created['headquarters_id'],
-            'Stockist' => $created['stockist_id'],
-            'Achievement' => $created['achievement_value'],
-            'Bonus' => $created['bonus'],
-            'Deduction' => $created['deduction'],
-            'Final value' => $created['final_value'],
-        ], (int) $actor['id']);
+        EntityHistory::recordDiff('sales_entry', $id, 'Sales entry #' . $id, [], self::history($created), (int) $actor['id']);
         AuditLogger::record([
             'module' => 'sales',
             'action' => 'create',
@@ -51,26 +48,9 @@ final class SalesEntryService
     public function update(int $id, array $input): array
     {
         $current = $this->records->find($id) ?? throw HttpException::notFound('Sales entry not found.');
-        $before = [
-            'Month' => $current['sales_month'],
-            'Headquarters' => $current['headquarters_id'],
-            'Stockist' => $current['stockist_id'],
-            'Achievement' => $current['achievement_value'],
-            'Bonus' => $current['bonus'],
-            'Deduction' => $current['deduction'],
-            'Final value' => $current['final_value'],
-        ];
         $this->records->update($id, $this->fields($input, $current));
         $updated = $this->records->find($id);
-        EntityHistory::recordDiff('sales_entry', $id, 'Sales entry #' . $id, $before, [
-            'Month' => $updated['sales_month'],
-            'Headquarters' => $updated['headquarters_id'],
-            'Stockist' => $updated['stockist_id'],
-            'Achievement' => $updated['achievement_value'],
-            'Bonus' => $updated['bonus'],
-            'Deduction' => $updated['deduction'],
-            'Final value' => $updated['final_value'],
-        ]);
+        EntityHistory::recordDiff('sales_entry', $id, 'Sales entry #' . $id, self::history($current), self::history($updated));
         AuditLogger::record([
             'module' => 'sales',
             'action' => 'update',
@@ -82,6 +62,20 @@ final class SalesEntryService
         return ErpPresenter::sales($updated);
     }
 
+    /** @param array<string, mixed>|null $row @return array<string, mixed> */
+    private static function history(?array $row): array
+    {
+        return [
+            'Month' => $row['sales_month'] ?? null,
+            'Headquarter' => $row['location_headquarters_id'] ?? null,
+            'Stockist' => $row['stockist_id'] ?? null,
+            'Achievement' => $row['achievement_value'] ?? null,
+            'Bonus' => $row['bonus'] ?? null,
+            'Deduction' => $row['deduction'] ?? null,
+            'Final value' => $row['final_value'] ?? null,
+        ];
+    }
+
     /**
      * @param array<string, mixed> $input
      * @param array<string, mixed>|null $current
@@ -90,16 +84,12 @@ final class SalesEntryService
     private function fields(array $input, ?array $current): array
     {
         $errors = [];
-        Input::onlyFields($input, ['month', 'headquartersId', 'stockistId', 'achievementValue', 'bonus', 'deduction', 'finalValue'], $errors);
+        Input::onlyFields($input, ['month', 'stockistId', 'headquartersId', 'locationHeadquartersId', 'achievementValue', 'bonus', 'deduction', 'finalValue'], $errors);
         $month = Input::month($input['month'] ?? null);
         if ($month === null) {
             $errors['month'] = 'Choose the sales month.';
         }
-        $hqId = Input::id($input['headquartersId'] ?? null);
         $stockistId = Input::id($input['stockistId'] ?? null);
-        if ($hqId === null) {
-            $errors['headquartersId'] = 'Select a headquarters.';
-        }
         if ($stockistId === null) {
             $errors['stockistId'] = 'Select a stockist.';
         }
@@ -117,19 +107,15 @@ final class SalesEntryService
         }
 
         $stockist = $this->office->findStockist($stockistId) ?? throw HttpException::validation(['stockistId' => 'That stockist does not exist.']);
-        $unchangedLink = $current !== null
-            && (int) $current['stockist_id'] === $stockistId
-            && (int) $current['headquarters_id'] === $hqId;
-        if (!$unchangedLink && (int) $stockist['headquarters_id'] !== $hqId) {
-            throw HttpException::validation(['stockistId' => 'That stockist is not linked to the selected headquarters.']);
-        }
-        if ($this->office->findHeadquarters($hqId) === null) {
-            throw HttpException::validation(['headquartersId' => 'That headquarters does not exist.']);
-        }
+        $sameStockist = $current !== null && (int) $current['stockist_id'] === $stockistId;
+        // Keep the Headquarter stored on an existing entry while its stockist stays the same.
+        $headquarter = $sameStockist ? ($current['location_headquarters_id'] ?? null) : ($stockist['location_headquarters_id'] ?? null);
+        $oldHeadquarters = $sameStockist ? ($current['headquarters_id'] ?? null) : ($stockist['headquarters_id'] ?? null);
 
         return [
             'sales_month' => $month,
-            'headquarters_id' => $hqId,
+            'location_headquarters_id' => $headquarter,
+            'headquarters_id' => $oldHeadquarters,
             'stockist_id' => $stockistId,
             'achievement_value' => $amounts['achievementValue'],
             'bonus' => $amounts['bonus'],

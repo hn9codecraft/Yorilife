@@ -14,6 +14,7 @@ const describedBy = (id, error, help) =>
  *   limit        how many matches to render at once (default 100); type to narrow
  *   noResultsText, missingLabel (shown when the saved value is not in options)
  *   ariaLabel    plain-text name for the list and clear button when `label` is JSX
+ *   labelHidden  keep the label for screen readers only (toolbars)
  * Keyboard: type to filter, ↑/↓ to move, Enter to choose, Escape to close, Tab to leave.
  */
 export default function SearchableSelect({
@@ -33,6 +34,7 @@ export default function SearchableSelect({
   noResultsText = 'No results',
   missingLabel = 'No longer listed',
   ariaLabel,
+  labelHidden = false,
 }) {
   const name = ariaLabel ?? (typeof label === 'string' ? label : undefined)
   const [open, setOpen] = useState(false)
@@ -142,7 +144,7 @@ export default function SearchableSelect({
   }
 
   return (
-    <FormField id={id} label={label} required={required} error={error} help={help} className={className}>
+    <FormField id={id} label={label} required={required} error={error} help={help} className={className} labelHidden={labelHidden}>
       <div className="searchable-select" ref={wrapRef} onBlur={onBlur}>
         <div className="searchable-select__control">
           <input

@@ -13,7 +13,7 @@ import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import Modal from '../../components/Modal.jsx'
 import HierarchyTree from '../../components/HierarchyTree.jsx'
-import { LabelNote, TextField } from '../../components/FormField.jsx'
+import { FormRow, LabelNote, TextField } from '../../components/FormField.jsx'
 import SearchableSelect from '../../components/SearchableSelect.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
@@ -29,6 +29,7 @@ import {
   headquarterOptions,
   licenceStatus,
   stockistCodeTaken,
+  stockistLabel,
   todayIso,
 } from '../../data/stockists.js'
 
@@ -56,7 +57,6 @@ function StockistForm({ formId, record, stockists, headquarters, employees, onSa
     },
     (v) => {
       const errors = {}
-      if (!v.name.trim()) errors.name = 'Enter the stockist name.'
       if (stockistCodeTaken(stockists, v.code, record?.id)) errors.code = 'This stockist code is already in use.'
       if (v.pincode.trim() && !/^[1-9][0-9]{5}$/.test(v.pincode.trim())) errors.pincode = 'Enter a 6-digit pincode.'
       if (v.phone.trim() && !/^\+?[0-9][0-9\s().-]{5,19}$/.test(v.phone.trim())) errors.phone = 'Enter a valid phone number.'
@@ -97,7 +97,7 @@ function StockistForm({ formId, record, stockists, headquarters, employees, onSa
         assignedEmployeeId: v.assignedEmployeeId || null,
       }))}
     >
-      <TextField id={form.fieldId('name')} label="Stockist Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} maxLength={150} className="col-12 col-md-6" />
+      <TextField id={form.fieldId('name')} label="Stockist Name" value={form.values.name} onChange={form.set('name')} error={form.errors.name} maxLength={150} className="col-12 col-md-6" />
       <TextField
         id={form.fieldId('code')}
         label={<LabelNote label="Stockist Code" note="must be unique" />}
@@ -135,8 +135,7 @@ function StockistForm({ formId, record, stockists, headquarters, employees, onSa
         className="col-12 col-md-6"
       />
       <TextField id={form.fieldId('address')} label="Address" value={form.values.address} onChange={form.set('address')} error={form.errors.address} maxLength={255} />
-      <div className="col-12">
-        <div className="row g-3">
+      <FormRow>
           <TextField id={form.fieldId('email')} label="Email" type="email" value={form.values.email} onChange={form.set('email')} error={form.errors.email} maxLength={255} className="col-12 col-md-4" />
           <TextField id={form.fieldId('phone')} label="Phone Number" value={form.values.phone} onChange={form.set('phone')} error={form.errors.phone} inputMode="tel" maxLength={20} className="col-12 col-md-4" />
           <TextField
@@ -149,11 +148,9 @@ function StockistForm({ formId, record, stockists, headquarters, employees, onSa
             maxLength={6}
             className="col-12 col-md-4"
           />
-        </div>
-      </div>
+      </FormRow>
       {STOCKIST_LICENCES.map((licence) => (
-        <div key={licence.key} className="col-12">
-          <div className="row g-3">
+        <FormRow key={licence.key}>
             <TextField
               id={form.fieldId(licence.number)}
               label={`${licence.label} Number`}
@@ -172,8 +169,7 @@ function StockistForm({ formId, record, stockists, headquarters, employees, onSa
               error={form.errors[licence.validUpto]}
               className="col-12 col-md-6"
             />
-          </div>
-        </div>
+        </FormRow>
       ))}
     </form>
   )
@@ -247,7 +243,7 @@ export default function StockistsPage() {
   const viewed = findById(state.stockists, viewing.id)
 
   const columns = [
-    { key: 'name', header: 'Stockist', render: (s) => <strong className="fw-semibold">{s.name}</strong> },
+    { key: 'name', header: 'Stockist', render: (s) => <strong className="fw-semibold">{stockistLabel(s)}</strong> },
     { key: 'code', header: 'Code', nowrap: true, render: (s) => s.code || '—' },
     { key: 'hq', header: 'Headquarter', render: (s) => officeOf(s)?.name ?? '—' },
     { key: 'state', header: 'State', render: (s) => officeOf(s)?.stateName ?? '—' },
@@ -268,17 +264,17 @@ export default function StockistsPage() {
       render: (s) => (
         <div className="table-actions">
           {s.headquartersId && (
-            <button type="button" className="btn btn-sm btn-outline-secondary btn-icon" aria-label={`View ${s.name} hierarchy`} title="View hierarchy" onClick={() => setViewing({ open: true, id: s.id })}>
+            <button type="button" className="btn btn-sm btn-outline-secondary btn-icon" aria-label={`View ${stockistLabel(s)} hierarchy`} title="View hierarchy" onClick={() => setViewing({ open: true, id: s.id })}>
               <i className="bi bi-diagram-3" aria-hidden="true" />
             </button>
           )}
           {canManage && (
-            <button type="button" className="btn btn-sm btn-outline-secondary btn-icon" aria-label={`Edit ${s.name}`} title="Edit" onClick={() => editor.openEdit(s)}>
+            <button type="button" className="btn btn-sm btn-outline-secondary btn-icon" aria-label={`Edit ${stockistLabel(s)}`} title="Edit" onClick={() => editor.openEdit(s)}>
               <i className="bi bi-pencil" aria-hidden="true" />
             </button>
           )}
           {canManage && (
-            <button type="button" className="btn btn-sm btn-outline-danger btn-icon" aria-label={`Delete ${s.name}`} title="Delete" onClick={() => setDeleting(s)}>
+            <button type="button" className="btn btn-sm btn-outline-danger btn-icon" aria-label={`Delete ${stockistLabel(s)}`} title="Delete" onClick={() => setDeleting(s)}>
               <i className="bi bi-trash" aria-hidden="true" />
             </button>
           )}
@@ -315,7 +311,7 @@ export default function StockistsPage() {
               records={rows.map((stockist) => {
                 const office = officeOf(stockist)
                 return {
-                  'Stockist name': stockist.name,
+                  'Stockist name': stockist.name ?? '',
                   'Stockist code': stockist.code ?? '',
                   Headquarter: office ? (office.code || office.name) : '',
                   State: office?.stateName ?? '',
@@ -347,7 +343,7 @@ export default function StockistsPage() {
             onToggleAll: selection.toggleAll,
             allSelected: selection.allSelected,
             indeterminate: selection.indeterminate,
-            label: (stockist) => `Select ${stockist.name}`,
+            label: (stockist) => `Select ${stockistLabel(stockist)}`,
           } : null}
           emptyText={state.stockists.length ? 'No stockists match these filters.' : 'No stockists yet.'}
           empty={state.status === 'ready' && state.stockists.length === 0 && (
@@ -387,7 +383,7 @@ export default function StockistsPage() {
         confirmLabel="Delete"
         onConfirm={() => actions.deleteStockist(deleting.id)}
       >
-        Delete {deleting?.name}? Sales entries for this stockist are removed with it.
+        Delete {stockistLabel(deleting)}? Sales entries for this stockist are removed with it.
       </ConfirmDialog>
 
       <ConfirmDialog
@@ -406,7 +402,7 @@ export default function StockistsPage() {
       <Modal
         open={viewing.open}
         onClose={() => setViewing((v) => ({ ...v, open: false }))}
-        title={viewed ? `${viewed.name} — hierarchy` : 'Stockist hierarchy'}
+        title={viewed ? `${stockistLabel(viewed)} — hierarchy` : 'Stockist hierarchy'}
         size="lg"
       >
         {viewed && (

@@ -72,6 +72,32 @@ export function employeeLabel(employee) {
   return code ? `${name} (${code})` : name
 }
 
+/** A stockist's display name: name, else code, else "Stockist #id". */
+export function stockistLabel(stockist) {
+  if (!stockist) return ''
+  return (stockist.name ?? '').trim() || (stockist.code ?? '').trim() || (stockist.id ? `Stockist #${stockist.id}` : 'Stockist')
+}
+
+/**
+ * Stockists as SearchableSelect options: "Name (CODE) — Headquarter".
+ * Code, Headquarter and state are searchable. Pass a headquarter id to keep only its stockists.
+ */
+export function stockistOptions(stockists, locations, headquarterId = '') {
+  return (stockists ?? [])
+    .filter((stockist) => !headquarterId || String(stockist.locationHeadquartersId ?? '') === String(headquarterId))
+    .map((stockist) => {
+      const office = findHeadquarter(locations, stockist.locationHeadquartersId)
+      const name = stockistLabel(stockist)
+      const withCode = stockist.code && stockist.name ? `${name} (${stockist.code})` : name
+      return {
+        value: String(stockist.id),
+        label: office ? `${withCode} — ${office.name}` : withCode,
+        keywords: [stockist.code, office?.name, office?.code, office?.stateName].filter(Boolean),
+      }
+    })
+    .sort((a, b) => a.label.localeCompare(b.label))
+}
+
 /** True when another stockist already has this code (trimmed, any letter case). */
 export function stockistCodeTaken(stockists, code, exceptId) {
   const wanted = (code ?? '').trim().toLowerCase()

@@ -9,7 +9,7 @@ import EmptyState from '../../components/EmptyState.jsx'
 import SearchInput from '../../components/SearchInput.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
-import { TextField } from '../../components/FormField.jsx'
+import { LabelNote, TextField } from '../../components/FormField.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
 import useRowSelection from '../../hooks/useRowSelection.js'
@@ -24,12 +24,10 @@ function StateForm({ formId, record, locations, onSave }) {
       const name = values.name.trim()
       const code = values.code.trim().toUpperCase()
       if (!name) errors.name = 'Enter the state name.'
-      else if (locations.some((location) => location.id !== record?.id && location.name.trim().toLowerCase() === name.toLowerCase())) {
+      else if (locations.some((location) => location.id !== record?.id && (location.name ?? '').trim().toLowerCase() === name.toLowerCase())) {
         errors.name = 'This state already exists.'
       }
-      if (!code) errors.code = 'Enter the location code.'
-      else if (!/^[A-Z0-9][A-Z0-9-]{0,19}$/.test(code)) errors.code = 'Use a short code of letters and numbers.'
-      else if (locations.some((location) => location.id !== record?.id && location.code && location.code.trim().toUpperCase() === code)) {
+      if (code && locations.some((location) => location.id !== record?.id && location.code && location.code.trim().toUpperCase() === code)) {
         errors.code = 'This location code is already in use.'
       }
       return errors
@@ -38,8 +36,17 @@ function StateForm({ formId, record, locations, onSave }) {
 
   return (
     <form id={formId} className="row g-3" noValidate onSubmit={form.handleSubmit((values) => onSave({ name: values.name.trim(), code: values.code.trim().toUpperCase() }))}>
-      <TextField id={form.fieldId('name')} label="State Name" required value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
-      <TextField id={form.fieldId('code')} label="Location Code" required value={form.values.code} onChange={form.set('code')} error={form.errors.code} help="Stored in uppercase." className="col-12 col-md-6" />
+      <TextField id={form.fieldId('name')} label="State Name" required maxLength={100} value={form.values.name} onChange={form.set('name')} error={form.errors.name} className="col-12 col-md-6" />
+      <TextField
+        id={form.fieldId('code')}
+        label={<LabelNote label="Location Code" note="stored in uppercase" />}
+        value={form.values.code}
+        onChange={form.set('code')}
+        error={form.errors.code}
+        maxLength={20}
+        autoComplete="off"
+        className="col-12 col-md-6"
+      />
     </form>
   )
 }
@@ -57,7 +64,7 @@ export default function LocationPage() {
 
   const columns = [
     { key: 'name', header: 'State Name', render: (location) => <strong className="fw-semibold">{location.name}</strong> },
-    { key: 'code', header: 'Location Code', nowrap: true, render: (location) => location.code },
+    { key: 'code', header: 'Location Code', nowrap: true, render: (location) => location.code || '—' },
     {
       key: 'actions',
       header: 'Actions',

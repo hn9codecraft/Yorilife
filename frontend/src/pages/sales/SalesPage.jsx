@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import PageShell from '../../components/PageShell.jsx'
 import DataStatusNotice from '../../components/DataStatusNotice.jsx'
@@ -6,11 +6,13 @@ import usePermission from '../../data/usePermission.js'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import FormModal from '../../components/FormModal.jsx'
-import { SelectField, TextField } from '../../components/FormField.jsx'
+import { FormRow, LabelNote, TextField } from '../../components/FormField.jsx'
+import SearchableSelect from '../../components/SearchableSelect.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
 import useFormState from '../../hooks/useFormState.js'
-import { byName, currentMonth, findById, formatMonth, formatNumber } from '../../data/selectors.js'
+import { currentMonth, findById, formatMonth, formatNumber } from '../../data/selectors.js'
+import { findHeadquarter, headquarterOptions, stockistLabel, stockistOptions } from '../../data/stockists.js'
 
 // Amount fields. Values are stored exactly as entered — nothing is calculated,
 // because the formula linking them has not been confirmed.
@@ -23,18 +25,22 @@ const AMOUNT_FIELDS = [
 
 const toNumberOrNull = (value) => (value === '' || value === null || value === undefined ? null : Number(value))
 
-function SalesEntryForm({ formId, record, state, onSave }) {
+/** The Headquarter shown for an entry: the one saved on it, else its stockist's. */
+function entryHeadquarter(entry, state, locations) {
+  const stockist = findById(state.stockists, entry.stockistId)
+  return findHeadquarter(locations, entry.locationHeadquartersId ?? stockist?.locationHeadquartersId)
+}
+
+function SalesEntryForm({ formId, record, state, locations, onSave }) {
   const form = useFormState(
     {
       month: record?.month ?? currentMonth(),
-      headquartersId: record?.headquartersId ?? '',
-      stockistId: record?.stockistId ?? '',
+      stockistId: record?.stockistId ? String(record.stockistId) : '',
       ...Object.fromEntries(AMOUNT_FIELDS.map(({ key }) => [key, record?.[key] ?? ''])),
     },
     (v) => {
       const errors = {}
       if (!v.month) errors.month = 'Choose the sales month.'
-      if (!v.headquartersId) errors.headquartersId = 'Select a headquarters.'
       if (!v.stockistId) errors.stockistId = 'Select a stockist.'
       AMOUNT_FIELDS.forEach(({ key, label }) => {
         if (v[key] !== '' && !Number.isFinite(Number(v[key]))) errors[key] = `${label} must be a number.`
@@ -43,8 +49,10 @@ function SalesEntryForm({ formId, record, state, onSave }) {
     },
   )
 
-  const headquarters = [...state.headquarters].sort(byName)
-  const stockists = state.stockists.filter((s) => s.headquartersId === form.values.headquartersId).sort(byName)
+  const options = useMemo(() => stockistOptions(state.stockists, locations), [state.stockists, locations])
+  const stockist = findById(state.stockists, form.values.stockistId)
+  const sameStockist = record && String(record.stockistId) === form.values.stockistId
+  const office = findHeadquarter(locations, sameStockist ? (record.locationHeadquartersId ?? stockist?.locationHeadquartersId) : stockist?.locationHeadquartersId)
 
   return (
     <form
@@ -54,36 +62,51 @@ function SalesEntryForm({ formId, record, state, onSave }) {
       onSubmit={form.handleSubmit((v) =>
         onSave({
           month: v.month,
-          headquartersId: v.headquartersId,
           stockistId: v.stockistId,
           ...Object.fromEntries(AMOUNT_FIELDS.map(({ key }) => [key, toNumberOrNull(v[key])])),
         }),
       )}
     >
-      <TextField id={form.fieldId('month')} type="month" label="Sales month" required value={form.values.month} onChange={form.set('month')} error={form.errors.month} className="col-12 col-md-4" />
-      <SelectField
-        id={form.fieldId('headquartersId')}
-        label="Headquarters"
-        required
-        className="col-12 col-md-4"
-        value={form.values.headquartersId}
-        onChange={(value) => form.setMany({ headquartersId: value, stockistId: '' })}
-        options={headquarters.map((hq) => ({ value: hq.id, label: hq.name }))}
-        placeholder="Select headquarters"
-        error={form.errors.headquartersId}
-      />
-      <SelectField
-        id={form.fieldId('stockistId')}
-        label="Stockist"
-        required
-        className="col-12 col-md-4"
-        value={form.values.stockistId}
-        onChange={form.set('stockistId')}
-        options={stockists.map((s) => ({ value: s.id, label: s.name }))}
-        placeholder={!form.values.headquartersId ? 'Select headquarters first' : stockists.length ? 'Select stockist' : 'No stockists for this HQ'}
-        disabled={!form.values.headquartersId || stockists.length === 0}
-        error={form.errors.stockistId}
-      />
+      <FormRow>
+        <TextField id={form.fieldId('month')} type="month" label="Sales Month" required value={form.values.month} onChange={form.set('month')} error={form.errors.month} className="col-12 col-md-4" />
+        <SearchableSelect
+          id={form.fieldId('stockistId')}
+          label={<LabelNote label="Stockist" note="search name, code or headquarter" />}
+          ariaLabel="Stockist"
+          required
+          value={form.values.stockistId}
+          onChange={form.set('stockistId')}
+          options={options}
+          placeholder={options.length ? 'Search or select stockist' : 'No stockists yet'}
+          noResultsText="No stockist matches"
+          missingLabel="Stockist no longer listed"
+          error={form.errors.stockistId}
+          disabled={options.length === 0}
+          className="col-12 col-md-8"
+        />
+      </FormRow>
+      <FormRow>
+        <TextField
+          id={form.fieldId('headquarter')}
+          label={<LabelNote label="Headquarter" note="from the stockist" />}
+          value={office?.name ?? ''}
+          onChange={() => {}}
+          placeholder={stockist ? 'Stockist has no headquarter' : 'Select a stockist'}
+          readOnly
+          tabIndex={-1}
+          className="col-12 col-md-6"
+        />
+        <TextField
+          id={form.fieldId('state')}
+          label={<LabelNote label="State" note="from the headquarter" />}
+          value={office?.stateName ?? ''}
+          onChange={() => {}}
+          placeholder="—"
+          readOnly
+          tabIndex={-1}
+          className="col-12 col-md-6"
+        />
+      </FormRow>
 
       <div className="col-12">
         <div className="alert alert-info mb-0" role="note">
@@ -94,20 +117,22 @@ function SalesEntryForm({ formId, record, state, onSave }) {
         </div>
       </div>
 
-      {AMOUNT_FIELDS.map(({ key, label }) => (
-        <TextField
-          key={key}
-          id={form.fieldId(key)}
-          type="number"
-          step="0.01"
-          inputMode="decimal"
-          label={label}
-          value={form.values[key]}
-          onChange={form.set(key)}
-          error={form.errors[key]}
-          className="col-12 col-sm-6 col-lg-3"
-        />
-      ))}
+      <FormRow>
+        {AMOUNT_FIELDS.map(({ key, label }) => (
+          <TextField
+            key={key}
+            id={form.fieldId(key)}
+            type="number"
+            step="0.01"
+            inputMode="decimal"
+            label={label}
+            value={form.values[key]}
+            onChange={form.set(key)}
+            error={form.errors[key]}
+            className="col-12 col-sm-6 col-lg-3"
+          />
+        ))}
+      </FormRow>
     </form>
   )
 }
@@ -123,6 +148,7 @@ const VARIANTS = {
 /**
  * Sales screens share one table so Achievement / Bonus / Deduction / Final
  * value always appear the same way. The variant decides filters and editing.
+ * Headquarters come from the State / Headquarter List (via the stockist).
  */
 export default function SalesPage({ variant }) {
   const config = VARIANTS[variant]
@@ -135,8 +161,9 @@ export default function SalesPage({ variant }) {
   const [headquartersId, setHeadquartersId] = useState('')
   const [stockistId, setStockistId] = useState('')
 
-  const headquarters = [...state.headquarters].sort(byName)
-  const stockistsInHq = state.stockists.filter((s) => s.headquartersId === headquartersId).sort(byName)
+  const locations = useMemo(() => state.locations ?? [], [state.locations])
+  const headquarters = useMemo(() => headquarterOptions(locations), [locations])
+  const stockistChoices = useMemo(() => stockistOptions(state.stockists, locations, headquartersId), [state.stockists, locations, headquartersId])
 
   const filterValues = { month, headquarters: headquartersId, stockist: stockistId }
   const waitingForFilter = config.requireFilter && !filterValues[config.requireFilter]
@@ -144,13 +171,15 @@ export default function SalesPage({ variant }) {
   const rows = waitingForFilter
     ? []
     : state.sales
-        .filter((s) => (!month || s.month === month) && (!headquartersId || s.headquartersId === headquartersId) && (!stockistId || s.stockistId === stockistId))
+        .filter((s) => (!month || s.month === month)
+          && (!headquartersId || String(entryHeadquarter(s, state, locations)?.id ?? '') === headquartersId)
+          && (!stockistId || String(s.stockistId) === stockistId))
         .sort((a, b) => b.month.localeCompare(a.month) || a.createdAt.localeCompare(b.createdAt))
 
   const columns = [
     { key: 'month', header: 'Month', nowrap: true, render: (s) => formatMonth(s.month) },
-    { key: 'headquarters', header: 'Headquarters', render: (s) => findById(state.headquarters, s.headquartersId)?.name ?? '—' },
-    { key: 'stockist', header: 'Stockist', render: (s) => findById(state.stockists, s.stockistId)?.name ?? '—' },
+    { key: 'headquarters', header: 'Headquarter', render: (s) => entryHeadquarter(s, state, locations)?.name ?? '—' },
+    { key: 'stockist', header: 'Stockist', render: (s) => stockistLabel(findById(state.stockists, s.stockistId)) || '—' },
     ...AMOUNT_FIELDS.map(({ key, label }) => ({ key, header: label, align: 'end', nowrap: true, render: (s) => formatNumber(s[key]) })),
     config.editable && canUpdate && {
       key: 'actions',
@@ -168,19 +197,17 @@ export default function SalesPage({ variant }) {
   const canEnter = state.stockists.length > 0
   const emptyText = waitingForFilter
     ? config.requireFilter === 'month' ? 'Choose a month to see its sales entries.'
-      : config.requireFilter === 'headquarters' ? 'Choose a headquarters to see its sales entries.'
-        : 'Choose a headquarters and then a stockist to see its sales entries.'
+      : config.requireFilter === 'headquarters' ? 'Choose a headquarter to see its sales entries.'
+        : 'Choose a stockist to see its sales entries.'
     : state.sales.length === 0 ? 'No sales entries yet.' : 'No sales entries match these filters.'
 
   return (
     <PageShell
       actions={
         config.editable && canCreate && (
-          <>
-            <button type="button" className="btn btn-primary" onClick={editor.openNew} disabled={!canEnter}>
-              <i className="bi bi-plus-lg" aria-hidden="true" /> Add sales entry
-            </button>
-          </>
+          <button type="button" className="btn btn-primary" onClick={editor.openNew} disabled={!canEnter}>
+            <i className="bi bi-plus-lg" aria-hidden="true" /> Add sales entry
+          </button>
         )
       }
     >
@@ -190,8 +217,7 @@ export default function SalesPage({ variant }) {
         <div className="alert alert-info" role="note">
           <i className="bi bi-info-circle-fill" aria-hidden="true" />
           <div>
-            Sales are recorded per stockist. Add a headquarters office with Data Import, then
-            a <Link to="/sales-office/stockists">stockist</Link>.
+            Sales are recorded per stockist. Add a <Link to="/sales-office/stockists">stockist</Link> first.
           </div>
         </div>
       )}
@@ -203,37 +229,34 @@ export default function SalesPage({ variant }) {
             {config.filters.includes('month') && (
               <div className="toolbar__field">
                 <label htmlFor={`${ids}-month`} className="visually-hidden">Month</label>
-                <input id={`${ids}-month`} type="month" className="form-control toolbar__select" value={month} onChange={(e) => setMonth(e.target.value)} />
+                <input id={`${ids}-month`} type="month" className="form-control toolbar__select" value={month} data-empty={String(!month)} onChange={(e) => setMonth(e.target.value)} />
               </div>
             )}
             {config.filters.includes('headquarters') && (
-              <>
-                <label htmlFor={`${ids}-hq`} className="visually-hidden">Headquarters</label>
-                <select
-                  id={`${ids}-hq`}
-                  className="form-select toolbar__select"
-                  value={headquartersId}
-                  onChange={(e) => { setHeadquartersId(e.target.value); setStockistId('') }}
-                >
-                  <option value="">{config.requireFilter ? 'Choose headquarters' : 'All headquarters'}</option>
-                  {headquarters.map((hq) => <option key={hq.id} value={hq.id}>{hq.name}</option>)}
-                </select>
-              </>
+              <SearchableSelect
+                id={`${ids}-hq`}
+                label="Headquarter"
+                labelHidden
+                value={headquartersId}
+                onChange={(value) => { setHeadquartersId(value); setStockistId('') }}
+                options={headquarters}
+                placeholder={config.requireFilter === 'headquarters' ? 'Choose headquarter' : 'All headquarters'}
+                noResultsText="No headquarter matches"
+                className="toolbar__field searchable-select--toolbar"
+              />
             )}
             {config.filters.includes('stockist') && (
-              <>
-                <label htmlFor={`${ids}-stockist`} className="visually-hidden">Stockist</label>
-                <select
-                  id={`${ids}-stockist`}
-                  className="form-select toolbar__select"
-                  value={stockistId}
-                  onChange={(e) => setStockistId(e.target.value)}
-                  disabled={!headquartersId}
-                >
-                  <option value="">{headquartersId ? 'Choose stockist' : 'Choose headquarters first'}</option>
-                  {stockistsInHq.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </>
+              <SearchableSelect
+                id={`${ids}-stockist`}
+                label="Stockist"
+                labelHidden
+                value={stockistId}
+                onChange={setStockistId}
+                options={stockistChoices}
+                placeholder="Choose stockist"
+                noResultsText="No stockist matches"
+                className="toolbar__field searchable-select--toolbar"
+              />
             )}
           </>
         }
@@ -247,12 +270,14 @@ export default function SalesPage({ variant }) {
           onClose={editor.close}
           title={editor.record ? 'Edit sales entry' : 'Add sales entry'}
           size="lg"
+          variant="wide"
           renderForm={(formId) => (
             <SalesEntryForm
               key={editor.session}
               formId={formId}
               record={editor.record}
               state={state}
+              locations={locations}
               onSave={async (values) => {
                 await actions.saveRecord('sales', { ...editor.record, ...values })
                 editor.close()

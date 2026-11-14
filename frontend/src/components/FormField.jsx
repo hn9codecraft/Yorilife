@@ -7,10 +7,10 @@ import { useState } from 'react'
 const describedBy = (id, error, help) =>
   [help && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
 
-export default function FormField({ id, label, required, error, help, className = 'col-12', children }) {
+export default function FormField({ id, label, required, error, help, className = 'col-12', labelHidden = false, children }) {
   return (
     <div className={className}>
-      <label htmlFor={id} className="form-label">
+      <label htmlFor={id} className={labelHidden ? 'form-label visually-hidden' : 'form-label'}>
         {label}
         {required && <span className="required" aria-hidden="true">*</span>}
         {required && <span className="visually-hidden"> (required)</span>}
@@ -29,6 +29,18 @@ export function LabelNote({ label, note }) {
       {label}
       {note && <small className="label-note">({note})</small>}
     </>
+  )
+}
+
+/**
+ * A full-width group of fields on one row inside a `form.row` grid, e.g.
+ * Email / Phone / Pincode. Children set their own col-* classes and stack on phones.
+ */
+export function FormRow({ children, className = '' }) {
+  return (
+    <div className={`col-12${className ? ` ${className}` : ''}`}>
+      <div className="row g-3">{children}</div>
+    </div>
   )
 }
 
@@ -89,7 +101,9 @@ export function MultiSelectField({
   options,
   placeholder = 'None selected',
   emptyText = 'Nothing to choose yet.',
+  ariaLabel,
 }) {
+  const name = ariaLabel ?? (typeof label === 'string' ? label : 'options')
   const selected = Array.isArray(value) ? value.map(String) : []
   const [query, setQuery] = useState('')
   const described = describedBy(id, error, help)
@@ -126,12 +140,12 @@ export function MultiSelectField({
           type="search"
           className={`form-control form-control-sm${error ? ' is-invalid' : ''}`}
           placeholder="Filter"
-          aria-label={`Filter ${label}`}
+          aria-label={`Filter ${name}`}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           autoComplete="off"
         />
-        <div className="choice-group choice-group--scroll" role="group" aria-label={label}>
+        <div className="choice-group choice-group--scroll" role="group" aria-label={name}>
           {options.length === 0 && <span className="text-secondary small">{emptyText}</span>}
           {options.length > 0 && shown.length === 0 && <span className="text-secondary small">No matches.</span>}
           {shown.map((option) => (
