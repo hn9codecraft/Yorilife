@@ -64,6 +64,8 @@ foreach ([
     'product_changes' => 'DELETE FROM product_changes',
     'product_terms' => 'DELETE FROM product_terms',
     'products' => 'DELETE FROM products',
+    'product_types' => 'DELETE FROM product_types',
+    'product_groups' => 'DELETE FROM product_groups',
     'sales_employee_headquarters' => 'DELETE FROM sales_employee_headquarters',
     'sales_employee_states' => 'DELETE FROM sales_employee_states',
     'sales_employee_managers' => 'DELETE FROM sales_employee_managers',

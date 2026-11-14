@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import PageShell from '../../components/PageShell.jsx'
 import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
-import SearchInput from '../../components/SearchInput.jsx'
+import FilterBar from '../../components/FilterBar.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
 import LoadingIndicator from '../../components/LoadingIndicator.jsx'
 import FormModal from '../../components/FormModal.jsx'
@@ -287,8 +287,16 @@ export default function UsersPage() {
 
       <TableCard
         title={`Users (${state.users.length})`}
-        toolbar={<SearchInput value={query} onChange={setQuery} label="Search users" placeholder="Search name or email" />}
       >
+        <FilterBar
+          label="Filter users"
+          search={{ value: query, onChange: setQuery, label: 'Search users', placeholder: 'Search name or email' }}
+          chips={query ? [{ key: 'q', label: `Search: ${query}`, onRemove: () => setQuery('') }] : []}
+          onClearAll={() => setQuery('')}
+          shown={rows.length}
+          total={state.users.length}
+          noun="users"
+        />
         {state.status === 'loading' && <LoadingIndicator label="Loading users…" />}
         {state.status === 'error' && (
           <div className="card-body">

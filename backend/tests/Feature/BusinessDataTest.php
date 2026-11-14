@@ -21,9 +21,6 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertSame(200, $state['status'], $state['raw']);
         self::assertSame('North', $state['body']['data']['headquarters'][0]['name']);
         self::assertError($sales->request('POST', '/api/headquarters', ['name' => 'South']), 403, 'forbidden');
-        self::assertError($sales->request('POST', '/api/sales-entries', [
-            'month' => '2026-04', 'headquartersId' => '1', 'stockistId' => '1',
-        ]), 403, 'forbidden');
     }
 
     public function testManagerHierarchyAndOptionalUniqueCodes(): void
@@ -165,31 +162,6 @@ final class BusinessDataTest extends FeatureTestCase
         $quantities = $stored->fetch();
         self::assertSame(10, (int) $quantities['scheme_buy_qty']);
         self::assertSame(5, (int) $quantities['scheme_free_qty']);
-    }
-
-    public function testSalesFinalValueIsStoredAndNotCalculated(): void
-    {
-        $admin = $this->signedInAs('admin', 'admin-sales@example.test');
-        $hq = $admin->request('POST', '/api/headquarters', $this->hq('HQ', '', $this->managerChain($admin)))['body']['data']['headquarters'];
-        $stockist = $admin->request('POST', '/api/stockists', ['name' => 'Store', 'code' => '', 'headquartersId' => $hq['id']])['body']['data']['stockist'];
-        $body = [
-            'month' => '2026-01',
-            'headquartersId' => $hq['id'],
-            'stockistId' => $stockist['id'],
-            'achievementValue' => 100,
-            'bonus' => 10,
-            'deduction' => 5,
-            'finalValue' => 77.5,
-        ];
-        $created = $admin->request('POST', '/api/sales-entries', $body);
-        self::assertSame(201, $created['status'], $created['raw']);
-        self::assertSame('77.50', $created['body']['data']['sale']['finalValue']);
-        self::assertSame('100.00', $created['body']['data']['sale']['achievementValue']);
-        self::assertNotSame($created['body']['data']['sale']['finalValue'], '105.00');
-
-        self::assertError($admin->request('POST', '/api/sales-entries', $body), 422, 'validation_failed');
-        self::assertError($admin->request('POST', '/api/sales-entries', ['month' => '2026-02', 'headquartersId' => $hq['id'], 'stockistId' => $stockist['id'], 'finalValue' => -1]), 422, 'validation_failed');
-        self::assertSame(405, $admin->request('DELETE', '/api/sales-entries/' . $created['body']['data']['sale']['id'])['status']);
     }
 
     /** @return array<string, string> */
@@ -556,13 +528,6 @@ final class BusinessDataTest extends FeatureTestCase
         $stockist = $admin->request('POST', '/api/stockists', ['name' => 'Store', 'code' => '', 'headquartersId' => $blockedId]);
         self::assertSame(201, $stockist['status'], $stockist['raw']);
         $stockistId = $stockist['body']['data']['stockist']['id'];
-        $sale = $admin->request('POST', '/api/sales-entries', [
-            'month' => '2026-03',
-            'headquartersId' => $blockedId,
-            'stockistId' => $stockistId,
-            'finalValue' => 10,
-        ]);
-        self::assertSame(201, $sale['status'], $sale['raw']);
 
         $removed = $admin->request('POST', '/api/headquarters/' . $blockedId . '/delete');
         self::assertSame(200, $removed['status'], $removed['raw']);
@@ -574,10 +539,6 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertSame([], array_values(array_filter(
             $afterOffice['stockists'],
             static fn (array $row): bool => $row['id'] === $stockistId,
-        )));
-        self::assertSame([], array_values(array_filter(
-            $afterOffice['sales'],
-            static fn (array $row): bool => (int) $row['headquartersId'] === (int) $blockedId,
         )));
         $sourceStillThere = false;
         foreach ($afterOffice['locations'] as $location) {
@@ -637,13 +598,6 @@ final class BusinessDataTest extends FeatureTestCase
         self::assertError($again, 422, 'validation_failed');
         self::assertSame('This stockist code is already in use.', $again['body']['error']['details']['fields']['code'] ?? null, $again['raw']);
 
-        $sale = $admin->request('POST', '/api/sales-entries', [
-            'month' => '2026-04',
-            'headquartersId' => $hqId,
-            'stockistId' => $stockist['id'],
-            'finalValue' => 12,
-        ]);
-        self::assertSame(201, $sale['status'], $sale['raw']);
         $deleted = $admin->request('POST', '/api/stockists/' . $stockist['id'] . '/delete');
         self::assertSame(200, $deleted['status'], $deleted['raw']);
         $names = array_column($admin->request('GET', '/api/stockists')['body']['data']['stockists'], 'name');
@@ -815,36 +769,6 @@ final class BusinessDataTest extends FeatureTestCase
         $duplicate = $admin->request('POST', '/api/location-headquarters', ['locationId' => $gujarat, 'name' => ' name only hq ']);
         self::assertError($duplicate, 422, 'validation_failed');
         self::assertArrayHasKey('name', $duplicate['body']['error']['details']['fields']);
-    }
-
-    public function testSalesEntryTakesTheHeadquarterFromTheStockist(): void
-    {
-        $admin = $this->signedInAs('admin', 'sales-hq-list@example.test');
-        $gujarat = $admin->request('GET', '/api/locations')['body']['data']['locations'][0]['id'];
-        $office = $admin->request('POST', '/api/location-headquarters', ['locationId' => $gujarat, 'name' => 'Sales HQ', 'code' => 'SHQ']);
-        self::assertSame(201, $office['status'], $office['raw']);
-        $officeId = null;
-        foreach ($office['body']['data']['locations'] as $location) {
-            foreach ($location['headquarters'] as $row) {
-                if ($row['code'] === 'SHQ') {
-                    $officeId = $row['id'];
-                }
-            }
-        }
-        $stockist = $admin->request('POST', '/api/stockists', ['name' => 'New HQ Store', 'locationHeadquartersId' => $officeId]);
-        self::assertSame(201, $stockist['status'], $stockist['raw']);
-        $stockistId = $stockist['body']['data']['stockist']['id'];
-        self::assertNull($stockist['body']['data']['stockist']['headquartersId']);
-
-        $sale = $admin->request('POST', '/api/sales-entries', ['month' => '2026-10', 'stockistId' => $stockistId, 'finalValue' => 50]);
-        self::assertSame(201, $sale['status'], $sale['raw']);
-        $entry = $sale['body']['data']['sale'] ?? null;
-        self::assertNotNull($entry, $sale['raw']);
-        self::assertSame((string) $officeId, (string) $entry['locationHeadquartersId']);
-        self::assertNull($entry['headquartersId']);
-
-        self::assertError($admin->request('POST', '/api/sales-entries', ['month' => '2026-10', 'stockistId' => $stockistId]), 422, 'validation_failed');
-        self::assertError($admin->request('POST', '/api/sales-entries', ['month' => '2026-11']), 422, 'validation_failed');
     }
 
     /** @return array<string, string> */

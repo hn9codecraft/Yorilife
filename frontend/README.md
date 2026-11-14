@@ -51,7 +51,6 @@ src/
     sales-office/          EmployeesPage, LocationPage (State List), HeadquarterListPage, StockistsPage
     products/              CatalogueTermsPage (categories, tags, badges), ProductsPage (list + deleted),
                            ProductHistoryPage, MasterSheetPage
-    sales/SalesPage.jsx    Sales entry, Monthly, by Headquarters, by Stockist (one component, 4 variants)
     imports/               ImportDataPage (upload, preview, confirm), ImportHistoryPage (downloads, rollback)
     ModulePlaceholderPage.jsx  Shared placeholder for modules not built yet
     NotFoundPage.jsx           404 for unknown URLs
@@ -118,7 +117,7 @@ Sidebar order (approved):
 | - | ---- | ----- |
 | 1 | Dashboard (link) | `/dashboard` |
 | 2 | Products | `/products/group-categories`, `/products/categories`, `/products/tags-badges`, `/products/list`, `/products/master-sheet`, `/products/deleted`, `/products/change-history` |
-| 3 | Sales Management | `/sales/stockist-sales`, `/sales/monthly`, `/sales/by-headquarters`, `/sales/by-stockist`, `/sales/calculation-history` |
+| 3 | ~~Sales Management~~ | Removed on 2026-11-14 (owner request); the `sales_entries` table is kept, empty |
 |   | Sales Office > Data Import | `/imports/data`, `/imports/history` (Super Admin and Admin) |
 | 4 | Sales Office | `/sales-office/stockists`, `/sales-office/employees`, `/sales-office/locations` (State List), `/sales-office/headquarter-list` (`/sales-office/hierarchy` stays reachable and is not in the menu) |
 | 5 | Application Details | `/sales-app/overview`, `/sales-app/submission-status`, `/sales-app/history` (the former "Sales Application" pages; contents to be confirmed) |

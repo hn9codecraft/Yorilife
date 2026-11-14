@@ -6,7 +6,7 @@ import TableCard from '../../components/TableCard.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import SelectionBar from '../../components/SelectionBar.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
-import SearchInput from '../../components/SearchInput.jsx'
+import FilterBar from '../../components/FilterBar.jsx'
 import SalesOfficeCsv from '../../components/SalesOfficeCsv.jsx'
 import { ChipList } from '../../components/TableCells.jsx'
 import FormModal from '../../components/FormModal.jsx'
@@ -107,9 +107,16 @@ export default function LocationPage() {
       <DataStatusNotice />
       <TableCard
         title={`States (${locations.length})`}
-        toolbar={(
-          <>
-            <SearchInput value={query} onChange={setQuery} label="Search states" placeholder="Search state name or code" />
+      >
+        <FilterBar
+          label="Filter states"
+          search={{ value: query, onChange: setQuery, label: 'Search states', placeholder: 'Search state or code' }}
+          chips={query ? [{ key: 'q', label: `Search: ${query}`, onRemove: () => setQuery('') }] : []}
+          onClearAll={() => setQuery('')}
+          shown={rows.length}
+          total={locations.length}
+          noun="states"
+          actions={(
             <SalesOfficeCsv
               module="state"
               records={rows.map((location) => ({
@@ -118,9 +125,8 @@ export default function LocationPage() {
                 Headquarters: joinCell((location.headquarters ?? []).map((office) => office.name)),
               }))}
             />
-          </>
-        )}
-      >
+          )}
+        />
         {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
         <DataTable
           caption="States"

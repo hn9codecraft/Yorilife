@@ -167,7 +167,6 @@ A future mobile app sends `Authorization: Bearer` with a personal device token (
 | `GET /api/master-sheet/{year}/scan` | `master_sheet.update` | Lists active products missing from that year. Does not insert |
 | `POST /api/master-sheet/{year}/add-products` | `master_sheet.update` | Adds only the selected missing products. Inclusion starts unset |
 | `POST /api/master-sheet/{year}/update-products` | `master_sheet.update` | Adds every missing active product. Does not change existing year rows |
-| `GET/POST /api/sales-entries`, `PATCH /api/sales-entries/{id}` | view / `sales.create` or `sales.update` | One entry per stockist per month. `finalValue` is stored, never calculated. No delete |
 
 Errors use the standard envelope:
 - **401** `unauthenticated` / `session_expired` / `invalid_credentials`;

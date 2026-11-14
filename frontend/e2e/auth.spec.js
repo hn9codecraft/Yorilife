@@ -47,7 +47,7 @@ test('protected page redirects to login and returns there after signing in', asy
   await page.getByRole('button', { name: 'Sign in' }).click()
 
   await expect(page).toHaveURL('/products/list?x=1')
-  await expect(page.getByRole('heading', { level: 1, name: 'Product List' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Product', exact: true })).toBeVisible()
 })
 
 test('external "next" targets are ignored (no open redirect)', async ({ page }) => {

@@ -102,17 +102,6 @@ export default function ErpDataProvider({ children }) {
           if (values.kind === 'category') body.parentId = values.parentId || null
           return save('/api/catalogue-terms', 'POST', body)
         }
-        if (collection === 'sales') {
-          const body = {
-            month: values.month,
-            stockistId: values.stockistId,
-            achievementValue: values.achievementValue ?? null,
-            bonus: values.bonus ?? null,
-            deduction: values.deduction ?? null,
-            finalValue: values.finalValue ?? null,
-          }
-          return values.id ? save(`/api/sales-entries/${values.id}`, 'PATCH', body) : save('/api/sales-entries', 'POST', body)
-        }
         return Promise.reject(new Error('This record cannot be saved here.'))
       },
 
@@ -147,6 +136,8 @@ export default function ErpDataProvider({ children }) {
           locationHeadquarters: (id) => `/api/location-headquarters/${id}/delete`,
           terms: (id) => `/api/catalogue-terms/${id}/delete`,
           products: (id) => `/api/products/${id}/delete`,
+          productTypes: (id) => `/api/product-types/${id}/delete`,
+          productGroups: (id) => `/api/product-groups/${id}/delete`,
         }
         const pathFor = paths[resource]
         if (!pathFor) throw new Error('This record cannot be deleted here.')
@@ -196,6 +187,36 @@ export default function ErpDataProvider({ children }) {
         }
         if (values.groupCategoryId) body.groupCategoryId = values.groupCategoryId
         return values.id ? save(`/api/products/${values.id}`, 'PATCH', body) : save('/api/products', 'POST', body)
+      },
+
+      // Products > Product: the product list fields only. Old fields (strip,
+      // pack, category, tags) are not sent, so stored values stay as they are.
+      saveProductListItem(values) {
+        const blankToNull = (value) => (value === '' || value == null ? null : value)
+        const body = {
+          name: values.name,
+          sku: values.sku ?? '',
+          productTypeId: blankToNull(values.productTypeId),
+          packagingUnit: values.packagingUnit ?? '',
+          productGroupId: blankToNull(values.productGroupId),
+          mrp: blankToNull(values.mrp),
+          ptr: blankToNull(values.ptr),
+          pts: blankToNull(values.pts),
+          scheme: values.scheme ?? '',
+          netRate: blankToNull(values.netRate),
+        }
+        return values.id ? save(`/api/products/${values.id}`, 'PATCH', body) : save('/api/products', 'POST', body)
+      },
+
+      // Products > Category: kind is 'type' or 'group'.
+      saveProductCategory(kind, values) {
+        const base = kind === 'type' ? '/api/product-types' : '/api/product-groups'
+        const body = { name: values.name }
+        return values.id ? save(`${base}/${values.id}`, 'PATCH', body) : save(base, 'POST', body)
+      },
+
+      deleteProductCategory(kind, id) {
+        return save(`${kind === 'type' ? '/api/product-types' : '/api/product-groups'}/${id}/delete`, 'POST', {})
       },
 
       deleteProduct(id) {

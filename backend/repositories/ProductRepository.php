@@ -6,7 +6,7 @@ namespace App\Repositories;
 
 final class ProductRepository extends Repository
 {
-    private const COLUMNS = 'id, name, code, category_id, strip, pack, mrp, ptr, pts, scheme, scheme_buy_qty, scheme_free_qty, deleted_at, created_at, updated_at';
+    private const COLUMNS = 'id, name, code, category_id, product_type_id, product_group_id, packaging_unit, strip, pack, mrp, ptr, pts, net_rate, scheme, scheme_buy_qty, scheme_free_qty, deleted_at, created_at, updated_at';
 
     /** @return list<array<string, mixed>> */
     public function all(): array
@@ -54,7 +54,7 @@ final class ProductRepository extends Repository
     {
         return (int) $this->run(
             fn (): int => $this->insertRow('products', $fields),
-            ['products_active_code_unique' => ['code' => 'An active product already uses this code.']]
+            ['products_active_code_unique' => ['code' => 'An active product already uses this code.', 'sku' => 'An active product already uses this SKU.']]
         );
     }
 
@@ -63,7 +63,16 @@ final class ProductRepository extends Repository
     {
         $this->run(
             fn () => $this->updateRow('products', $id, $fields),
-            ['products_active_code_unique' => ['code' => 'An active product already uses this code.']]
+            ['products_active_code_unique' => ['code' => 'An active product already uses this code.', 'sku' => 'An active product already uses this SKU.']]
+        );
+    }
+
+    /** Is this code/SKU used by another product that is not deleted? (case-insensitive collation) */
+    public function activeCodeTaken(string $code, ?int $exceptId): bool
+    {
+        return $this->exists(
+            'SELECT 1 FROM products WHERE active_code = ? AND id <> ?',
+            [$code, $exceptId ?? 0]
         );
     }
 

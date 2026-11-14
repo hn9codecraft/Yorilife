@@ -1,19 +1,27 @@
 import { Fragment, useEffect, useRef } from 'react'
+import EmptyState from './EmptyState.jsx'
+import { tableMinWidth } from '../utils/tableWidth.js'
 
 /**
  * Responsive data table inside the standard .table-container.
  * columns: [{ key, header, render?(row), align?: 'end', nowrap?: bool, srOnlyHeader?: bool,
- *             width?: 'sm'|'md'|'lg'|'xl', sticky?: 'start'|'end', truncate?: bool, title?(row) }]
- *   width     min-width from the --table-col-* tokens
+ *             width?: 'sm'|'md'|'lg'|'xl'|'money', sticky?: 'start'|'end', truncate?: bool, title?(row) }]
+ *   width     min-width from the --table-col-* tokens ('money': right-aligned amount)
+ *   The table's min-width is the sum of its column widths, so no column can
+ *   hide under a pinned column; narrower screens scroll sideways instead.
  *   sticky    pin the column while the table scrolls sideways
  *   truncate  one line with … ; the tooltip is title(row) or the rendered text
+ *   compact   as narrow as its content (one line); wide columns take the rest
  *   key 'actions' is always compact, right-aligned and on one line.
- * striped (optional): zebra rows. scroll (optional): sticky header inside a max-height box.
+ * striped (optional): zebra rows.
+ * scroll (optional): sticky header inside a max-height box, used only when there
+ *   are more than scrollAfter rows (default 10) so short lists have no inner scrollbar.
  * Empty cell values (null, '', '—') show a muted "—".
  * renderAfterRow (optional): (row) => node shown in a full-width row under that row, or null.
  * selection (optional): { isSelected(row), onToggle(row), onToggleAll(), allSelected, indeterminate, label(row), isDisabled?(row) }
- * With no rows, shows `empty` (if given) or a single "emptyText" row so the
- * column structure stays visible.
+ * With no rows, shows `empty` (if given) or a shared EmptyState row under the
+ * headers: icon (emptyIcon), title (emptyText), hint (emptyHint) and an
+ * optional button (emptyAction).
  */
 function sortLabel(column, sort) {
   if (!sort || sort.key !== column.key) return `${column.header}, not sorted`
@@ -33,6 +41,14 @@ function cellContent(column, row) {
   if (!column.truncate) return value
   const title = column.title?.(row) ?? (typeof value === 'string' || typeof value === 'number' ? String(value) : undefined)
   return <span className="table-truncate" title={title}>{value}</span>
+}
+
+/** Tooltip for the pinned first column, whose content is cut with … past its max width. */
+function pinnedTitle(column, row) {
+  const title = column.title?.(row)
+  if (title) return title
+  const value = row[column.key]
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined
 }
 
 function SelectCheckbox({ checked, indeterminate = false, onChange, label, disabled = false }) {
@@ -81,19 +97,23 @@ function useScrollEdges(ref, deps) {
   }, deps)
 }
 
-export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', rowKey = (row) => row.id, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, scroll = false }) {
+
+export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, scroll = false, scrollAfter = 10 }) {
   const boxRef = useRef(null)
   const showEmpty = rows.length === 0 && Boolean(empty)
   useScrollEdges(boxRef, [showEmpty, rows.length, columns.length])
   if (showEmpty) return empty
 
+  const scrolling = scroll && rows.length > scrollAfter
   const cellClass = (column) =>
     [
-      column.align === 'end' && 'text-end',
+      (column.align === 'end' || column.width === 'money') && 'text-end',
+      column.width === 'money' && 'text-nowrap',
       column.nowrap && 'text-nowrap',
       column.width && `table-col--${column.width}`,
       column.sticky && `table-col--sticky-${column.sticky}`,
       column.key === 'actions' && 'table-col--actions',
+      column.compact && 'table-col--compact',
     ].filter(Boolean).join(' ') || undefined
   const columnCount = columns.length + (selection ? 1 : 0)
   const stickyStart = columns.some((column) => column.sticky === 'start')
@@ -105,8 +125,8 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
   ].filter(Boolean).join(' ')
 
   return (
-    <div ref={boxRef} className={`table-container${scroll ? ' table-container--scroll' : ''}`}>
-      <table className={tableClass}>
+    <div ref={boxRef} className={`table-container${scrolling ? ' table-container--scroll' : ''}`}>
+      <table className={tableClass} style={{ minWidth: tableMinWidth(columns, Boolean(selection)) }}>
         {caption && <caption className="visually-hidden">{caption}</caption>}
         <thead>
           <tr>
@@ -142,7 +162,11 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columnCount} className="table-empty">{emptyText}</td>
+              <td colSpan={columnCount} className="table-empty">
+                <div className="table-empty__inner">
+                  <EmptyState icon={emptyIcon} title={emptyText} text={emptyHint} action={emptyAction} titleAs="p" variant="table" />
+                </div>
+              </td>
             </tr>
           ) : (
             rows.map((row) => {
@@ -162,7 +186,9 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
                 )}
                 {columns.map((column) => (
                   <td key={column.key} className={cellClass(column)} data-label={column.header}>
-                    {cellContent(column, row)}
+                    {column.sticky === 'start'
+                      ? <span className="table-pinned" title={pinnedTitle(column, row)}>{cellContent(column, row)}</span>
+                      : cellContent(column, row)}
                   </td>
                 ))}
               </tr>

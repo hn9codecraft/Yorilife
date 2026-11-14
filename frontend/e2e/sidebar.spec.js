@@ -1,6 +1,7 @@
 import { USERS, expect, reseed, signIn, test } from './helpers.js'
 
 // Approved left-sidebar order and grouping (sidebar update request).
+// Sales Management keeps its group; its old sales entry pages were removed on 2026-11-14.
 const TOP_LEVEL = ['Dashboard', 'Products', 'Sales Management', 'Sales Office', 'Application Details', 'Announcements', 'System & Audit']
 
 const topLevelLabels = (page) => page.locator('.sidebar-nav > li > :is(button, a) .sidebar-group__label').allInnerTexts()
@@ -29,9 +30,6 @@ test('Dashboard is a single link; Announcements is a menu for admins', async ({ 
 })
 
 test('Reports is removed; Data Import stays nested in Sales Office, not top-level', async ({ page }) => {
-  const sales = group(page, 'Sales Management')
-  await expect(sales.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Reports' })).toHaveCount(0)
-  await expect(sales.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Data Import' })).toHaveCount(0)
   const office = group(page, 'Sales Office')
   await expect(office.locator(':scope > .sidebar-group__panel .sidebar-subgroup > button', { hasText: 'Data Import' })).toHaveCount(1)
   expect(await topLevelLabels(page)).not.toContain('Reports')
@@ -55,8 +53,8 @@ test('CSV Export is absent and Data Import is reachable from the Sales Office me
 
 test('group contents are preserved (Products, Sales Office, Application Details, System & Audit)', async ({ page }) => {
   const links = (label) => group(page, label).locator(':scope > .sidebar-group__panel > .sidebar-group__list > li > .sidebar-link')
-  await expect(links('Products')).toHaveText(['Group Categories', 'Categories', 'Tags & Badges', 'Product List', 'Master Product Sheet', 'Deleted Products', 'Change History'])
-  await expect(links('Sales Management')).toHaveText(['Stockist Sales', 'Monthly Sales', 'Sales by Headquarters', 'Sales by Stockist', 'Sales Calculation History'])
+  await expect(links('Products')).toHaveText(['Category', 'Product'])
+  await expect(links('Sales Management')).toHaveText(['Bonus Calc'])
   await expect(links('Sales Office')).toHaveText(['Stockist Entry', 'Employee List', 'Headquarter List', 'State List'])
   await expect(group(page, 'Sales Office').getByRole('link', { name: 'Sales Office Hierarchy' })).toHaveCount(0)
   await expect(page.locator('.sidebar-nav > li > a.sidebar-toplink', { hasText: 'State List' })).toHaveCount(0)
@@ -125,7 +123,7 @@ test('nested Data Import expands and collapses under Sales Office, with mouse an
 })
 
 test('opening one top-level group closes the previous; Data Import closes with its parent', async ({ page }) => {
-  const salesToggle = group(page, 'Sales Management').locator(':scope > button')
+  const salesToggle = group(page, 'Products').locator(':scope > button')
   const officeToggle = group(page, 'Sales Office').locator(':scope > button')
   const importToggle = subgroup(page, 'Data Import').locator(':scope > button')
 
@@ -150,7 +148,7 @@ test('opening one top-level group closes the previous; Data Import closes with i
   await page.goto('/imports/data')
   await expect(officeToggle).toHaveAttribute('aria-expanded', 'true')
   await expect(importToggle).toHaveAttribute('aria-expanded', 'true')
-  await page.goto('/sales/monthly')
+  await page.goto('/products/list')
   await expect(salesToggle).toHaveAttribute('aria-expanded', 'true')
   await expect(officeToggle).toHaveAttribute('aria-expanded', 'false')
   await expect(importToggle).toHaveAttribute('aria-expanded', 'false')
@@ -162,8 +160,8 @@ test('Back/Forward update the active item across top-level links and nested page
   await page.locator('.app-sidebar a[href="/announcements/list"]').click()
   await expect(active).toHaveText('All Announcements')
   await expect(page.locator('h1.page-header__title')).toHaveText('All Announcements')
-  await page.locator('.app-sidebar a[href="/sales/monthly"]').evaluate((a) => a.click())
-  await expect(active).toHaveText('Monthly Sales')
+  await page.locator('.app-sidebar a[href="/products/list"]').evaluate((a) => a.click())
+  await expect(active).toHaveText('Product')
 
   await page.goBack()
   await expect(page).toHaveURL('/announcements/list')
@@ -174,17 +172,19 @@ test('Back/Forward update the active item across top-level links and nested page
   await expect(page.locator('.breadcrumb-item')).toHaveText(['Dashboard'])
   await page.goForward()
   await page.goForward()
-  await expect(active).toHaveText('Monthly Sales')
+  await expect(active).toHaveText('Product')
 })
 
 test('group URLs redirect to their first page; removed Headquarters Dashboard is a 404', async ({ page }) => {
-  for (const [from, to] of [['/sales', '/sales/stockist-sales'], ['/imports', '/imports/data'], ['/sales-app', '/sales-app/overview'], ['/products', '/products/group-categories'], ['/announcements', '/announcements/list']]) {
+  for (const [from, to] of [['/sales', '/sales/bonus-calc'], ['/imports', '/imports/data'], ['/sales-app', '/sales-app/overview'], ['/products', '/products/category'], ['/announcements', '/announcements/list']]) {
     await page.goto(from)
     await expect(page, from).toHaveURL(to)
   }
+  await page.goto('/sales/bonus-calc')
+  await expect(page.getByRole('heading', { name: 'Bonus Calc is coming soon' })).toBeVisible()
   await page.goto('/dashboard/headquarters')
   await expect(page.locator('h1.page-header__title')).toHaveText('Page not found')
-  for (const gone of ['/sales-office/headquarters', '/reports', '/reports/headquarters', '/reports/stockists', '/reports/monthly-sales', '/reports/product-performance']) {
+  for (const gone of ['/sales/stockist-sales', '/sales/monthly', '/sales/by-headquarters', '/sales/by-stockist', '/sales/calculation-history', '/sales-office/headquarters', '/reports', '/reports/headquarters', '/reports/stockists', '/reports/monthly-sales', '/reports/product-performance', '/products/group-categories', '/products/categories', '/products/tags-badges', '/products/master-sheet', '/products/deleted', '/products/change-history']) {
     await page.goto(gone)
     await expect(page.locator('h1.page-header__title'), gone).toHaveText('Page not found')
   }
@@ -197,16 +197,16 @@ test('collapsed desktop rail shows the 7 top-level icons; top-level links work t
   await expect(page.locator('.sidebar-group__panel').first()).toBeHidden()
   await expect(page.locator('.sidebar-toplink.active')).toHaveAttribute('title', 'Dashboard')
 
-  await page.goto('/sales/monthly')
+  await page.goto('/products/list')
   await expect(page.locator('.app-shell')).toHaveClass(/is-sidebar-collapsed/)
   await page.locator('.sidebar-toplink', { hasText: 'Dashboard' }).click()
   await expect(page).toHaveURL('/dashboard')
   await expect(page.locator('.app-shell')).toHaveClass(/is-sidebar-collapsed/)
 
   // Clicking a group icon in the rail expands the sidebar and opens it.
-  await group(page, 'Sales Management').locator(':scope > button').click()
+  await group(page, 'Products').locator(':scope > button').click()
   await expect(page.locator('.app-shell')).not.toHaveClass(/is-sidebar-collapsed/)
-  await expect(group(page, 'Sales Management')).toHaveClass(/is-open/)
+  await expect(group(page, 'Products')).toHaveClass(/is-open/)
 })
 
 test('mobile drawer shows the same menu; choosing a nested page navigates and closes it', async ({ page }) => {
@@ -223,7 +223,7 @@ test('mobile drawer shows the same menu; choosing a nested page navigates and cl
   for (const width of [320, 375, 768]) {
     await page.setViewportSize({ width, height: 800 })
     await page.getByRole('button', { name: 'Open navigation menu' }).click()
-    await group(page, 'Sales Management').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
+    await group(page, 'Products').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
     await group(page, 'Sales Office').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
     await subgroup(page, 'Data Import').locator(':scope > button').evaluate((b) => b.getAttribute('aria-expanded') === 'false' && b.click())
     await page.waitForTimeout(300)

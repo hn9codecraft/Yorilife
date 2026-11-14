@@ -11,10 +11,9 @@ import HierarchyPage from './pages/sales-office/HierarchyPage.jsx'
 import StockistsPage from './pages/sales-office/StockistsPage.jsx'
 import LocationPage from './pages/sales-office/LocationPage.jsx'
 import HeadquarterListPage from './pages/sales-office/HeadquarterListPage.jsx'
-import CatalogueTermsPage from './pages/products/CatalogueTermsPage.jsx'
-import ProductsPage from './pages/products/ProductsPage.jsx'
-import MasterSheetPage from './pages/products/MasterSheetPage.jsx'
-import SalesPage from './pages/sales/SalesPage.jsx'
+import ProductCategoryPage from './pages/products/ProductCategoryPage.jsx'
+import ProductListPage from './pages/products/ProductListPage.jsx'
+import BonusCalcPage from './pages/sales/BonusCalcPage.jsx'
 import UsersPage from './pages/system/UsersPage.jsx'
 import AuditLogsPage from './pages/system/AuditLogsPage.jsx'
 import ChangeHistoryPage from './pages/system/ChangeHistoryPage.jsx'
@@ -35,21 +34,13 @@ import { HOME_PATH, NAV_GROUPS, NAV_ITEMS } from './config/navigation.js'
 // Pages that have a real screen. Every other menu item keeps the shared
 // placeholder until its module is built. Paths must exist in navigation.js.
 const PAGE_ELEMENTS = {
-  '/products/group-categories': <CatalogueTermsPage kinds={['groupCategory']} />,
-  '/products/categories': <CatalogueTermsPage kinds={['category']} />,
-  '/products/tags-badges': <CatalogueTermsPage kinds={['tag', 'badge']} />,
-  '/products/list': <ProductsPage />,
-  '/products/master-sheet': <MasterSheetPage />,
-  '/products/deleted': <ProductsPage deleted />,
-  '/products/change-history': <ChangeHistoryPage module="products" />,
+  '/products/category': <ProductCategoryPage />,
+  '/products/list': <ProductListPage />,
   '/sales-office/employees': <SalesEmployeesPage />,
   '/sales-office/stockists': <StockistsPage />,
   '/sales-office/locations': <LocationPage />,
   '/sales-office/headquarter-list': <HeadquarterListPage />,
-  '/sales/stockist-sales': <SalesPage variant="entry" />,
-  '/sales/monthly': <SalesPage variant="monthly" />,
-  '/sales/by-headquarters': <SalesPage variant="byHeadquarters" />,
-  '/sales/by-stockist': <SalesPage variant="byStockist" />,
+  '/sales/bonus-calc': <BonusCalcPage />,
   '/imports/data': <ImportDataPage />,
   '/imports/history': <ImportHistoryPage />,
   '/system/users': <UsersPage />,
@@ -69,7 +60,7 @@ if (unknownPaths.length) {
 }
 
 // Every route is generated from the navigation config — nothing is listed twice.
-// `key` remounts the page when two routes share a component (e.g. ProductsPage);
+// `key` remounts the page when two routes share a component;
 // items with a `permission` are wrapped in RequirePermission.
 const moduleRoutes = NAV_ITEMS.map((item) => {
   const page = PAGE_ELEMENTS[item.path] ? cloneElement(PAGE_ELEMENTS[item.path], { key: item.path }) : <ModulePlaceholderPage />
