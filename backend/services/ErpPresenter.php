@@ -185,11 +185,19 @@ final class ErpPresenter
     public static function stockist(array $row): array
     {
         return self::named($row) + [
-            'headquartersId' => Presenter::id($row['headquarters_id']),
+            'headquartersId' => Presenter::id($row['headquarters_id'] ?? null),
+            'locationHeadquartersId' => Presenter::id($row['location_headquarters_id'] ?? null),
+            'assignedEmployeeId' => Presenter::id($row['assigned_employee_id'] ?? null),
             'address' => $row['address'] ?? null,
             'pincode' => $row['pincode'] ?? null,
             'phone' => $row['phone'] ?? null,
             'email' => $row['email'] ?? null,
+            'drugLicenceNo' => $row['drug_licence_no'] ?? null,
+            'drugLicenceValidUpto' => $row['drug_licence_valid_upto'] ?? null,
+            'foodLicenceNo' => $row['food_licence_no'] ?? null,
+            'foodLicenceValidUpto' => $row['food_licence_valid_upto'] ?? null,
+            'fssaiLicenceNo' => $row['fssai_licence_no'] ?? null,
+            'fssaiLicenceValidUpto' => $row['fssai_licence_valid_upto'] ?? null,
         ];
     }
 

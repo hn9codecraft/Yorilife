@@ -564,9 +564,6 @@ final class ImportService
                 break;
 
             case 'stockist':
-                if (preg_match('/^ST-[0-9]+$/i', $code) !== 1) {
-                    throw HttpException::validation(['code' => 'Enter numbers only after ST-.']);
-                }
                 $existing = $this->office->findStockistByCode($code);
                 $existingId = $existing === null ? null : (int) $existing['id'];
                 $hq = $this->office->findHeadquartersByCode($this->hqCode($cell('Headquarters Code')));

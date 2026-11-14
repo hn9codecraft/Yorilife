@@ -86,11 +86,18 @@ export default function ErpDataProvider({ children }) {
           const body = {
             name: values.name,
             code: values.code ?? '',
-            headquartersId: values.headquartersId,
+            locationHeadquartersId: values.locationHeadquartersId ?? null,
+            assignedEmployeeId: values.assignedEmployeeId ?? null,
             address: values.address ?? '',
             pincode: values.pincode ?? '',
             phone: values.phone ?? '',
             email: values.email ?? '',
+            drugLicenceNo: values.drugLicenceNo ?? '',
+            drugLicenceValidUpto: values.drugLicenceValidUpto ?? null,
+            foodLicenceNo: values.foodLicenceNo ?? '',
+            foodLicenceValidUpto: values.foodLicenceValidUpto ?? null,
+            fssaiLicenceNo: values.fssaiLicenceNo ?? '',
+            fssaiLicenceValidUpto: values.fssaiLicenceValidUpto ?? null,
           }
           return values.id ? save(`/api/stockists/${values.id}`, 'PATCH', body) : save('/api/stockists', 'POST', body)
         }

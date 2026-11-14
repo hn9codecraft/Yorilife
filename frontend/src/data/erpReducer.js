@@ -6,7 +6,8 @@
  *   headquarters  { id, name, code, createdAt, updatedAt }
  *   managers      { id, level: 1|2|3, name, code, parentType, parentId, createdAt, updatedAt }
  *                   parentType: 'headquarters' | 'manager1' | 'manager2'
- *   stockists     { id, name, code, headquartersId, createdAt, updatedAt }
+ *   stockists     { id, name, code, headquartersId, locationHeadquartersId, assignedEmployeeId,
+ *                   address, pincode, phone, email, drug/food/fssai LicenceNo + LicenceValidUpto, createdAt, updatedAt }
  *   terms         { id, kind: 'groupCategory'|'category'|'tag'|'badge', name, createdAt, updatedAt, deletedAt }
  *   products      { id, name, code, categoryId, tagIds[], badgeIds[], createdAt, updatedAt, deletedAt }
  *   productHistory      { id, productId, productName, action, changes: [{ field, from, to }], at, by }
