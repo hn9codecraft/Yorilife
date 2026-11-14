@@ -18,6 +18,7 @@ use App\Controllers\HealthController;
 use App\Controllers\ImportController;
 use App\Controllers\ProductController;
 use App\Controllers\SalesEntryController;
+use App\Controllers\SalesEmployeeController;
 use App\Controllers\SalesOfficeController;
 use App\Controllers\SearchController;
 use App\Controllers\SettingsController;
@@ -84,6 +85,11 @@ $router->get('/api/stockists', [SalesOfficeController::class, 'stockists'], [$au
 $router->post('/api/stockists', [SalesOfficeController::class, 'storeStockist'], [$auth, AuthMiddleware::can('sales_office.manage')]);
 $router->patch('/api/stockists/{id}', [SalesOfficeController::class, 'updateStockist'], [$auth, AuthMiddleware::can('sales_office.manage')]);
 $router->post('/api/stockists/{id}/delete', [SalesOfficeController::class, 'deleteStockist'], [$auth, AuthMiddleware::can('sales_office.manage')]);
+
+$router->get('/api/sales-employees', [SalesEmployeeController::class, 'index'], [$auth, AuthMiddleware::can('sales_office.view')]);
+$router->post('/api/sales-employees', [SalesEmployeeController::class, 'store'], [$auth, AuthMiddleware::can('sales_office.manage')]);
+$router->patch('/api/sales-employees/{id}', [SalesEmployeeController::class, 'update'], [$auth, AuthMiddleware::can('sales_office.manage')]);
+$router->post('/api/sales-employees/{id}/delete', [SalesEmployeeController::class, 'delete'], [$auth, AuthMiddleware::can('sales_office.manage')]);
 
 $router->get('/api/catalogue-terms', [CatalogueController::class, 'index'], [$auth, AuthMiddleware::can('catalogue.view')]);
 $router->post('/api/catalogue-terms', [CatalogueController::class, 'store'], [$auth, AuthMiddleware::can('catalogue.manage')]);

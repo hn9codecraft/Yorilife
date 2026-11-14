@@ -18,6 +18,53 @@ export function reseed() {
   })
 }
 
+/** Signed-in JSON call. The browser session cookie is sent with the request. */
+export async function api(page, method, path, body) {
+  const headers = { Accept: 'application/json' }
+  if (method !== 'GET' && method !== 'HEAD') {
+    const me = await page.request.get('/api/auth/me')
+    const meBody = await me.json()
+    expect(me.ok(), JSON.stringify(meBody)).toBeTruthy()
+    headers['X-CSRF-Token'] = meBody.data.csrfToken
+  }
+  const response = await page.request.fetch(path, { method, headers, data: body })
+  const payload = await response.json()
+  expect(response.ok(), `${method} ${path} ${response.status()} ${JSON.stringify(payload)}`).toBeTruthy()
+  return payload.data
+}
+
+/** Create a 3rd → 2nd → 1st line in Gujarat so headquarters tests still have a parent. */
+export async function seedManagerChain(page, names) {
+  const locations = (await api(page, 'GET', '/api/locations')).locations
+  const gujarat = locations.find((location) => location.name === 'Gujarat')
+  expect(gujarat, 'Gujarat is seeded').toBeTruthy()
+  const third = (await api(page, 'POST', '/api/managers', {
+    name: names.third,
+    code: '001',
+    level: 3,
+    email: `${names.third.toLowerCase().replace(/\s+/g, '-')}@example.test`,
+    phone: '9000000181',
+    stateIds: [gujarat.id],
+  })).manager
+  const second = (await api(page, 'POST', '/api/managers', {
+    name: names.second,
+    code: '',
+    level: 2,
+    parentType: 'manager3',
+    parentId: third.id,
+    stateIds: [gujarat.id],
+  })).manager
+  const first = (await api(page, 'POST', '/api/managers', {
+    name: names.first,
+    code: '',
+    level: 1,
+    parentType: 'manager2',
+    parentId: second.id,
+    stateIds: [gujarat.id],
+  })).manager
+  return { third, second, first }
+}
+
 export async function signIn(page, email, { password = PASSWORD, path = '/login' } = {}) {
   await page.goto(path)
   await page.getByLabel('Email address').fill(email)

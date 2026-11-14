@@ -33,13 +33,6 @@ final class SearchService
         'badge' => '/products/tags-badges',
     ];
 
-    /** @var array<int, string> */
-    private const MANAGER_PATHS = [
-        1 => '/sales-office/first-line-managers',
-        2 => '/sales-office/second-line-managers',
-        3 => '/sales-office/third-line-managers',
-    ];
-
     public function __construct(
         private readonly SearchRepository $records = new SearchRepository(),
         private readonly UserRepository $users = new UserRepository(),
@@ -90,6 +83,7 @@ final class SearchService
             $this->addGroup($groups, 'headquarters', 'Headquarters', $this->headquarters($like));
             $this->addGroup($groups, 'stockists', 'Stockists', $this->stockists($like));
             $this->addGroup($groups, 'managers', 'Managers', $this->managers($like));
+            $this->addGroup($groups, 'employees', 'Employees', $this->salesEmployees($like));
             $this->addGroup($groups, 'locations', 'Locations', $this->locations($like));
         }
 
@@ -131,15 +125,37 @@ final class SearchService
         $items = [];
         foreach ($this->records->managers($like) as $row) {
             $level = (int) $row['level'];
-            if (!isset(self::MANAGER_PATHS[$level])) {
-                continue;
-            }
             $items[] = $this->item(
                 'manager',
                 $row['id'],
                 (string) $row['name'],
                 $this->detail($this->managerLevel($level), $row['code'] ?? null, $row['email'] ?? null),
-                self::MANAGER_PATHS[$level],
+                '/sales-office/hierarchy',
+            );
+        }
+
+        return $items;
+    }
+
+    /** @return list<array<string, string>> */
+    private function salesEmployees(string $like): array
+    {
+        $items = [];
+        foreach ($this->records->salesEmployees($like) as $row) {
+            $label = trim((string) ($row['name'] ?? ''));
+            if ($label === '') {
+                $label = trim((string) ($row['employee_code'] ?? ''));
+            }
+            if ($label === '') {
+                $label = 'Employee';
+            }
+            $designation = SalesEmployeeService::DESIGNATIONS[$row['designation'] ?? ''] ?? null;
+            $items[] = $this->item(
+                'sales_employee',
+                $row['id'],
+                $label,
+                $this->detail($designation, $row['employee_code'] ?? null),
+                '/sales-office/employees',
             );
         }
 

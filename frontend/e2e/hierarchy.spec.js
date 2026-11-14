@@ -1,33 +1,12 @@
-import { expect, reseed, signIn, test, USERS } from './helpers.js'
+import { expect, reseed, seedManagerChain, signIn, test, USERS } from './helpers.js'
 
 test.beforeEach(() => {
   reseed()
 })
 
-async function addManager(page, path, button, name, parentLabel, parentOption) {
-  await page.goto(path)
-  await page.getByRole('button', { name: button }).click()
-  const modal = page.locator('.modal.show')
-  await modal.getByLabel('Name').fill(name)
-  if (parentLabel) {
-    await modal.getByLabel(parentLabel).selectOption({ label: parentOption })
-    if (path.includes('second-line') || path.includes('first-line')) await modal.getByRole('checkbox', { name: 'Gujarat' }).check()
-  } else {
-    await modal.getByLabel('Employee Code').fill('001')
-    await modal.getByLabel('Email').fill(`${name.toLowerCase().replace(/\s+/g, '-')}@example.test`)
-    await modal.getByLabel('Phone Number').fill('9000000181')
-    await modal.getByRole('checkbox', { name: 'Gujarat' }).check()
-  }
-  await modal.getByRole('button', { name: 'Save' }).click()
-  await expect(page.locator('tbody tr', { hasText: name })).toHaveCount(1)
-}
-
 test('the headquarters state list comes from the Location master', async ({ page }) => {
   await signIn(page, USERS.admin)
   await expect(page).toHaveURL('/dashboard')
-  await addManager(page, '/sales-office/third-line-managers', 'Add 3rd line manager', 'State Third')
-  await addManager(page, '/sales-office/second-line-managers', 'Add 2nd line manager', 'State Second', '3rd Line Manager', 'State Third')
-  await addManager(page, '/sales-office/first-line-managers', 'Add 1st line manager', 'State First', '2nd Line Manager', 'State Second (State Third)')
   await page.goto('/sales-office/locations')
   await page.getByRole('button', { name: 'Add location headquarters' }).click()
   const state = page.locator('.modal.show').getByLabel('State')
@@ -40,10 +19,7 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   test.setTimeout(90_000)
   await signIn(page, USERS.admin)
   await expect(page).toHaveURL('/dashboard')
-
-  await addManager(page, '/sales-office/third-line-managers', 'Add 3rd line manager', 'Chain Third')
-  await addManager(page, '/sales-office/second-line-managers', 'Add 2nd line manager', 'Chain Second', '3rd Line Manager', 'Chain Third')
-  await addManager(page, '/sales-office/first-line-managers', 'Add 1st line manager', 'Chain First', '2nd Line Manager', 'Chain Second (Chain Third)')
+  await seedManagerChain(page, { third: 'Chain Third', second: 'Chain Second', first: 'Chain First' })
 
   await page.goto('/sales-office/locations')
   await page.getByRole('button', { name: 'Add location headquarters' }).click()
@@ -81,7 +57,7 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   await stockist.getByRole('button', { name: 'Save' }).click()
   const stockistRow = page.locator('tbody tr', { hasText: 'Chain Stockist' })
   await expect(stockistRow).toHaveCount(1)
-  await expect(page.locator('table thead th')).toHaveText(['Stockist', 'Code', 'Headquarters', 'State', 'Address', 'Pincode', 'Phone Number', 'Email', 'Actions'])
+  await expect(page.getByRole('table', { name: 'Stockists' }).locator('thead th')).toHaveText(['', 'Stockist', 'Code', 'Headquarters', 'State', 'Address', 'Pincode', 'Phone Number', 'Email', 'Actions'])
   await expect(stockistRow).toContainText('ST-001')
   await expect(stockistRow).toContainText('Gujarat')
   await expect(stockistRow).toContainText('12452724')
@@ -94,8 +70,8 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   await page.goto('/sales-office/hierarchy')
   await page.getByLabel('Search the sales office hierarchy').fill('Chain Stockist')
   const branch = page.locator('details.card').filter({ hasText: 'Chain Third' })
-  await expect(branch.getByRole('link', { name: 'Chain Second' })).toBeVisible()
-  await expect(branch.getByRole('link', { name: 'Chain First' })).toBeVisible()
+  await expect(branch.getByText('Chain Second', { exact: true })).toBeVisible()
+  await expect(branch.getByText('Chain First', { exact: true })).toBeVisible()
   await expect(branch.getByRole('link', { name: 'Chain HQ' })).toBeVisible()
   await expect(branch.getByRole('link', { name: 'Chain Stockist' })).toBeVisible()
 
@@ -113,9 +89,7 @@ test('deleting a headquarters removes the office and keeps the location headquar
   test.setTimeout(90_000)
   await signIn(page, USERS.admin)
   await expect(page).toHaveURL('/dashboard')
-  await addManager(page, '/sales-office/third-line-managers', 'Add 3rd line manager', 'Delete Third')
-  await addManager(page, '/sales-office/second-line-managers', 'Add 2nd line manager', 'Delete Second', '3rd Line Manager', 'Delete Third')
-  await addManager(page, '/sales-office/first-line-managers', 'Add 1st line manager', 'Delete First', '2nd Line Manager', 'Delete Second (Delete Third)')
+  await seedManagerChain(page, { third: 'Delete Third', second: 'Delete Second', first: 'Delete First' })
 
   await page.goto('/sales-office/locations')
   await page.getByRole('button', { name: 'Add location headquarters' }).click()

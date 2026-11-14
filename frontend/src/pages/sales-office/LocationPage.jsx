@@ -211,7 +211,7 @@ export default function LocationPage() {
           emptyText={locations.length ? 'No states match your search.' : 'No states yet.'}
           empty={state.status === 'ready' && locations.length === 0 && (
             <div className="card-body">
-              <EmptyState icon="bi-geo-alt" title="No states yet" text="Add a state to assign it to a 3rd line manager." />
+              <EmptyState icon="bi-geo-alt" title="No states yet" text="Add a state. Headquarters names and the employee list use these states." />
             </div>
           )}
         />

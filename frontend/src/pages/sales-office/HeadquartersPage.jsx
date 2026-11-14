@@ -18,7 +18,6 @@ import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
 import useRowSelection from '../../hooks/useRowSelection.js'
 import useFormState from '../../hooks/useFormState.js'
-import { Link } from 'react-router'
 import { buildHeadquartersBranch, byName, managersAtLevel, matchesFilters, matchesSearch } from '../../data/selectors.js'
 
 function HeadquartersForm({ formId, record, parents, offices, onSave }) {
@@ -166,7 +165,7 @@ export default function HeadquartersPage() {
         <div className="alert alert-info" role="note">
           <i className="bi bi-info-circle-fill" aria-hidden="true" />
           <div>
-            Every headquarters belongs to a 1st line manager. <Link to="/sales-office/first-line-managers">Add a 1st line manager</Link> first.
+            Every headquarters belongs to a 1st line manager already on record. Line managers can still be added with Data Import.
           </div>
         </div>
       )}

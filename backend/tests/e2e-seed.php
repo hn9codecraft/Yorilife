@@ -64,6 +64,8 @@ foreach ([
     'product_changes' => 'DELETE FROM product_changes',
     'product_terms' => 'DELETE FROM product_terms',
     'products' => 'DELETE FROM products',
+    'sales_employee_managers' => 'DELETE FROM sales_employee_managers',
+    'sales_employees' => 'DELETE FROM sales_employees',
     'manager_states' => 'DELETE FROM manager_states',
     'location_headquarters' => 'DELETE FROM location_headquarters',
     'stockists' => 'DELETE FROM stockists',
@@ -86,6 +88,21 @@ if (in_array('catalogue_terms', $existing, true)) {
         $pdo->exec('UPDATE catalogue_terms SET parent_id = NULL');
     }
     $pdo->exec('DELETE FROM catalogue_terms');
+}
+if (in_array('settings', $existing, true)) {
+    $pdo->exec('UPDATE settings SET updated_by = NULL');
+}
+foreach ([
+    'user_recovery_codes' => 'DELETE FROM user_recovery_codes',
+    'user_totp' => 'DELETE FROM user_totp',
+    'api_tokens' => 'DELETE FROM api_tokens',
+    'user_sessions' => 'DELETE FROM user_sessions',
+    'privacy_consents' => 'DELETE FROM privacy_consents',
+    'privacy_requests' => 'DELETE FROM privacy_requests',
+] as $table => $sql) {
+    if (in_array($table, $existing, true)) {
+        $pdo->exec($sql);
+    }
 }
 $pdo->exec('DELETE FROM login_attempts');
 $pdo->exec('DELETE FROM users');

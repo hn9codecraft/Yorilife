@@ -1892,28 +1892,21 @@ legend.form-label {
   font-weight: var(--font-weight-medium);
 }
 
-/* ==== Sales Office hierarchy ========================================== */
-/* "1st Line Manager <name> › Headquarters <name>" */
-.reporting-chain {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
+/* ==== Sales Office employees ========================================== */
+.employee-managers {
+  display: grid;
+  gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.reporting-chain li + li::before {
-  content: "›";
-  margin-right: var(--space-2);
-  color: var(--color-text-subtle);
-}
-
-.reporting-chain__type {
+.employee-managers__role {
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
 }
 
+/* ==== Sales Office hierarchy ========================================== */
 .hierarchy-tree,
 .hierarchy-tree ul {
   margin: 0;

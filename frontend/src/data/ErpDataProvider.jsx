@@ -78,27 +78,6 @@ export default function ErpDataProvider({ children }) {
               }
           return values.id ? save(`/api/headquarters/${values.id}`, 'PATCH', body) : save('/api/headquarters', 'POST', body)
         }
-        if (collection === 'managers') {
-          const body = {
-            name: values.name,
-            code: values.code ?? '',
-            level: values.level,
-          }
-          if (values.level !== 3) {
-            body.parentType = values.parentType
-            body.parentId = values.parentId
-          } else {
-            body.stateIds = values.stateIds ?? []
-          }
-          if (values.level === 1 || values.level === 2 || values.level === 3) {
-            body.email = values.email ?? ''
-            body.phone = values.phone ?? ''
-          }
-          if (values.level === 1 || values.level === 2) {
-            body.stateIds = values.stateIds ?? []
-          }
-          return values.id ? save(`/api/managers/${values.id}`, 'PATCH', body) : save('/api/managers', 'POST', body)
-        }
         if (collection === 'locations') {
           const body = { name: values.name, code: values.code }
           return values.id ? save(`/api/locations/${values.id}`, 'PATCH', body) : save('/api/locations', 'POST', body)
@@ -172,10 +151,6 @@ export default function ErpDataProvider({ children }) {
         return save(`/api/location-headquarters/${id}/delete`, 'POST', {})
       },
 
-      deleteManager(id) {
-        return save(`/api/managers/${id}/delete`, 'POST', {})
-      },
-
       deleteHeadquarters(id) {
         return save(`/api/headquarters/${id}/delete`, 'POST', {})
       },
@@ -188,7 +163,6 @@ export default function ErpDataProvider({ children }) {
         const paths = {
           headquarters: (id) => `/api/headquarters/${id}/delete`,
           stockists: (id) => `/api/stockists/${id}/delete`,
-          managers: (id) => `/api/managers/${id}/delete`,
           locations: (id) => `/api/locations/${id}/delete`,
           locationHeadquarters: (id) => `/api/location-headquarters/${id}/delete`,
           terms: (id) => `/api/catalogue-terms/${id}/delete`,

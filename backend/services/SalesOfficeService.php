@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Repositories\SalesEmployeeRepository;
 use App\Repositories\SalesOfficeRepository;
 use App\Utils\HttpException;
 
@@ -88,6 +89,10 @@ final class SalesOfficeService
             $message = 'This location headquarters is linked to a headquarters office and cannot be deleted.';
             throw HttpException::validation(['name' => $message], $message);
         }
+        if ((new SalesEmployeeRepository())->countUsingHeadquarters($id) > 0) {
+            $message = 'This location headquarters is assigned to an employee and cannot be deleted.';
+            throw HttpException::validation(['name' => $message], $message);
+        }
         $current = $this->records->findLocationHeadquarters($id);
         $this->records->deleteLocationHeadquarters($id);
         AuditLogger::record(['module' => 'sales_office', 'action' => 'delete', 'targetType' => 'location_headquarters', 'targetId' => $id, 'targetLabel' => $current['name'] ?? null]);
@@ -125,6 +130,10 @@ final class SalesOfficeService
         }
         if ($this->records->headquartersForLocationCount($id) > 0) {
             $message = 'This state is assigned to a headquarters and cannot be deleted.';
+            throw HttpException::validation(['name' => $message], $message);
+        }
+        if ((new SalesEmployeeRepository())->countUsingLocation($id) > 0) {
+            $message = 'This state is assigned to an employee and cannot be deleted.';
             throw HttpException::validation(['name' => $message], $message);
         }
         $current = $this->records->findLocation($id);
