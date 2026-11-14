@@ -10,7 +10,7 @@ final class SalesEntryRepository extends Repository
     public function all(): array
     {
         return $this->many(
-            'SELECT id, sales_month, headquarters_id, stockist_id, achievement_value, bonus, deduction,
+            'SELECT id, sales_month, headquarters_id, location_headquarters_id, stockist_id, achievement_value, bonus, deduction,
                     final_value, created_at, updated_at
              FROM sales_entries
              ORDER BY sales_month, id'
@@ -21,7 +21,7 @@ final class SalesEntryRepository extends Repository
     public function find(int $id): ?array
     {
         return $this->one(
-            'SELECT id, sales_month, headquarters_id, stockist_id, achievement_value, bonus, deduction, final_value, created_at, updated_at
+            'SELECT id, sales_month, headquarters_id, location_headquarters_id, stockist_id, achievement_value, bonus, deduction, final_value, created_at, updated_at
              FROM sales_entries WHERE id = ?',
             [$id]
         );

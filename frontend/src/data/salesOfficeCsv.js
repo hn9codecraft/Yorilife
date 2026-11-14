@@ -1,5 +1,9 @@
 /** Export columns and file names for the Sales Office lists. */
 export const SALES_OFFICE_CSV = {
+  headquarter: {
+    filename: 'headquarters',
+    headers: ['Headquarter name', 'State', 'Headquarter code', 'Address', 'Pincode', 'Phone number', 'Email'],
+  },
   stockist: {
     filename: 'stockists',
     headers: [

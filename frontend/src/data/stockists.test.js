@@ -1,6 +1,24 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { employeeLabel, findHeadquarter, formatDate, headquarterOptions, licenceStatus, stockistCodeTaken } from './stockists.js'
+import { employeeLabel, findHeadquarter, formatDate, headquarterOptions, licenceStatus, stockistCodeTaken, stockistLabel, stockistOptions } from './stockists.js'
+
+test('a stockist without a name shows its code or number', () => {
+  assert.equal(stockistLabel({ id: '3', name: 'Shree Medico', code: 'S1' }), 'Shree Medico')
+  assert.equal(stockistLabel({ id: '3', name: null, code: 'S1' }), 'S1')
+  assert.equal(stockistLabel({ id: '3', name: '', code: null }), 'Stockist #3')
+})
+
+test('stockist options show the headquarter and can be limited to one headquarter', () => {
+  const locations = [{ id: 1, name: 'Gujarat', headquarters: [{ id: 5, name: 'Surat', code: 'SRT' }] }]
+  const stockists = [
+    { id: '1', name: 'Alpha', code: 'A1', locationHeadquartersId: '5' },
+    { id: '2', name: 'Beta', code: null, locationHeadquartersId: null },
+  ]
+  const all = stockistOptions(stockists, locations)
+  assert.deepEqual(all.map((option) => option.label), ['Alpha (A1) — Surat', 'Beta'])
+  assert.deepEqual(all[0].keywords, ['A1', 'Surat', 'SRT', 'Gujarat'])
+  assert.deepEqual(stockistOptions(stockists, locations, '5').map((option) => option.value), ['1'])
+})
 
 test('a licence date is expired, expiring soon or valid', () => {
   assert.equal(licenceStatus('2026-11-13', '2026-11-14'), 'expired')

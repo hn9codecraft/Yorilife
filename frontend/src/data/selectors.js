@@ -2,7 +2,7 @@ import { MANAGER_LEVELS, PARENT_TYPES } from './constants.js'
 
 // ---- Generic ---------------------------------------------------------------
 
-export const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+export const byName = (a, b) => String(a.name ?? '').localeCompare(String(b.name ?? ''), undefined, { sensitivity: 'base' })
 
 /** Case-insensitive text compare. Numeric chunks stay in numeric order, so ER-M1-002 comes before ER-M1-010. */
 export function compareNatural(left, right) {

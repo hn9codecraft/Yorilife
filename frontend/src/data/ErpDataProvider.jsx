@@ -105,7 +105,6 @@ export default function ErpDataProvider({ children }) {
         if (collection === 'sales') {
           const body = {
             month: values.month,
-            headquartersId: values.headquartersId,
             stockistId: values.stockistId,
             achievementValue: values.achievementValue ?? null,
             bonus: values.bonus ?? null,

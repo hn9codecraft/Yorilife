@@ -1151,6 +1151,20 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   border-top: 1px solid var(--color-border);
 }
 
+/* A searchable select used as a list filter inside a page toolbar. */
+.searchable-select--toolbar {
+  flex: 1 1 13rem;
+  min-width: 13rem;
+  max-width: 20rem;
+}
+
+@media (max-width: 575.98px) {
+  .searchable-select--toolbar {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 .form-control:focus,
 .form-select:focus {
   border-color: var(--color-primary);

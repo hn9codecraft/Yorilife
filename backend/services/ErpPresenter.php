@@ -333,7 +333,8 @@ final class ErpPresenter
         return [
             'id' => Presenter::id($row['id']),
             'month' => substr((string) $row['sales_month'], 0, 7),
-            'headquartersId' => Presenter::id($row['headquarters_id']),
+            'headquartersId' => Presenter::id($row['headquarters_id'] ?? null),
+            'locationHeadquartersId' => Presenter::id($row['location_headquarters_id'] ?? null),
             'stockistId' => Presenter::id($row['stockist_id']),
             'achievementValue' => self::money($row['achievement_value']),
             'bonus' => self::money($row['bonus']),

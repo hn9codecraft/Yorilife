@@ -140,12 +140,12 @@ final class SearchRepository extends Repository
 
         return $this->many(
             "SELECT s.id, DATE_FORMAT(s.sales_month, '%Y-%m') AS sales_month,
-                    st.name AS stockist_name, h.name AS headquarters_name
+                    COALESCE(st.name, st.code) AS stockist_name, lh.name AS headquarters_name
              FROM sales_entries s
              JOIN stockists st ON st.id = s.stockist_id
-             JOIN headquarters h ON h.id = s.headquarters_id
+             LEFT JOIN location_headquarters lh ON lh.id = s.location_headquarters_id
              WHERE st.name LIKE ? {$escape} OR st.code LIKE ? {$escape}
-                OR h.name LIKE ? {$escape} OR DATE_FORMAT(s.sales_month, '%Y-%m') LIKE ? {$escape}
+                OR lh.name LIKE ? {$escape} OR DATE_FORMAT(s.sales_month, '%Y-%m') LIKE ? {$escape}
              ORDER BY s.sales_month, st.name, s.id
              LIMIT 6",
             [$like, $like, $like, $like]

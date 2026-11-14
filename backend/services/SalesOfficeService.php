@@ -164,19 +164,19 @@ final class SalesOfficeService
     {
         $errors = [];
         Input::onlyFields($input, ['name', 'code'], $errors);
+        // The state name stays required: the Headquarter List, employees and the Excel import find a state by it.
         $name = Input::text($input, 'name', 'state name', 100, $errors);
         $code = strtoupper(trim((string) ($input['code'] ?? '')));
-        if ($code === '') {
-            $errors['code'] = 'Enter the location code.';
-        } elseif (strlen($code) > 20 || preg_match('/^[A-Z0-9][A-Z0-9-]{0,19}$/', $code) !== 1) {
-            $errors['code'] = 'Use a short code of letters and numbers.';
+        if (strlen($code) > 20) {
+            $errors['code'] = 'Use at most 20 characters.';
         }
+        $code = $code === '' ? null : $code;
         $this->fail($errors);
         $byName = $this->records->findLocationByName($name);
         if ($byName !== null && ($currentId === null || (int) $byName['id'] !== $currentId)) {
             throw HttpException::validation(['name' => 'This state already exists.']);
         }
-        $byCode = $this->records->findLocationByCode($code);
+        $byCode = $code === null ? null : $this->records->findLocationByCode($code);
         if ($byCode !== null && ($currentId === null || (int) $byCode['id'] !== $currentId)) {
             throw HttpException::validation(['code' => 'This location code is already in use.']);
         }
@@ -291,22 +291,15 @@ final class SalesOfficeService
             $errors['locationId'] = 'Choose a state from the list.';
         }
         $current = $currentId === null ? null : $this->records->findLocationHeadquarters($currentId);
-        $rawCode = trim((string) ($input['code'] ?? ''));
-        $code = null;
-        if ($rawCode === '' && $current !== null && ($current['code'] ?? '') !== '') {
-            $code = (string) $current['code'];
-        } elseif (preg_match('/^HQ-([0-9]+)$/i', $rawCode, $matches) === 1) {
-            $code = 'HQ-' . $matches[1];
-        } else {
-            $errors['code'] = 'Enter numbers only after HQ-.';
-        }
-        $address = Input::text($input, 'address', 'address', 255, $errors);
+        // Any code may be typed (no fixed format); it must be unique among headquarters.
+        $code = Input::optionalText($input, 'code', 'headquarters code', 50, $errors);
+        $address = Input::optionalText($input, 'address', 'address', 255, $errors);
         $pincode = self::digits($input['pincode'] ?? null);
-        $phone = self::requiredPhone($input['phone'] ?? null, $errors);
-        if ($pincode === null || !preg_match('/^[1-9][0-9]{5}$/', $pincode)) {
+        $phone = self::optionalPhone($input['phone'] ?? null, $errors);
+        if ($pincode !== null && !preg_match('/^[1-9][0-9]{5}$/', $pincode)) {
             $errors['pincode'] = 'Enter a 6-digit pincode.';
         }
-        $email = UserValidator::email($input['email'] ?? null, $errors);
+        $email = self::optionalEmail($input['email'] ?? null, $errors);
         if ($locationId !== null && $name !== null) {
             foreach ($this->records->locationHeadquartersGrouped()[$locationId] ?? [] as $office) {
                 if ($currentId !== null && (int) $office['id'] === $currentId) {
@@ -318,11 +311,11 @@ final class SalesOfficeService
             }
         }
         $this->fail($errors);
-        $sameCode = $this->records->findLocationHeadquartersByCode((string) $code);
+        $sameCode = $code === null ? null : $this->records->findLocationHeadquartersByCode($code);
         if ($sameCode !== null && ($currentId === null || (int) $sameCode['id'] !== $currentId)) {
             throw HttpException::validation(['code' => 'This code is already in use.']);
         }
-        $officeCode = $this->records->findHeadquartersByCode((string) $code);
+        $officeCode = $code === null ? null : $this->records->findHeadquartersByCode($code);
         $linked = $currentId === null ? null : $this->records->findHeadquartersByLocationOffice($currentId);
         if ($officeCode !== null && ($linked === null || (int) $officeCode['id'] !== (int) $linked['id'])) {
             throw HttpException::validation(['code' => 'This code is already in use.']);
@@ -748,7 +741,7 @@ final class SalesOfficeService
             $allowed[] = $dateField;
         }
         Input::onlyFields($input, $allowed, $errors);
-        $name = Input::text($input, 'name', 'stockist name', 150, $errors);
+        $name = Input::optionalText($input, 'name', 'stockist name', 150, $errors);
         $code = Input::optionalText($input, 'code', 'stockist code', 50, $errors);
         if ($code !== null && $this->records->stockistCodeTaken($code, $id)) {
             $errors['code'] = 'This stockist code is already in use.';

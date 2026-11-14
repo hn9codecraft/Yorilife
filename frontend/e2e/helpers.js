@@ -18,6 +18,19 @@ export function reseed() {
   })
 }
 
+/** Pick an option in a SearchableSelect (components/SearchableSelect.jsx) by typing and clicking it. */
+export async function chooseOption(scope, label, option) {
+  const box = scope.getByRole('combobox', { name: label })
+  await box.click()
+  await box.fill(option)
+  await scope.getByRole('option', { name: option, exact: true }).click()
+}
+
+/** Clear a SearchableSelect back to its placeholder (for filters, "All …"). */
+export async function clearOption(scope, label) {
+  await scope.getByRole('button', { name: `Clear ${label}` }).click()
+}
+
 /** Signed-in JSON call. The browser session cookie is sent with the request. */
 export async function api(page, method, path, body) {
   const headers = { Accept: 'application/json' }
