@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 import PageShell from '../../components/PageShell.jsx'
 import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import usePermission from '../../data/usePermission.js'
@@ -179,7 +178,7 @@ export default function StockistsPage() {
         <div className="alert alert-info" role="note">
           <i className="bi bi-info-circle-fill" aria-hidden="true" />
           <div>
-            Every stockist is mapped to a headquarters. <Link to="/sales-office/headquarters">Add a headquarters</Link> first.
+            Every stockist is mapped to a headquarters office. Add that office with Data Import before adding a stockist.
           </div>
         </div>
       )}

@@ -1,14 +1,15 @@
-import { expect, reseed, seedManagerChain, signIn, test, USERS } from './helpers.js'
+import { api, expect, reseed, seedManagerChain, signIn, test, USERS } from './helpers.js'
 
 test.beforeEach(() => {
   reseed()
 })
 
-test('the headquarters state list comes from the Location master', async ({ page }) => {
+test('the headquarter list state choices come from the State List', async ({ page }) => {
   await signIn(page, USERS.admin)
   await expect(page).toHaveURL('/dashboard')
-  await page.goto('/sales-office/locations')
-  await page.getByRole('button', { name: 'Add location headquarters' }).click()
+  await page.goto('/sales-office/headquarter-list')
+  await expect(page.locator('h1.page-header__title')).toHaveText('Headquarter List')
+  await page.getByRole('button', { name: 'Add headquarter' }).click()
   const state = page.locator('.modal.show').getByLabel('State')
   await expect(state.locator('option')).toHaveCount(7)
   await expect(state.locator('option', { hasText: 'Gujarat' })).toHaveCount(1)
@@ -19,10 +20,10 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   test.setTimeout(90_000)
   await signIn(page, USERS.admin)
   await expect(page).toHaveURL('/dashboard')
-  await seedManagerChain(page, { third: 'Chain Third', second: 'Chain Second', first: 'Chain First' })
+  const chain = await seedManagerChain(page, { third: 'Chain Third', second: 'Chain Second', first: 'Chain First' })
 
-  await page.goto('/sales-office/locations')
-  await page.getByRole('button', { name: 'Add location headquarters' }).click()
+  await page.goto('/sales-office/headquarter-list')
+  await page.getByRole('button', { name: 'Add headquarter' }).click()
   const locationModal = page.locator('.modal.show')
   await locationModal.getByLabel('State').selectOption('Gujarat')
   await locationModal.getByLabel('Headquarters name').fill('Chain HQ')
@@ -31,18 +32,17 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   await locationModal.getByLabel('Phone number').fill('9000000201')
   await locationModal.getByLabel('Email').fill('chain-hq@example.test')
   await locationModal.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByRole('table', { name: 'Location headquarters' }).locator('tbody tr', { hasText: 'Chain HQ' })).toContainText('HQ-001')
+  const locationTable = page.getByRole('table', { name: 'Headquarters' })
+  await expect(locationTable.locator('tbody tr', { hasText: 'Chain HQ' })).toContainText('HQ-001')
   await page.reload()
-  await expect(page.getByRole('table', { name: 'Location headquarters' }).locator('tbody tr', { hasText: 'Chain HQ' })).toContainText('chain-hq@example.test')
-  await page.goto('/sales-office/headquarters')
-  await page.getByRole('button', { name: 'Add Headquarters' }).click()
-  const hq = page.locator('.modal.show')
-  await hq.getByLabel('Location Headquarters').selectOption({ label: 'Chain HQ (Gujarat · HQ-001)' })
-  await hq.getByLabel('1st Line Manager').selectOption({ label: 'Chain First' })
-  await expect(hq.getByLabel('Headquarters name')).toHaveValue('Chain HQ')
-  await expect(hq.getByLabel('Headquarters address')).toHaveAttribute('readonly', '')
-  await hq.getByRole('button', { name: 'Save' }).click()
-  await expect(page.locator('tbody tr', { hasText: 'Chain HQ' })).toHaveCount(1)
+  await expect(locationTable.locator('tbody tr', { hasText: 'Chain HQ' })).toContainText('chain-hq@example.test')
+
+  const locations = (await api(page, 'GET', '/api/locations')).locations
+  const source = locations.find((location) => location.name === 'Gujarat').headquarters.find((office) => office.name === 'Chain HQ')
+  await api(page, 'POST', '/api/headquarters', {
+    locationHeadquartersId: source.id,
+    parentManagerId: chain.first.id,
+  })
 
   await page.goto('/sales-office/stockists')
   await page.getByRole('button', { name: 'Add stockist' }).click()
@@ -72,7 +72,8 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   const branch = page.locator('details.card').filter({ hasText: 'Chain Third' })
   await expect(branch.getByText('Chain Second', { exact: true })).toBeVisible()
   await expect(branch.getByText('Chain First', { exact: true })).toBeVisible()
-  await expect(branch.getByRole('link', { name: 'Chain HQ' })).toBeVisible()
+  await expect(branch.getByText('Chain HQ', { exact: true })).toBeVisible()
+  await expect(branch.getByRole('link', { name: 'Chain HQ' })).toHaveCount(0)
   await expect(branch.getByRole('link', { name: 'Chain Stockist' })).toBeVisible()
 
   await branch.locator('summary').first().click()
@@ -85,14 +86,14 @@ test('the hierarchy page shows the chain from a 3rd line manager down to stockis
   await expect(page.locator('tbody tr', { hasText: 'Chain Stockist' })).toHaveCount(0)
 })
 
-test('deleting a headquarters removes the office and keeps the location headquarters', async ({ page }) => {
+test('deleting a headquarters office keeps the headquarter list row', async ({ page }) => {
   test.setTimeout(90_000)
   await signIn(page, USERS.admin)
   await expect(page).toHaveURL('/dashboard')
-  await seedManagerChain(page, { third: 'Delete Third', second: 'Delete Second', first: 'Delete First' })
+  const chain = await seedManagerChain(page, { third: 'Delete Third', second: 'Delete Second', first: 'Delete First' })
 
-  await page.goto('/sales-office/locations')
-  await page.getByRole('button', { name: 'Add location headquarters' }).click()
+  await page.goto('/sales-office/headquarter-list')
+  await page.getByRole('button', { name: 'Add headquarter' }).click()
   const locationModal = page.locator('.modal.show')
   await locationModal.getByLabel('State').selectOption('Gujarat')
   await locationModal.getByLabel('Headquarters name').fill('Delete HQ')
@@ -102,29 +103,13 @@ test('deleting a headquarters removes the office and keeps the location headquar
   await locationModal.getByLabel('Email').fill('delete-hq@example.test')
   await locationModal.getByRole('button', { name: 'Save' }).click()
 
-  await page.goto('/sales-office/headquarters')
-  await page.getByRole('button', { name: 'Add Headquarters' }).click()
-  const hq = page.locator('.modal.show')
-  await hq.getByLabel('Location Headquarters').selectOption({ label: 'Delete HQ (Gujarat · HQ-001)' })
-  await hq.getByLabel('1st Line Manager').selectOption({ label: 'Delete First' })
-  await hq.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByRole('table', { name: 'Headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })).toHaveCount(1)
+  const locations = (await api(page, 'GET', '/api/locations')).locations
+  const source = locations.find((location) => location.name === 'Gujarat').headquarters.find((office) => office.name === 'Delete HQ')
+  const created = await api(page, 'POST', '/api/headquarters', {
+    locationHeadquartersId: source.id,
+    parentManagerId: chain.first.id,
+  })
 
-  await page.getByRole('button', { name: 'Delete Delete HQ' }).click()
-  await page.getByRole('dialog', { name: 'Delete headquarters' }).getByRole('button', { name: 'Delete' }).click()
-  await expect(page.getByRole('table', { name: 'Headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })).toHaveCount(0)
-  await page.reload()
-  await expect(page.getByRole('table', { name: 'Headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })).toHaveCount(0)
-
-  await page.goto('/sales-office/locations')
-  await expect(page.getByRole('table', { name: 'Location headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })).toContainText('HQ-001')
-
-  await page.goto('/sales-office/headquarters')
-  await page.getByRole('button', { name: 'Add Headquarters' }).click()
-  const again = page.locator('.modal.show')
-  await again.getByLabel('Location Headquarters').selectOption({ label: 'Delete HQ (Gujarat · HQ-001)' })
-  await again.getByLabel('1st Line Manager').selectOption({ label: 'Delete First' })
-  await again.getByRole('button', { name: 'Save' }).click()
   await page.goto('/sales-office/stockists')
   await page.getByRole('button', { name: 'Add stockist' }).click()
   const stockist = page.locator('.modal.show')
@@ -133,18 +118,14 @@ test('deleting a headquarters removes the office and keeps the location headquar
   await stockist.getByRole('button', { name: 'Save' }).click()
   await expect(page.locator('tbody tr', { hasText: 'Delete Stockist' })).toHaveCount(1)
 
-  await page.goto('/sales-office/headquarters')
-  await page.getByRole('button', { name: 'Delete Delete HQ' }).click()
-  await page.getByRole('dialog', { name: 'Delete headquarters' }).getByRole('button', { name: 'Delete' }).click()
-  await expect(page.getByRole('table', { name: 'Headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })).toHaveCount(0)
-
+  await api(page, 'POST', `/api/headquarters/${created.headquarters.id}/delete`, {})
   await page.goto('/sales-office/stockists')
   await expect(page.locator('tbody tr', { hasText: 'Delete Stockist' })).toHaveCount(0)
 
-  await page.goto('/sales-office/locations')
-  const locationRow = page.getByRole('table', { name: 'Location headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })
+  await page.goto('/sales-office/headquarter-list')
+  const locationRow = page.getByRole('table', { name: 'Headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })
   await expect(locationRow).toContainText('HQ-001')
   await locationRow.getByRole('button', { name: 'Delete Delete HQ' }).click()
-  await page.getByRole('dialog', { name: 'Delete location headquarters' }).getByRole('button', { name: 'Delete' }).click()
-  await expect(page.getByRole('table', { name: 'Location headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })).toHaveCount(0)
+  await page.getByRole('dialog', { name: 'Delete headquarter' }).getByRole('button', { name: 'Delete' }).click()
+  await expect(page.getByRole('table', { name: 'Headquarters' }).locator('tbody tr', { hasText: 'Delete HQ' })).toHaveCount(0)
 })

@@ -356,7 +356,7 @@ final class SalesOfficeService
         if ($office === null) {
             $errors['locationHeadquartersId'] = 'Choose a headquarters from the location list.';
         } elseif ($office['code'] === null || $office['address'] === null || $office['pincode'] === null || $office['phone'] === null || $office['email'] === null) {
-            $errors['locationHeadquartersId'] = 'Complete this location headquarters on the Location page before linking it.';
+            $errors['locationHeadquartersId'] = 'Complete this headquarters on the Headquarter List before linking it.';
         }
         $parentId = Input::id($input['parentManagerId'] ?? null);
         if ($parentId === null) {
