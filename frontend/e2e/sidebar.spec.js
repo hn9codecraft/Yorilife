@@ -57,12 +57,12 @@ test('group contents are preserved (Products, Sales Office, Application Details,
   const links = (label) => group(page, label).locator(':scope > .sidebar-group__panel > .sidebar-group__list > li > .sidebar-link')
   await expect(links('Products')).toHaveText(['Group Categories', 'Categories', 'Tags & Badges', 'Product List', 'Master Product Sheet', 'Deleted Products', 'Change History'])
   await expect(links('Sales Management')).toHaveText(['Stockist Sales', 'Monthly Sales', 'Sales by Headquarters', 'Sales by Stockist', 'Sales Calculation History'])
-  await expect(links('Sales Office')).toHaveText(['Stockist Entry', 'Headquarters', '1st Line Manager', '2nd Line Manager', '3rd Line Manager', 'Location'])
+  await expect(links('Sales Office')).toHaveText(['Stockist Entry', 'Headquarters', 'Employee List', 'Location'])
   await expect(group(page, 'Sales Office').getByRole('link', { name: 'Sales Office Hierarchy' })).toHaveCount(0)
   await expect(page.locator('.sidebar-nav > li > a.sidebar-toplink', { hasText: 'Location' })).toHaveCount(0)
   await page.goto('/sales-office/locations')
   await expect(page.locator('h1.page-header__title')).toHaveText('Location')
-  await expect(page.getByRole('table', { name: 'States' }).locator('thead th')).toHaveText(['State Name', 'Location Code', 'Actions'])
+  await expect(page.getByRole('table', { name: 'States' }).locator('thead th')).toHaveText(['', 'State Name', 'Location Code', 'Actions'])
   await expect(page.getByRole('button', { name: 'Add location headquarters' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add Headquarters' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'CSV template' })).toHaveCount(0)
@@ -75,7 +75,7 @@ test('group contents are preserved (Products, Sales Office, Application Details,
   await expect(page.getByRole('button', { name: 'Edit Location Gujarat' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Delete Location Gujarat' })).toBeVisible()
   await expect(links('Application Details')).toHaveText(['Sales Entry Overview', 'Submission Status', 'Sales Entry History'])
-  await expect(links('System & Audit')).toHaveText(['Users', 'Audit Logs', 'Change History', 'Settings'])
+  await expect(links('System & Audit')).toHaveText(['Users', 'Audit Logs', 'Change History', 'Settings', 'Privacy'])
 })
 
 test('a nested Data Import page activates and expands Sales Office › Data Import, with matching breadcrumbs', async ({ page }) => {

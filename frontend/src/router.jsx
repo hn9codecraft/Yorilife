@@ -8,7 +8,6 @@ import ModulePlaceholderPage from './pages/ModulePlaceholderPage.jsx'
 import DesignSystemPreview from './pages/DesignSystemPreview.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import HierarchyPage from './pages/sales-office/HierarchyPage.jsx'
-import ManagersPage from './pages/sales-office/ManagersPage.jsx'
 import StockistsPage from './pages/sales-office/StockistsPage.jsx'
 import LocationPage from './pages/sales-office/LocationPage.jsx'
 import HeadquartersPage from './pages/sales-office/HeadquartersPage.jsx'
@@ -29,7 +28,8 @@ import AnnouncementFormPage from './pages/announcements/AnnouncementFormPage.jsx
 import AnnouncementDetailPage from './pages/announcements/AnnouncementDetailPage.jsx'
 import AnnouncementPrintPage from './pages/announcements/AnnouncementPrintPage.jsx'
 import AnnouncementTemplatesPage from './pages/announcements/AnnouncementTemplatesPage.jsx'
-import EmployeesPage from './pages/announcements/EmployeesPage.jsx'
+import AnnouncementEmployeesPage from './pages/announcements/EmployeesPage.jsx'
+import SalesEmployeesPage from './pages/sales-office/EmployeesPage.jsx'
 import { HOME_PATH, NAV_GROUPS, NAV_ITEMS } from './config/navigation.js'
 
 // Pages that have a real screen. Every other menu item keeps the shared
@@ -42,9 +42,7 @@ const PAGE_ELEMENTS = {
   '/products/master-sheet': <MasterSheetPage />,
   '/products/deleted': <ProductsPage deleted />,
   '/products/change-history': <ChangeHistoryPage module="products" />,
-  '/sales-office/first-line-managers': <ManagersPage level={1} />,
-  '/sales-office/second-line-managers': <ManagersPage level={2} />,
-  '/sales-office/third-line-managers': <ManagersPage level={3} />,
+  '/sales-office/employees': <SalesEmployeesPage />,
   '/sales-office/stockists': <StockistsPage />,
   '/sales-office/headquarters': <HeadquartersPage />,
   '/sales-office/locations': <LocationPage />,
@@ -62,7 +60,7 @@ const PAGE_ELEMENTS = {
   '/announcements/list': <AnnouncementsListPage />,
   '/announcements/new': <AnnouncementFormPage />,
   '/announcements/templates': <AnnouncementTemplatesPage />,
-  '/announcements/employees': <EmployeesPage />,
+  '/announcements/employees': <AnnouncementEmployeesPage />,
 }
 
 const unknownPaths = Object.keys(PAGE_ELEMENTS).filter((path) => !NAV_ITEMS.some((item) => item.path === path))

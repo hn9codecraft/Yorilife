@@ -8,17 +8,11 @@ import useErpData from '../../data/useErpData.js'
 import { MANAGER_LEVELS } from '../../data/constants.js'
 import { buildSalesOfficeForest, matchesSearch, unplacedSalesOfficeRecords } from '../../data/selectors.js'
 
-const LEVEL_PATH = {
-  1: '/sales-office/first-line-managers',
-  2: '/sales-office/second-line-managers',
-  3: '/sales-office/third-line-managers',
-}
-
 function NodeLabel({ type, name, code, to, count, countLabel }) {
   return (
     <span className="hierarchy-tree__node">
       <span className="hierarchy-tree__type">{type}</span>
-      <Link className="hierarchy-tree__name" to={to}>{name}</Link>
+      {to ? <Link className="hierarchy-tree__name" to={to}>{name}</Link> : <span className="hierarchy-tree__name">{name}</span>}
       {code && <span className="hierarchy-tree__code">{code}</span>}
       {countLabel && (
         <span className="badge text-secondary-emphasis bg-secondary-subtle">{count} {countLabel}</span>
@@ -72,7 +66,7 @@ export default function HierarchyPage() {
       {!ready ? null : visible.length === 0 && !hasUnplaced ? (
         <EmptyState
           title={query ? 'No matches' : 'No 3rd line managers yet'}
-          text={query ? 'Try a different name, code or state.' : 'A 3rd line manager is the top of the sales office. Add one to start the hierarchy.'}
+          text={query ? 'Try a different name, code or state.' : 'Line managers already on record are shown here, from the 3rd line down to stockists.'}
         />
       ) : (
         <div className="d-grid gap-3">
@@ -83,7 +77,6 @@ export default function HierarchyPage() {
                   type={MANAGER_LEVELS[3].label}
                   name={third.manager.name}
                   code={third.manager.code}
-                  to={LEVEL_PATH[3]}
                   count={third.children.length}
                   countLabel="2nd line"
                 />
@@ -101,7 +94,6 @@ export default function HierarchyPage() {
                               type={MANAGER_LEVELS[2].label}
                               name={second.manager.name}
                               code={second.manager.code}
-                              to={LEVEL_PATH[2]}
                               count={second.children.length}
                               countLabel="1st line"
                             />
@@ -118,7 +110,6 @@ export default function HierarchyPage() {
                                         type={MANAGER_LEVELS[1].label}
                                         name={first.manager.name}
                                         code={first.manager.code}
-                                        to={LEVEL_PATH[1]}
                                         count={first.headquarters.length}
                                         countLabel="headquarters"
                                       />

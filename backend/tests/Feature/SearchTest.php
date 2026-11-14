@@ -99,10 +99,10 @@ final class SearchTest extends FeatureTestCase
         self::assertSame('/products/deleted', $this->named($byType['products'], 'Retired Zephyr')['path']);
         self::assertSame('/sales-office/headquarters', $byType['headquarters'][0]['path']);
         self::assertSame('/sales-office/stockists', $byType['stockists'][0]['path']);
-        self::assertSame('/sales-office/third-line-managers', $this->named($byType['managers'], 'Zephyr Third')['path']);
+        self::assertSame('/sales-office/hierarchy', $this->named($byType['managers'], 'Zephyr Third')['path']);
         self::assertStringContainsString('zephyr.third@example.test', $this->named($byType['managers'], 'Zephyr Third')['detail']);
-        self::assertSame('/sales-office/second-line-managers', $this->named($byType['managers'], 'Zephyr Second')['path']);
-        self::assertSame('/sales-office/first-line-managers', $this->named($byType['managers'], 'Zephyr First')['path']);
+        self::assertSame('/sales-office/hierarchy', $this->named($byType['managers'], 'Zephyr Second')['path']);
+        self::assertSame('/sales-office/hierarchy', $this->named($byType['managers'], 'Zephyr First')['path']);
         self::assertSame('/sales/stockist-sales', $byType['sales'][0]['path']);
         self::assertSame('Zephyr Store', $byType['sales'][0]['label']);
         self::assertStringContainsString('2026-04', $byType['sales'][0]['detail']);

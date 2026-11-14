@@ -129,22 +129,10 @@ export const NAV_MENU = [
         description: 'Headquarters linked to a location headquarters and a 1st line manager.',
       },
       {
-        path: '/sales-office/first-line-managers',
-        label: '1st Line Manager',
-        icon: 'bi-person-badge',
-        description: '1st line managers. Each one belongs to a 2nd line manager.',
-      },
-      {
-        path: '/sales-office/second-line-managers',
-        label: '2nd Line Manager',
+        path: '/sales-office/employees',
+        label: 'Employee List',
         icon: 'bi-people',
-        description: '2nd line managers. Each one belongs to a 3rd line manager.',
-      },
-      {
-        path: '/sales-office/third-line-managers',
-        label: '3rd Line Manager',
-        icon: 'bi-diagram-2',
-        description: '3rd line managers. Each one is at the top of the hierarchy.',
+        description: 'Employees with an optional designation, state, headquarters, and the managers they report to.',
       },
       {
         path: '/sales-office/locations',

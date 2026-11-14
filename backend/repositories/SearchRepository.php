@@ -41,6 +41,21 @@ final class SearchRepository extends Repository
     }
 
     /** @return list<array<string, mixed>> */
+    public function salesEmployees(string $like): array
+    {
+        $escape = self::ESCAPE;
+
+        return $this->many(
+            "SELECT id, name, employee_code, designation FROM sales_employees
+             WHERE deleted_at IS NULL
+               AND (name LIKE ? {$escape} OR employee_code LIKE ? {$escape} OR email LIKE ? {$escape} OR phone LIKE ? {$escape})
+             ORDER BY (name IS NULL), name, id
+             LIMIT 6",
+            [$like, $like, $like, $like]
+        );
+    }
+
+    /** @return list<array<string, mixed>> */
     public function stockists(string $like): array
     {
         $escape = self::ESCAPE;
