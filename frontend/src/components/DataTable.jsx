@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef } from 'react'
 import EmptyState from './EmptyState.jsx'
-import { tableMinWidth } from '../utils/tableWidth.js'
+import { stickyEndRight, tableMinWidth } from '../utils/tableWidth.js'
 
 /**
  * Responsive data table inside the standard .table-container.
@@ -9,7 +9,8 @@ import { tableMinWidth } from '../utils/tableWidth.js'
  *   width     min-width from the --table-col-* tokens ('money': right-aligned amount)
  *   The table's min-width is the sum of its column widths, so no column can
  *   hide under a pinned column; narrower screens scroll sideways instead.
- *   sticky    pin the column while the table scrolls sideways
+ *   sticky    pin the column while the table scrolls sideways.
+ *             Several 'end' columns stack from the right (Total, then Actions).
  *   truncate  one line with … ; the tooltip is title(row) or the rendered text
  *   compact   as narrow as its content (one line); wide columns take the rest
  *   key 'actions' is always compact, right-aligned and on one line.
@@ -105,6 +106,9 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
   if (showEmpty) return empty
 
   const scrolling = scroll && rows.length > scrollAfter
+  const stickyEnds = columns.filter((column) => column.sticky === 'end')
+  const stickyEndEdge = stickyEnds[0]?.key
+  const stickyEndLast = stickyEnds[stickyEnds.length - 1]?.key
   const cellClass = (column) =>
     [
       (column.align === 'end' || column.width === 'money') && 'text-end',
@@ -112,9 +116,12 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
       column.nowrap && 'text-nowrap',
       column.width && `table-col--${column.width}`,
       column.sticky && `table-col--sticky-${column.sticky}`,
+      column.sticky === 'end' && column.key === stickyEndEdge && 'table-col--sticky-end-edge',
+      column.sticky === 'end' && column.key === stickyEndLast && 'table-col--sticky-end-last',
       column.key === 'actions' && 'table-col--actions',
       column.compact && 'table-col--compact',
     ].filter(Boolean).join(' ') || undefined
+  const cellStyle = (column) => (column.sticky === 'end' ? { right: stickyEndRight(columns, column) } : undefined)
   const columnCount = columns.length + (selection ? 1 : 0)
   const stickyStart = columns.some((column) => column.sticky === 'start')
   const tableClass = [
@@ -147,7 +154,7 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
                 ? (active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none')
                 : undefined
               return (
-                <th key={column.key} scope="col" className={cellClass(column)} aria-sort={ariaSort}>
+                <th key={column.key} scope="col" className={cellClass(column)} style={cellStyle(column)} aria-sort={ariaSort}>
                   {column.srOnlyHeader ? <span className="visually-hidden">{column.header}</span> : column.sortable && onSort ? (
                     <button type="button" className={`table-sort${active ? ' is-active' : ''}`} aria-label={sortLabel(column, active ? sort : null)} onClick={() => onSort(column.key)}>
                       {column.header}
@@ -185,7 +192,7 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
                   </td>
                 )}
                 {columns.map((column) => (
-                  <td key={column.key} className={cellClass(column)} data-label={column.header}>
+                  <td key={column.key} className={cellClass(column)} style={cellStyle(column)} data-label={column.header}>
                     {column.sticky === 'start'
                       ? <span className="table-pinned" title={pinnedTitle(column, row)}>{cellContent(column, row)}</span>
                       : cellContent(column, row)}

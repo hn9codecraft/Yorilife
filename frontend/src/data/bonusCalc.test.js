@@ -7,9 +7,11 @@ import {
   isFinancialYear,
   lineFigures,
   monthBonus,
+  monthTotals,
   multiplyMoney,
   normalizeQuantity,
   quantityError,
+  stockistSubtitle,
   stockistTotals,
   sumMoney,
 } from './bonusCalc.js'
@@ -63,6 +65,22 @@ test('stockist and month totals ignore blank rows and sum the rest', () => {
   assert.equal(columnTotal(['', '']), null)
   assert.equal(monthBonus([{ lines }, { lines: [] }]), '341.00')
   assert.equal(monthBonus([{ lines: [] }]), null)
+})
+
+test('month totals add every stockist and a subtitle names the headquarters', () => {
+  const lines = [
+    { netRate: '80.00', openingQty: '10', newPurchaseQty: '5.50', productSalesQty: '4' },
+  ]
+  const other = [
+    { netRate: '10.50', openingQty: '1', newPurchaseQty: '', productSalesQty: '2' },
+  ]
+  const totals = monthTotals([{ lines }, { lines: other }])
+  assert.equal(totals.openingQty, '11.00')
+  assert.equal(totals.bonusAmount, '341.00')
+  assert.equal(monthBonus([{ lines }, { lines: other }]), '341.00')
+  assert.equal(stockistSubtitle({ headquartersName: 'Surat', headquartersCode: '12', assigned: true }, 12), 'HQ: Surat (12) · 12 products')
+  assert.equal(stockistSubtitle({ headquartersName: 'Surat', assigned: true }, 1), 'HQ: Surat · 1 product')
+  assert.equal(stockistSubtitle({ assigned: false }, 0), '0 products · No longer assigned to this employee')
 })
 
 test('employee search matches name and code', () => {

@@ -7,11 +7,13 @@ import FilterBar from '../../components/FilterBar.jsx'
 import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import LoadingIndicator from '../../components/LoadingIndicator.jsx'
+import SelectionBar from '../../components/SelectionBar.jsx'
 import SearchableSelect from '../../components/SearchableSelect.jsx'
 import TableSection from '../../components/TableSection.jsx'
 import { CellStack } from '../../components/TableCells.jsx'
 import { LabelNote, MultiSelectField } from '../../components/FormField.jsx'
 import useFormState from '../../hooks/useFormState.js'
+import useRowSelection from '../../hooks/useRowSelection.js'
 import usePermission from '../../data/usePermission.js'
 import { api } from '../../api/client.js'
 import { formatMoney } from '../../data/productList.js'
@@ -27,6 +29,10 @@ import {
 } from '../../data/bonusCalc.js'
 
 const EMPTY_ROWS = []
+
+function dash() {
+  return <span className="bonus-month__empty">–</span>
+}
 
 function employeeOptions(employees) {
   return employees.map((employee) => ({
@@ -105,6 +111,7 @@ export default function BonusCalcPage() {
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [deletingMany, setDeletingMany] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -128,6 +135,7 @@ export default function BonusCalcPage() {
   const taken = useMemo(() => new Set(rows.map((row) => String(row.employeeId))), [rows])
   const available = employees.filter((employee) => !taken.has(String(employee.id)))
   const shown = useMemo(() => filterBonusRows(rows, query), [rows, query])
+  const selection = useRowSelection(canManage ? shown : EMPTY_ROWS)
   const years = financialYearOptions(data?.financialYear ? [data.financialYear] : [])
 
   const columns = [
@@ -144,6 +152,7 @@ export default function BonusCalcPage() {
       key: month.short,
       header: month.short,
       width: 'money',
+      nowrap: true,
       render: (row) => {
         const amount = row.months?.[String(month.value)] ?? null
         const label = amount == null
@@ -156,7 +165,7 @@ export default function BonusCalcPage() {
             aria-label={label}
             onClick={() => navigate(`/sales/bonus-calc/${year}/${row.employeeId}/${month.value}`)}
           >
-            {amount == null ? <span className="bonus-month__empty">-</span> : formatMoney(amount)}
+            {amount == null ? dash() : formatMoney(amount)}
           </button>
         )
       },
@@ -165,7 +174,9 @@ export default function BonusCalcPage() {
       key: 'total',
       header: 'Total',
       width: 'money',
-      render: (row) => (row.total == null ? <span className="bonus-month__empty">-</span> : formatMoney(row.total)),
+      nowrap: true,
+      sticky: 'end',
+      render: (row) => (row.total == null ? dash() : formatMoney(row.total)),
     },
     ...(canManage ? [{
       key: 'actions',
@@ -239,10 +250,20 @@ export default function BonusCalcPage() {
               className="filter-bar__control"
             />
           </FilterBar>
+          {canManage && <SelectionBar count={selection.count} onDelete={() => setDeletingMany(true)} onClear={selection.clear} />}
+          <div className="bonus-year">
           <DataTable
             caption={`Financial Year ${year}`}
             striped
             scroll
+            selection={canManage ? {
+              isSelected: (row) => selection.isSelected(row.id),
+              onToggle: (row) => selection.toggle(row.id),
+              onToggleAll: selection.toggleAll,
+              allSelected: selection.allSelected,
+              indeterminate: selection.indeterminate,
+              label: (row) => `Select ${row.employeeName}`,
+            } : null}
             columns={columns}
             rows={shown}
             emptyIcon={rows.length ? 'bi-funnel' : 'bi-calculator'}
@@ -256,6 +277,7 @@ export default function BonusCalcPage() {
                 </button>
               )}
           />
+          </div>
         </TableSection>
       )}
 
@@ -318,6 +340,23 @@ export default function BonusCalcPage() {
         }}
       >
         Remove {deleting?.employeeName} from Financial Year {year}? The employee stays on the Employee List. Month figures already entered are kept if you add them again.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingMany}
+        onClose={() => setDeletingMany(false)}
+        title="Remove from Bonus Calc"
+        confirmLabel="Delete selected"
+        onConfirm={async () => {
+          const payload = await api('/api/bonus-calc/rows/delete', {
+            method: 'POST',
+            body: { financialYear: year, ids: selection.selectedIds },
+          })
+          setData(payload)
+          selection.clear()
+        }}
+      >
+        Remove {selection.count} {selection.count === 1 ? 'employee' : 'employees'} from Financial Year {year}? They stay on the Employee List. Month figures already entered are kept if you add them again.
       </ConfirmDialog>
     </PageShell>
   )

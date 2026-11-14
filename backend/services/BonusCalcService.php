@@ -144,17 +144,47 @@ final class BonusCalcService
     {
         $current = $this->requireActiveRow($id);
         $year = (string) $current['financial_year'];
-        $label = $this->rowLabel($current);
-        $this->records->transaction(function () use ($id, $label, $year): void {
-            $this->records->softDelete($id);
-            EntityHistory::recordDiff('bonus_calc_row', $id, $label, ['Status' => 'Active'], ['Status' => 'Removed']);
-            AuditLogger::record([
-                'module' => 'sales',
-                'action' => 'delete',
-                'targetType' => 'bonus_calc_row',
-                'targetId' => $id,
-                'targetLabel' => $label . ' · ' . $year,
-            ]);
+        $this->records->transaction(function () use ($current): void {
+            $this->forgetRow($current);
+        });
+
+        return $this->presentList($year);
+    }
+
+    /**
+     * Remove several employees from one financial year. Saved month lines stay,
+     * so adding the employee again brings the figures back.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    public function removeMany(array $input): array
+    {
+        $errors = [];
+        Input::onlyFields($input, ['financialYear', 'ids'], $errors);
+        $year = BonusCalcMath::financialYear($input['financialYear'] ?? null);
+        if ($year === null) {
+            $errors['financialYear'] = 'Choose a financial year such as 2026-27.';
+        }
+        $ids = Input::idList($input['ids'] ?? null);
+        if ($ids === null) {
+            $errors['ids'] = 'Choose employees to remove.';
+        } elseif ($ids === []) {
+            $errors['ids'] = 'Choose at least one employee.';
+        }
+        if ($errors !== []) {
+            throw HttpException::validation($errors);
+        }
+        $year = (string) $year;
+        $ids = $ids ?? [];
+        $this->records->transaction(function () use ($year, $ids): void {
+            foreach ($ids as $id) {
+                $row = $this->records->findRow($id);
+                if ($row === null || $row['deleted_at'] !== null || (string) $row['financial_year'] !== $year) {
+                    throw HttpException::validation(['ids' => 'Choose employees who are on this financial year.']);
+                }
+                $this->forgetRow($row);
+            }
         });
 
         return $this->presentList($year);
@@ -408,6 +438,8 @@ final class BonusCalcService
                 'id' => Presenter::id($stockist['id']),
                 'name' => $this->displayName($stockist['name'] ?? null, 'Unnamed stockist'),
                 'code' => $this->blankToNull($stockist['code'] ?? null),
+                'headquartersName' => $this->blankToNull($stockist['headquarters_name'] ?? null),
+                'headquartersCode' => $this->blankToNull($stockist['headquarters_code'] ?? null),
                 'assigned' => (bool) $stockist['assigned'],
                 'lines' => $presentedLines,
             ];
@@ -566,6 +598,22 @@ final class BonusCalcService
         }
 
         return array_values($ids);
+    }
+
+    /** @param array<string, mixed> $row */
+    private function forgetRow(array $row): void
+    {
+        $id = (int) $row['id'];
+        $label = $this->rowLabel($row);
+        $this->records->softDelete($id);
+        EntityHistory::recordDiff('bonus_calc_row', $id, $label, ['Status' => 'Active'], ['Status' => 'Removed']);
+        AuditLogger::record([
+            'module' => 'sales',
+            'action' => 'delete',
+            'targetType' => 'bonus_calc_row',
+            'targetId' => $id,
+            'targetLabel' => $label . ' · ' . $row['financial_year'],
+        ]);
     }
 
     /** @param array<string, mixed> $slot */

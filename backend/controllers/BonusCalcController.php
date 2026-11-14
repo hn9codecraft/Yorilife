@@ -36,6 +36,11 @@ final class BonusCalcController
         JsonResponse::success((new BonusCalcService())->remove($id));
     }
 
+    public function deleteMany(Request $request): void
+    {
+        JsonResponse::success((new BonusCalcService())->removeMany($request->json()));
+    }
+
     public function showMonth(Request $request): void
     {
         JsonResponse::success((new BonusCalcService())->month(
