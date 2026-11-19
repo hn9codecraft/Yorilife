@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 import PageShell from '../../components/PageShell.jsx'
 import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import TableSection, { TableSectionStack } from '../../components/TableSection.jsx'
@@ -9,7 +8,7 @@ import FormModal from '../../components/FormModal.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import ExportCsvButton from '../../components/ExportCsvButton.jsx'
 import { LabelNote, TextField } from '../../components/FormField.jsx'
-import { CellStack } from '../../components/TableCells.jsx'
+import { CellStack, CountValue } from '../../components/TableCells.jsx'
 import useErpData from '../../data/useErpData.js'
 import usePermission from '../../data/usePermission.js'
 import useEditor from '../../hooks/useEditor.js'
@@ -77,23 +76,28 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
   const q = query.trim().toLowerCase()
   const rows = records.filter((record) => !q || (record.name ?? '').toLowerCase().includes(q))
 
+  const locked = 'Products linked hova thi delete nathi thatu'
   const columns = [
-    { key: 'name', header: config.title, width: 'lg', sticky: 'start', truncate: true, title: (record) => record.name, render: (record) => <CellStack strong primary={record.name} /> },
+    { key: 'name', header: config.title, sticky: 'start', truncate: true, title: (record) => record.name, render: (record) => <CellStack strong primary={record.name} /> },
     {
       key: 'products',
       header: 'Products',
       width: 'sm',
-      compact: true,
+      fixed: true,
       align: 'end',
-      render: (record) => (record.productCount > 0
-        ? <Link to={`/products/list?${config.productFilter}=${record.id}`} className="table-count-link" title={`Show the ${record.productCount} products`}>{record.productCount}</Link>
-        : <span className="table-count is-zero">0</span>),
+      render: (record) => (
+        <CountValue
+          count={record.productCount}
+          to={record.productCount > 0 ? `/products/list?${config.productFilter}=${record.id}` : null}
+          title={record.productCount > 0 ? `Show the ${record.productCount} products` : 'No products'}
+        />
+      ),
     },
     {
       key: 'updated',
       header: 'Last Updated',
-      width: 'md',
-      compact: true,
+      width: 'lg',
+      fixed: true,
       render: (record) => (record.updatedAt
         ? <CellStack primary={formatDateTime(record.updatedAt)} secondary={record.createdAt ? `Created ${formatDateTime(record.createdAt)}` : null} />
         : null),
@@ -109,16 +113,17 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
           <button type="button" className="btn btn-sm btn-outline-secondary btn-icon" aria-label={`Edit ${record.name}`} title="Edit" onClick={() => onEdit(record)}>
             <i className="bi bi-pencil" aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-danger btn-icon"
-            aria-label={`Delete ${record.name}`}
-            title={record.productCount > 0 ? `Used by ${record.productCount} products — change them first` : 'Delete'}
-            disabled={record.productCount > 0}
-            onClick={() => onDelete(record)}
-          >
-            <i className="bi bi-trash" aria-hidden="true" />
-          </button>
+          <span className="table-action" title={record.productCount > 0 ? locked : 'Delete'}>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-danger btn-icon"
+              aria-label={record.productCount > 0 ? `Delete ${record.name}. ${locked}` : `Delete ${record.name}`}
+              disabled={record.productCount > 0}
+              onClick={() => onDelete(record)}
+            >
+              <i className="bi bi-trash" aria-hidden="true" />
+            </button>
+          </span>
         </div>
       ) : null,
     },
@@ -159,7 +164,7 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
       <DataTable
         caption={config.title}
         striped
-        scroll
+        fixedLayout
         columns={columns}
         rows={rows}
         emptyIcon={records.length ? 'bi-search' : 'bi-inbox'}

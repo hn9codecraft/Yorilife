@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { splitChips } from '../utils/chips.js'
 
 /**
@@ -43,6 +44,19 @@ export function ChipList({ items, max = 2, label }) {
       )}
     </ul>
   )
+}
+
+/**
+ * A count in a table. Zero and non-zero use the same badge shape.
+ * Pass `to` to link a count above zero (for example the products that use a type).
+ */
+export function CountValue({ count = 0, to, title }) {
+  const value = Number(count) || 0
+  const label = String(value)
+  if (to && value > 0) {
+    return <Link to={to} className="table-count table-count-link" title={title}>{label}</Link>
+  }
+  return <span className={`table-count${value === 0 ? ' is-zero' : ''}`} title={title}>{label}</span>
 }
 
 /** Small status label. tone: 'danger' | 'warning' | 'success' | 'neutral'. */

@@ -410,7 +410,6 @@ export default function StockistsPage() {
           columns={columns}
           rows={rows}
           striped
-          scroll
           selection={canManage ? {
             isSelected: (stockist) => selection.isSelected(stockist.id),
             onToggle: (stockist) => selection.toggle(stockist.id),

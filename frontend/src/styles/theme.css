@@ -1351,6 +1351,9 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   position: relative;
   width: 100%;
   overflow-x: auto;
+  /* overflow-x: auto would otherwise turn overflow-y into auto as well,
+     which draws a vertical scrollbar and squeezes the last column. */
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1486,6 +1489,36 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   --bs-table-bg-type: var(--table-stripe-bg);
 }
 
+/* Same column widths in every table that shares a column config (table-layout: fixed). */
+.table--fixed {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.table--fixed > :not(caption) > tr > .table-col--sticky-start {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.table--fixed > :not(caption) > tr > .table-col--fixed.table-col--sm {
+  width: var(--table-col-sm);
+  min-width: var(--table-col-sm);
+  max-width: var(--table-col-sm);
+}
+
+.table--fixed > :not(caption) > tr > .table-col--fixed.table-col--md {
+  width: var(--table-col-md);
+  min-width: var(--table-col-md);
+  max-width: var(--table-col-md);
+}
+
+.table--fixed > :not(caption) > tr > .table-col--fixed.table-col--lg {
+  width: var(--table-col-lg);
+  min-width: var(--table-col-lg);
+  max-width: var(--table-col-lg);
+}
+
 .table-col--sm { min-width: var(--table-col-sm); }
 .table-col--md { min-width: var(--table-col-md); }
 .table-col--lg { min-width: var(--table-col-lg); }
@@ -1532,7 +1565,8 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   --table-row-bg: var(--color-primary-100);
 }
 
-/* Sticky header: the wrapper scrolls both ways inside a max height */
+/* Opt-in vertical scroll with a sticky header (Bonus Calc year table).
+   Every other list grows to its rows and only scrolls sideways. */
 .table-container--scroll {
   max-height: var(--table-scroll-max-height);
   overflow: auto;
@@ -1629,24 +1663,24 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
 /* Count cells (e.g. Stockists per headquarter); a count can link to the filtered list */
 .table-count,
 .table-count-link {
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--font-weight-semibold);
-}
-
-.table-count.is-zero {
-  color: var(--color-text-subtle);
-  font-weight: var(--font-weight-regular);
-}
-
-.table-count-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 2rem;
   padding: 0.0625rem 0.5rem;
   border-radius: var(--radius-pill);
   background-color: var(--color-primary-50);
   color: var(--color-on-subtle);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
   text-align: center;
   text-decoration: none;
+}
+
+.table-count.is-zero {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .table-count-link:hover {
@@ -2569,7 +2603,28 @@ select.filter-bar__control {
 .table-actions {
   display: inline-flex;
   flex-wrap: nowrap;
+  align-items: center;
   gap: var(--space-2);
+}
+
+/* Wrapper so a disabled icon button can still show its tooltip. */
+.table-action {
+  display: inline-flex;
+}
+
+.table-action:has(.btn-icon:disabled) {
+  cursor: not-allowed;
+}
+
+.table-actions .btn-icon:disabled {
+  --bs-btn-disabled-color: var(--color-text-subtle);
+  --bs-btn-disabled-bg: var(--color-surface-muted);
+  --bs-btn-disabled-border-color: var(--color-border);
+  opacity: 1;
+  pointer-events: none;
+  color: var(--color-text-subtle);
+  background-color: var(--color-surface-muted);
+  border-color: var(--color-border);
 }
 
 .table-empty {
@@ -3595,7 +3650,7 @@ legend.form-label {
 
   /* Label/value rows instead of a sideways scroll, when cells name their column. */
   .table-container:has(td[data-label]) {
-    overflow-x: visible;
+    overflow: visible;
   }
 
   .table-container:has(td[data-label]) .table,
