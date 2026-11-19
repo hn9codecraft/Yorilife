@@ -5,7 +5,7 @@ import { stickyEndRight, tableMinWidth } from '../utils/tableWidth.js'
 /**
  * Responsive data table inside the standard .table-container.
  * columns: [{ key, header, render?(row), align?: 'end', nowrap?: bool, srOnlyHeader?: bool,
- *             width?: 'sm'|'md'|'lg'|'xl'|'money', sticky?: 'start'|'end', truncate?: bool, title?(row) }]
+ *             width?: 'sm'|'md'|'lg'|'xl'|'money', sticky?: 'start'|'end', share?: bool, truncate?: bool, title?(row) }]
  *   width     min-width from the --table-col-* tokens ('money': right-aligned amount)
  *   The table's min-width is the sum of its column widths, so no column can
  *   hide under a pinned column; narrower screens scroll sideways instead.
@@ -15,8 +15,10 @@ import { stickyEndRight, tableMinWidth } from '../utils/tableWidth.js'
  *   compact   as narrow as its content (one line); wide columns take the rest
  *   key 'actions' is always compact, right-aligned and on one line.
  * striped (optional): zebra rows.
- * fixedLayout (optional): table-layout fixed so columns with `fixed: true` share
- *   the same widths in every table that uses the same column config.
+ * fixedLayout (optional): table-layout fixed. The pinned first column uses
+ *   nameColumn (the shared content width, clamped to the pinned min and max).
+ *   Columns marked `share` split whatever width is left. Sibling tables pass
+ *   the same nameColumn so their columns line up.
  * scroll (optional): sticky header inside a max-height box. Lists leave this off
  *   so the table grows to its rows. Bonus Calc's year table still opts in.
  * Empty cell values (null, '', '—') show a muted "—".
@@ -101,7 +103,7 @@ function useScrollEdges(ref, deps) {
 }
 
 
-export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, rowClassName = null, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, fixedLayout = false, scroll = false, scrollAfter = 10 }) {
+export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, rowClassName = null, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, fixedLayout = false, nameColumn, scroll = false, scrollAfter = 10 }) {
   const boxRef = useRef(null)
   const showEmpty = rows.length === 0 && Boolean(empty)
   useScrollEdges(boxRef, [showEmpty, rows.length, columns.length])
@@ -121,7 +123,7 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
       column.sticky === 'end' && column.key === stickyEndEdge && 'table-col--sticky-end-edge',
       column.sticky === 'end' && column.key === stickyEndLast && 'table-col--sticky-end-last',
       column.key === 'actions' && 'table-col--actions',
-      column.fixed && 'table-col--fixed',
+      column.share && 'table-col--share',
       column.compact && 'table-col--compact',
     ].filter(Boolean).join(' ') || undefined
   const cellStyle = (column) => (column.sticky === 'end' ? { right: stickyEndRight(columns, column) } : undefined)
@@ -131,13 +133,13 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
     'table table-hover',
     striped && 'table--striped',
     stickyStart && 'table--sticky-start',
-    fixedLayout && 'table--fixed',
+    fixedLayout && 'table--spread',
     selection && 'table--has-select',
   ].filter(Boolean).join(' ')
 
   return (
     <div ref={boxRef} className={`table-container${scrolling ? ' table-container--scroll' : ''}`}>
-      <table className={tableClass} style={{ minWidth: tableMinWidth(columns, Boolean(selection)) }}>
+      <table className={tableClass} style={{ minWidth: tableMinWidth(columns, Boolean(selection)), '--table-name-col': nameColumn }}>
         {caption && <caption className="visually-hidden">{caption}</caption>}
         <thead>
           <tr>

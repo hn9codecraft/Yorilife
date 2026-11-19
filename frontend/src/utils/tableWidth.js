@@ -25,6 +25,15 @@ export function stickyEndRight(columns = [], column) {
   return `calc(${after.map((item) => `var(${columnToken(item)})`).join(' + ')})`
 }
 
+/**
+ * Width for a name column shared by sibling tables. Long enough for the
+ * longest label, then clamped by the pinned min and max in CSS.
+ */
+export function contentColumnWidth(labels = []) {
+  const longest = labels.reduce((max, label) => Math.max(max, [...String(label ?? '')].length), 0)
+  return `calc(${longest}ch + 2 * var(--table-cell-padding-x))`
+}
+
 /** calc() of every column's min-width (plus the select column), or undefined. */
 export function tableMinWidth(columns = [], withSelection = false) {
   const parts = columns.map((column) => `var(${columnToken(column)})`)

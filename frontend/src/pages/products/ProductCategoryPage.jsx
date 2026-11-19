@@ -16,6 +16,7 @@ import useFormState from '../../hooks/useFormState.js'
 import useUrlFilters from '../../hooks/useUrlFilters.js'
 import { formatDateTime } from '../../data/headquarterList.js'
 import { PRODUCT_CATEGORY_CSV, nameTaken } from '../../data/productList.js'
+import { contentColumnWidth } from '../../utils/tableWidth.js'
 
 const FILTER_DEFAULTS = Object.freeze({ qt: '', qg: '' })
 
@@ -71,7 +72,7 @@ function CategoryForm({ formId, kind, record, records, onSave }) {
   )
 }
 
-function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit, onDelete }) {
+function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit, onDelete, nameColumn }) {
   const config = KINDS[kind]
   const q = query.trim().toLowerCase()
   const rows = records.filter((record) => !q || (record.name ?? '').toLowerCase().includes(q))
@@ -83,8 +84,7 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
       key: 'products',
       header: 'Products',
       width: 'sm',
-      fixed: true,
-      align: 'end',
+      share: true,
       render: (record) => (
         <CountValue
           count={record.productCount}
@@ -97,7 +97,7 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
       key: 'updated',
       header: 'Last Updated',
       width: 'lg',
-      fixed: true,
+      share: true,
       render: (record) => (record.updatedAt
         ? <CellStack primary={formatDateTime(record.updatedAt)} secondary={record.createdAt ? `Created ${formatDateTime(record.createdAt)}` : null} />
         : null),
@@ -165,6 +165,7 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
         caption={config.title}
         striped
         fixedLayout
+        nameColumn={nameColumn}
         columns={columns}
         rows={rows}
         emptyIcon={records.length ? 'bi-search' : 'bi-inbox'}
@@ -191,6 +192,12 @@ export default function ProductCategoryPage() {
   const [filters, setFilter] = useUrlFilters(FILTER_DEFAULTS)
 
   const recordsOf = (kind) => state[KINDS[kind].collection] ?? []
+  const nameColumn = contentColumnWidth([
+    'Product Type',
+    'Product Group',
+    ...recordsOf('type').map((record) => record.name),
+    ...recordsOf('group').map((record) => record.name),
+  ])
   const openNew = (kind) => { setEditingKind(kind); editor.openNew() }
   const openEdit = (kind, record) => { setEditingKind(kind); editor.openEdit(record) }
   const config = KINDS[editingKind]
@@ -211,6 +218,7 @@ export default function ProductCategoryPage() {
             onAdd={() => openNew(kind)}
             onEdit={(record) => openEdit(kind, record)}
             onDelete={(record) => setDeleting({ kind, record })}
+            nameColumn={nameColumn}
           />
         ))}
       </TableSectionStack>
