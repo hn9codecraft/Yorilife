@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { contentColumnWidth, stickyEndRight, tableMinWidth } from './tableWidth.js'
+import { stickyEndRight, tableMinWidth } from './tableWidth.js'
 
 test('table min-width adds up every column, actions and the select column', () => {
   const columns = [{ key: 'name', width: 'xl' }, { key: 'mrp', width: 'money' }, { key: 'scheme' }, { key: 'actions' }]
@@ -12,11 +12,6 @@ test('table min-width adds up every column, actions and the select column', () =
 test('pinned columns count only their small minimum, not their width token', () => {
   const columns = [{ key: 'name', width: 'xl', sticky: 'start' }, { key: 'code', width: 'sm' }, { key: 'more', sticky: 'end' }]
   assert.equal(tableMinWidth(columns), 'calc(var(--table-col-pinned-min) + var(--table-col-sm) + var(--table-col-actions))')
-})
-
-test('a shared name column is as wide as the longest label', () => {
-  assert.equal(contentColumnWidth(['Drops', 'Best Selling']), 'calc(12ch + 2 * var(--table-cell-padding-x))')
-  assert.equal(contentColumnWidth([]), 'calc(0ch + 2 * var(--table-cell-padding-x))')
 })
 
 test('a sticky money total keeps its width and sits to the left of pinned actions', () => {

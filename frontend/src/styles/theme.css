@@ -1489,34 +1489,38 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   --bs-table-bg-type: var(--table-stripe-bg);
 }
 
-/* Sibling tables (Category) share one name-column width. That column is only
-   as wide as its text, between the pinned min and max. Columns marked share
-   split the leftover width equally, so a short name cannot open a gap that
-   pushes the other columns to the far edge. */
+/* Sibling tables (Category) keep Products, Last Updated and Actions at their
+   token widths, the same widths in every table. The name column takes the
+   remaining width and stays left-aligned, so a short count or date cannot
+   open an empty band between those columns. */
 .table.table--spread {
   width: 100%;
   table-layout: fixed;
 }
 
 .table.table--spread > :not(caption) > tr > .table-col--sticky-start {
-  width: clamp(var(--table-col-pinned-min), var(--table-name-col, var(--table-col-pinned-min)), var(--table-col-pinned-max));
-  max-width: var(--table-col-pinned-max);
-}
-
-.table.table--spread > :not(caption) > tr > .table-col--share {
   width: auto;
+  max-width: none;
 }
 
-.table.table--spread > :not(caption) > tr > .table-col--sm:not(.table-col--share):not(.table-col--sticky-start) {
+.table.table--spread > :not(caption) > tr > .table-col--sm:not(.table-col--sticky-start) {
   width: var(--table-col-sm);
+  max-width: var(--table-col-sm);
 }
 
-.table.table--spread > :not(caption) > tr > .table-col--md:not(.table-col--share):not(.table-col--sticky-start) {
+.table.table--spread > :not(caption) > tr > .table-col--md:not(.table-col--sticky-start) {
   width: var(--table-col-md);
+  max-width: var(--table-col-md);
 }
 
-.table.table--spread > :not(caption) > tr > .table-col--lg:not(.table-col--share):not(.table-col--sticky-start) {
+.table.table--spread > :not(caption) > tr > .table-col--lg:not(.table-col--sticky-start) {
   width: var(--table-col-lg);
+  max-width: var(--table-col-lg);
+}
+
+.table.table--spread > :not(caption) > tr > .table-col--xl:not(.table-col--sticky-start) {
+  width: var(--table-col-xl);
+  max-width: var(--table-col-xl);
 }
 
 .table-col--sm { min-width: var(--table-col-sm); }
