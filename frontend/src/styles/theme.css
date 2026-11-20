@@ -1349,10 +1349,7 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   /* position: relative keeps absolutely positioned children (e.g. .visually-hidden
      header labels) inside the scroll box instead of widening the page */
   position: relative;
-  /* As wide as the columns, up to the card. A short name does not stretch the
-     first column across the card. */
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
   overflow-x: auto;
   /* overflow-x: auto would otherwise turn overflow-y into auto as well,
      which draws a vertical scrollbar and squeezes the last column. */
@@ -1492,10 +1489,55 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   --bs-table-bg-type: var(--table-stripe-bg);
 }
 
-/* The table is as wide as its columns. It does not stretch to the card, so the
-   leftover width cannot open a gap after the name. */
+/* Full card width. The name stays at its text, the other columns keep their
+   token widths, and one blank column just before Actions takes the leftover
+   so the header, stripes and borders still reach the right edge. */
 .table-container > .table {
-  width: max-content;
+  width: 100%;
+}
+
+.table--banded {
+  table-layout: auto;
+}
+
+.table--banded > :not(caption) > tr > .table-col--sticky-start {
+  width: min(var(--table-name-col, max-content), var(--table-col-pinned-max));
+  max-width: min(var(--table-name-col, max-content), var(--table-col-pinned-max));
+}
+
+/* Shrink to the token or the heading, whichever is wider. Leftover stays in the filler. */
+.table--banded > :not(caption) > tr > .table-col--sm:not(.table-col--sticky-start),
+.table--banded > :not(caption) > tr > .table-col--md:not(.table-col--sticky-start),
+.table--banded > :not(caption) > tr > .table-col--lg:not(.table-col--sticky-start),
+.table--banded > :not(caption) > tr > .table-col--xl:not(.table-col--sticky-start),
+.table--banded > :not(caption) > tr > .table-col--money,
+.table--banded > :not(caption) > tr > .table-col--auto,
+.table--banded > :not(caption) > tr > .table-col--actions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.table--banded > :not(caption) > tr > .table-col--fill {
+  width: 100%;
+}
+
+.bonus-sheet .table--banded,
+.bonus-year .table--banded,
+.table-container--scroll > .table--banded {
+  table-layout: auto;
+}
+
+.bonus-sheet .table-col--fill,
+.bonus-year .table-col--fill,
+.table-container--scroll .table-col--fill {
+  display: none;
+}
+
+.bonus-sheet .table--banded > :not(caption) > tr > *,
+.bonus-year .table--banded > :not(caption) > tr > *,
+.table-container--scroll > .table--banded > :not(caption) > tr > * {
+  width: auto;
+  max-width: none;
 }
 
 .table-col--sm { min-width: var(--table-col-sm); }
@@ -3682,6 +3724,10 @@ legend.form-label {
   .table-container:has(td[data-label]) tr {
     display: block;
     width: 100%;
+  }
+
+  .table-container:has(td[data-label]) .table-col--fill {
+    display: none;
   }
 
   .table-container:has(td[data-label]) thead {

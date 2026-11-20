@@ -56,8 +56,10 @@ export function measureNameColumnWidth(labels = []) {
 }
 
 /** calc() of every column's min-width (plus the select column), or undefined. */
-export function tableMinWidth(columns = [], withSelection = false) {
-  const parts = columns.map((column) => `var(${columnToken(column)})`)
+export function tableMinWidth(columns = [], withSelection = false, nameColumn) {
+  const parts = columns.map((column) => (
+    column.sticky === 'start' && nameColumn ? nameColumn : `var(${columnToken(column)})`
+  ))
   if (withSelection && parts.length) parts.unshift('var(--table-select-col-width)')
   return parts.length ? `calc(${parts.join(' + ')})` : undefined
 }

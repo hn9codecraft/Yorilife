@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useRef } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import EmptyState from './EmptyState.jsx'
 import { measureNameColumnWidth, stickyEndRight, tableMinWidth } from '../utils/tableWidth.js'
 
@@ -18,6 +18,8 @@ import { measureNameColumnWidth, stickyEndRight, tableMinWidth } from '../utils/
  * nameColumn (optional): shared width for the pinned first column, from
  *   measureNameColumnWidth. Sibling tables pass the same value so they line up.
  *   Without it, the column is measured from this table's own header and cells.
+ *   A blank column just before the pinned end columns takes leftover width, so
+ *   the row still spans the card and Actions stays on the right edge.
  * scroll (optional): sticky header inside a max-height box. Lists leave this off
  *   so the table grows to its rows. Bonus Calc's year table still opts in.
  * Empty cell values (null, '', '—') show a muted "—".
@@ -105,17 +107,17 @@ function useScrollEdges(ref, deps) {
 export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, rowClassName = null, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, nameColumn, scroll = false, scrollAfter = 10 }) {
   const boxRef = useRef(null)
   const showEmpty = rows.length === 0 && Boolean(empty)
+  const [measuredName, setMeasuredName] = useState(nameColumn)
   useScrollEdges(boxRef, [showEmpty, rows.length, columns.length])
   useLayoutEffect(() => {
     const table = boxRef.current?.querySelector('table')
     if (!table || scroll) return undefined
-    if (nameColumn) {
-      table.style.setProperty('--table-name-col', nameColumn)
-      return undefined
-    }
     const labels = [...table.querySelectorAll('.table-col--sticky-start')].map((cell) => cell.innerText.replace(/\s+/g, ' ').trim())
-    const width = measureNameColumnWidth(labels)
-    if (width) table.style.setProperty('--table-name-col', width)
+    const width = nameColumn || measureNameColumnWidth(labels)
+    if (width) {
+      table.style.setProperty('--table-name-col', width)
+      setMeasuredName(width)
+    }
     return undefined
   }, [nameColumn, scroll, rows, columns])
   if (showEmpty) return empty
@@ -129,7 +131,7 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
       (column.align === 'end' || column.width === 'money') && 'text-end',
       column.width === 'money' && 'text-nowrap',
       column.nowrap && 'text-nowrap',
-      column.width && `table-col--${column.width}`,
+      (column.width ? `table-col--${column.width}` : (!column.sticky && column.key !== 'actions' && 'table-col--auto')),
       column.sticky && `table-col--sticky-${column.sticky}`,
       column.sticky === 'end' && column.key === stickyEndEdge && 'table-col--sticky-end-edge',
       column.sticky === 'end' && column.key === stickyEndLast && 'table-col--sticky-end-last',
@@ -137,18 +139,31 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
       column.compact && 'table-col--compact',
     ].filter(Boolean).join(' ') || undefined
   const cellStyle = (column) => (column.sticky === 'end' ? { right: stickyEndRight(columns, column) } : undefined)
-  const columnCount = columns.length + (selection ? 1 : 0)
+  const showFill = !scrolling
+  const fillAt = columns.findIndex((column) => column.sticky === 'end')
+  const columnCount = columns.length + (selection ? 1 : 0) + (showFill ? 1 : 0)
   const stickyStart = columns.some((column) => column.sticky === 'start')
   const tableClass = [
     'table table-hover',
     striped && 'table--striped',
     stickyStart && 'table--sticky-start',
+    showFill && 'table--banded',
     selection && 'table--has-select',
   ].filter(Boolean).join(' ')
+  const nameWidth = nameColumn || measuredName
+  const slots = (renderColumn) => {
+    const items = []
+    columns.forEach((column, index) => {
+      if (showFill && fillAt === index) items.push(renderColumn(null))
+      items.push(renderColumn(column))
+    })
+    if (showFill && fillAt < 0) items.push(renderColumn(null))
+    return items
+  }
 
   return (
     <div ref={boxRef} className={`table-container${scrolling ? ' table-container--scroll' : ''}`}>
-      <table className={tableClass} style={{ minWidth: tableMinWidth(columns, Boolean(selection)) }}>
+      <table className={tableClass} style={{ minWidth: tableMinWidth(columns, Boolean(selection), nameWidth), '--table-name-col': nameWidth }}>
         {caption && <caption className="visually-hidden">{caption}</caption>}
         <thead>
           <tr>
@@ -163,22 +178,16 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
                 />
               </th>
             )}
-            {columns.map((column) => {
-              const active = Boolean(sort && column.sortable && sort.key === column.key)
-              const ariaSort = column.sortable && sort
-                ? (active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none')
-                : undefined
-              return (
-                <th key={column.key} scope="col" className={cellClass(column)} style={cellStyle(column)} aria-sort={ariaSort}>
+            {slots((column) => column ? (
+                <th key={column.key} scope="col" className={cellClass(column)} style={cellStyle(column)} aria-sort={column.sortable && sort ? (sort.key === column.key ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}>
                   {column.srOnlyHeader ? <span className="visually-hidden">{column.header}</span> : column.sortable && onSort ? (
-                    <button type="button" className={`table-sort${active ? ' is-active' : ''}`} aria-label={sortLabel(column, active ? sort : null)} onClick={() => onSort(column.key)}>
+                    <button type="button" className={`table-sort${sort?.key === column.key ? ' is-active' : ''}`} aria-label={sortLabel(column, sort?.key === column.key ? sort : null)} onClick={() => onSort(column.key)}>
                       {column.header}
-                      <i className={`bi ${active ? (sort.direction === 'asc' ? 'bi-sort-up' : 'bi-sort-down') : 'bi-arrow-down-up'}`} aria-hidden="true" />
+                      <i className={`bi ${sort?.key === column.key ? (sort.direction === 'asc' ? 'bi-sort-up' : 'bi-sort-down') : 'bi-arrow-down-up'}`} aria-hidden="true" />
                     </button>
                   ) : column.header}
                 </th>
-              )
-            })}
+              ) : <th key="__fill" className="table-col--fill" aria-hidden="true" />)}
           </tr>
         </thead>
         <tbody>
@@ -206,13 +215,13 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
                     />
                   </td>
                 )}
-                {columns.map((column) => (
+                {slots((column) => column ? (
                   <td key={column.key} className={cellClass(column)} style={cellStyle(column)} data-label={column.header}>
                     {column.sticky === 'start'
                       ? <span className="table-pinned" title={pinnedTitle(column, row)}>{cellContent(column, row)}</span>
                       : cellContent(column, row)}
                   </td>
-                ))}
+                ) : <td key="__fill" className="table-col--fill" aria-hidden="true" />)}
               </tr>
               {after && (
                 <tr className="table-subrow">
