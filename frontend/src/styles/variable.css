@@ -179,7 +179,7 @@
 
   --table-col-money: 7.5rem;                   /* MRP / PTR / amounts, right-aligned */
   --table-col-auto: 6rem;                      /* columns without a width, for the table min-width */
-  --table-col-actions: 5.5rem;                 /* pinned Actions column: sized to its buttons (width 1%) */
+  --table-col-actions: 7rem;                   /* two icon buttons plus the cell's horizontal padding */
   --table-col-pinned-min: 8.75rem;             /* pinned first column: sizes to content ... */
   --table-col-pinned-max: 17.5rem;             /* ... up to this, then … + tooltip */
   --bonus-qty-width: 5.75rem;                  /* OP / purchase / sales inputs, all the same width */

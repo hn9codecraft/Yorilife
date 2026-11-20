@@ -309,7 +309,6 @@ export default function ProductListPage() {
         <DataTable
           caption="Products"
           striped
-          scroll
           selection={canDelete ? {
             isSelected: (product) => selection.isSelected(product.id),
             onToggle: (product) => selection.toggle(product.id),

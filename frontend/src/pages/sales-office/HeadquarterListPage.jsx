@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
 import PageShell from '../../components/PageShell.jsx'
 import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import usePermission from '../../data/usePermission.js'
@@ -12,7 +11,7 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import { LabelNote, TextField } from '../../components/FormField.jsx'
 import SearchableSelect from '../../components/SearchableSelect.jsx'
 import SalesOfficeCsv from '../../components/SalesOfficeCsv.jsx'
-import { CellStack } from '../../components/TableCells.jsx'
+import { CellStack, CountValue } from '../../components/TableCells.jsx'
 import useErpData from '../../data/useErpData.js'
 import useEditor from '../../hooks/useEditor.js'
 import useRowSelection from '../../hooks/useRowSelection.js'
@@ -136,9 +135,13 @@ export default function HeadquarterListPage() {
       align: 'end',
       render: (office) => {
         const count = countOf(office, 'stockists')
-        return count > 0
-          ? <Link to={`/sales-office/stockists?hq=${office.id}`} className="table-count-link" title={`Show the ${count} stockists of ${office.name}`}>{count}</Link>
-          : <span className="table-count is-zero">0</span>
+        return (
+          <CountValue
+            count={count}
+            to={count > 0 ? `/sales-office/stockists?hq=${office.id}` : null}
+            title={count > 0 ? `Show the ${count} stockists of ${office.name}` : 'No stockists'}
+          />
+        )
       },
     },
     {
@@ -146,7 +149,7 @@ export default function HeadquarterListPage() {
       header: 'Employees',
       width: 'sm',
       align: 'end',
-      render: (office) => (employeesKnown ? <span className={`table-count${countOf(office, 'employees') ? '' : ' is-zero'}`}>{countOf(office, 'employees')}</span> : null),
+      render: (office) => (employeesKnown ? <CountValue count={countOf(office, 'employees')} title={countOf(office, 'employees') ? undefined : 'No employees'} /> : null),
     },
     {
       key: 'updated',
@@ -223,7 +226,6 @@ export default function HeadquarterListPage() {
         <DataTable
           caption="Headquarters"
           striped
-          scroll
           selection={canManage ? {
             isSelected: (office) => selection.isSelected(office.id),
             onToggle: (office) => selection.toggle(office.id),

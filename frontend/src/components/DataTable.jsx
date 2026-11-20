@@ -15,8 +15,11 @@ import { stickyEndRight, tableMinWidth } from '../utils/tableWidth.js'
  *   compact   as narrow as its content (one line); wide columns take the rest
  *   key 'actions' is always compact, right-aligned and on one line.
  * striped (optional): zebra rows.
- * scroll (optional): sticky header inside a max-height box, used only when there
- *   are more than scrollAfter rows (default 10) so short lists have no inner scrollbar.
+ * fixedLayout (optional): table-layout fixed. Columns with a width token keep
+ *   that width, and the pinned first column uses whatever space is left, with
+ *   its text on the left. Sibling tables that share a column config then line up.
+ * scroll (optional): sticky header inside a max-height box. Lists leave this off
+ *   so the table grows to its rows. Bonus Calc's year table still opts in.
  * Empty cell values (null, '', '—') show a muted "—".
  * renderAfterRow (optional): (row) => node shown in a full-width row under that row, or null.
  * selection (optional): { isSelected(row), onToggle(row), onToggleAll(), allSelected, indeterminate, label(row), isDisabled?(row) }
@@ -99,7 +102,7 @@ function useScrollEdges(ref, deps) {
 }
 
 
-export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, rowClassName = null, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, scroll = false, scrollAfter = 10 }) {
+export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, rowClassName = null, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, fixedLayout = false, scroll = false, scrollAfter = 10 }) {
   const boxRef = useRef(null)
   const showEmpty = rows.length === 0 && Boolean(empty)
   useScrollEdges(boxRef, [showEmpty, rows.length, columns.length])
@@ -128,6 +131,7 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
     'table table-hover',
     striped && 'table--striped',
     stickyStart && 'table--sticky-start',
+    fixedLayout && 'table--spread',
     selection && 'table--has-select',
   ].filter(Boolean).join(' ')
 

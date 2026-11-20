@@ -380,7 +380,6 @@ export default function EmployeesPage() {
           columns={columns}
           rows={shown}
           striped
-          scroll
           emptyText={rows === null ? 'Loading...' : rows.length ? 'No employees match your search.' : 'No employees yet.'}
           empty={rows !== null && rows.length === 0 && (
             <div className="card-body">

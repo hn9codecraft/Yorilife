@@ -133,7 +133,6 @@ export default function LocationPage() {
           columns={columns}
           rows={rows}
           striped
-          scroll
           selection={canManage ? {
             isSelected: (location) => selection.isSelected(location.id),
             onToggle: (location) => selection.toggle(location.id),
