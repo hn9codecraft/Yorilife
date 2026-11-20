@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Tooltip } from 'bootstrap'
 import PageShell from '../../components/PageShell.jsx'
 import DataStatusNotice from '../../components/DataStatusNotice.jsx'
 import TableSection, { TableSectionStack } from '../../components/TableSection.jsx'
@@ -16,6 +17,7 @@ import useFormState from '../../hooks/useFormState.js'
 import useUrlFilters from '../../hooks/useUrlFilters.js'
 import { formatDateTime } from '../../data/headquarterList.js'
 import { PRODUCT_CATEGORY_CSV, nameTaken } from '../../data/productList.js'
+import { measureNameColumnWidth } from '../../utils/tableWidth.js'
 
 const FILTER_DEFAULTS = Object.freeze({ qt: '', qg: '' })
 
@@ -71,12 +73,24 @@ function CategoryForm({ formId, kind, record, records, onSave }) {
   )
 }
 
-function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit, onDelete }) {
+/** Hover tip for a disabled row action. The button itself cannot show one. */
+function ActionHint({ title, children }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return undefined
+    const tip = new Tooltip(node, { title, container: 'body', placement: 'top' })
+    return () => tip.dispose()
+  }, [title])
+  return <span ref={ref} className="table-action" title={title}>{children}</span>
+}
+
+function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit, onDelete, nameColumn }) {
   const config = KINDS[kind]
   const q = query.trim().toLowerCase()
   const rows = records.filter((record) => !q || (record.name ?? '').toLowerCase().includes(q))
 
-  const locked = 'Products linked hova thi delete nathi thatu'
+  const locked = `Cannot delete: products are linked to this ${config.label.toLowerCase()}`
   const columns = [
     { key: 'name', header: config.title, sticky: 'start', truncate: true, title: (record) => record.name, render: (record) => <CellStack strong primary={record.name} /> },
     {
@@ -111,7 +125,7 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
           <button type="button" className="btn btn-sm btn-outline-secondary btn-icon" aria-label={`Edit ${record.name}`} title="Edit" onClick={() => onEdit(record)}>
             <i className="bi bi-pencil" aria-hidden="true" />
           </button>
-          <span className="table-action" title={record.productCount > 0 ? locked : 'Delete'}>
+          <ActionHint title={record.productCount > 0 ? locked : 'Delete'}>
             <button
               type="button"
               className="btn btn-sm btn-outline-danger btn-icon"
@@ -121,7 +135,7 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
             >
               <i className="bi bi-trash" aria-hidden="true" />
             </button>
-          </span>
+          </ActionHint>
         </div>
       ) : null,
     },
@@ -162,7 +176,7 @@ function CategoryTable({ kind, records, canManage, query, onQuery, onAdd, onEdit
       <DataTable
         caption={config.title}
         striped
-        fixedLayout
+        nameColumn={nameColumn}
         columns={columns}
         rows={rows}
         emptyIcon={records.length ? 'bi-search' : 'bi-inbox'}
@@ -189,6 +203,18 @@ export default function ProductCategoryPage() {
   const [filters, setFilter] = useUrlFilters(FILTER_DEFAULTS)
 
   const recordsOf = (kind) => state[KINDS[kind].collection] ?? []
+  const nameLabels = [
+    'Product Type',
+    'Product Group',
+    ...recordsOf('type').map((record) => record.name),
+    ...recordsOf('group').map((record) => record.name),
+  ]
+  const [nameColumn, setNameColumn] = useState()
+  useLayoutEffect(() => {
+    setNameColumn(measureNameColumnWidth(nameLabels))
+    // Labels are the only input; the array is rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nameLabels.join('\n')])
   const openNew = (kind) => { setEditingKind(kind); editor.openNew() }
   const openEdit = (kind, record) => { setEditingKind(kind); editor.openEdit(record) }
   const config = KINDS[editingKind]
@@ -209,6 +235,7 @@ export default function ProductCategoryPage() {
             onAdd={() => openNew(kind)}
             onEdit={(record) => openEdit(kind, record)}
             onDelete={(record) => setDeleting({ kind, record })}
+            nameColumn={nameColumn}
           />
         ))}
       </TableSectionStack>

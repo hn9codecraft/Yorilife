@@ -12,6 +12,7 @@ test('table min-width adds up every column, actions and the select column', () =
 test('pinned columns count only their small minimum, not their width token', () => {
   const columns = [{ key: 'name', width: 'xl', sticky: 'start' }, { key: 'code', width: 'sm' }, { key: 'more', sticky: 'end' }]
   assert.equal(tableMinWidth(columns), 'calc(var(--table-col-pinned-min) + var(--table-col-sm) + var(--table-col-actions))')
+  assert.equal(tableMinWidth(columns, false, '146px'), 'calc(146px + var(--table-col-sm) + var(--table-col-actions))')
 })
 
 test('a sticky money total keeps its width and sits to the left of pinned actions', () => {
