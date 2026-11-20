@@ -8,6 +8,7 @@ import FilterBar from '../../components/FilterBar.jsx'
 import LoadingIndicator from '../../components/LoadingIndicator.jsx'
 import Modal from '../../components/Modal.jsx'
 import TableSection, { TableSectionStack } from '../../components/TableSection.jsx'
+import { StatCard, StatCardGroup } from '../../components/StatCard.jsx'
 import usePermission from '../../data/usePermission.js'
 import useRouteMeta from '../../hooks/useRouteMeta.js'
 import { api } from '../../api/client.js'
@@ -53,23 +54,33 @@ function showQuantity(value) {
   return formatQuantity(value) ?? dash()
 }
 
-function Summary({ totals, label }) {
+function statQuantity(value) {
+  return formatQuantity(value) ?? formatQuantity(0)
+}
+
+function statMoney(value) {
+  return formatMoney(value) ?? formatMoney(0)
+}
+
+function countLabel(count, singular, plural) {
+  const number = Number(count) || 0
+  return `${number} ${number === 1 ? singular : plural}`
+}
+
+function MonthStats({ totals, label, hint }) {
   const items = [
-    ['OP', showQuantity(totals.openingQty)],
-    ['New purchase', showQuantity(totals.newPurchaseQty)],
-    ['Total product', showQuantity(totals.totalProduct)],
-    ['Sales', showQuantity(totals.productSalesQty)],
-    ['Bonus', showMoney(totals.bonusAmount)],
+    ['OP', statQuantity(totals.openingQty)],
+    ['New purchase', statQuantity(totals.newPurchaseQty)],
+    ['Total product', statQuantity(totals.totalProduct)],
+    ['Sales', statQuantity(totals.productSalesQty)],
+    ['Bonus', statMoney(totals.bonusAmount)],
   ]
   return (
-    <dl className="bonus-summary" aria-label={label}>
+    <StatCardGroup label={label}>
       {items.map(([name, value]) => (
-        <div key={name} className="bonus-summary__item">
-          <dt className="bonus-summary__label">{name}</dt>
-          <dd className="bonus-summary__value">{value}</dd>
-        </div>
+        <StatCard key={name} label={name} value={value} hint={hint} accent={name === 'Bonus'} />
       ))}
-    </dl>
+    </StatCardGroup>
   )
 }
 
@@ -259,7 +270,11 @@ export default function BonusCalcMonthPage() {
         <>
           <section className="bonus-grand" aria-labelledby="bonus-grand-title">
             <h2 id="bonus-grand-title" className="bonus-grand__title">Grand total</h2>
-            <Summary totals={grand} label="Grand total" />
+            <MonthStats
+              totals={grand}
+              label="Grand total"
+              hint={`${countLabel(view.length, 'stockist', 'stockists')} · ${countLabel(view.reduce((count, stockist) => count + stockist.lines.length, 0), 'product', 'products')}`}
+            />
           </section>
           <p className="bonus-note">Rates are kept from the first save of each product, so a later price change does not change this month.</p>
           {saved && <div className="alert alert-success" role="status">Saved.</div>}
@@ -319,7 +334,13 @@ export default function BonusCalcMonthPage() {
                           emptyIcon={stockist.lines.length ? 'bi-funnel' : 'bi-box2'}
                         />
                       </div>
-                      <Summary totals={stockistTotals(stockist.lines)} label={`${stockist.name} totals`} />
+                      <div className="bonus-stockist-stats">
+                        <MonthStats
+                          totals={stockistTotals(stockist.lines)}
+                          label={`${stockist.name} totals`}
+                          hint={countLabel(stockist.lines.length, 'product', 'products')}
+                        />
+                      </div>
                     </TableSection>
                 ))}
               </TableSectionStack>
