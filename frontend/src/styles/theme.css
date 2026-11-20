@@ -1343,6 +1343,93 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   margin-bottom: 0;
 }
 
+/* ==== Stat cards (components/StatCard.jsx) =============================
+   A row of KPI cards. Each card is a label, a large figure and an optional
+   muted line. Colours follow the surface tokens, so dark mode follows. */
+.stat-card-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.stat-card-group > .stat-card {
+  min-width: 0;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+.stat-card__label,
+.stat-card__value,
+.stat-card__hint {
+  margin: 0;
+}
+
+.stat-card__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stat-card__value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-card__number {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.stat-card__unit {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.stat-card__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+}
+
+.stat-card--accent {
+  border-left-width: 3px;
+  border-left-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
+@media (min-width: 992px) {
+  .stat-card-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1400px) {
+  .stat-card-group {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 /* ==== Tables =========================================================== */
 /* Wrap every data table in .table-container for card styling + scrolling */
 .table-container {
@@ -3513,60 +3600,19 @@ legend.form-label {
   font-variant-numeric: tabular-nums;
 }
 
-.bonus-summary {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-4) var(--space-5);
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface-muted);
-}
-
-.bonus-summary__item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: 6.5rem;
-}
-
-.bonus-summary__label,
-.bonus-summary__value {
-  margin: 0;
-}
-
-.bonus-summary__label {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-regular);
-}
-
-.bonus-summary__value {
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--font-weight-semibold);
-  text-align: right;
-  white-space: nowrap;
-}
-
 .bonus-grand {
   margin-bottom: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  overflow: hidden;
 }
 
 .bonus-grand__title {
-  margin: 0;
-  padding: var(--space-3) var(--space-4) 0;
+  margin: 0 0 var(--space-3);
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
 }
 
-.bonus-grand .bonus-summary {
-  background: transparent;
-  border-top: 0;
+.bonus-stockist-stats {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
 /* ==========================================================================
