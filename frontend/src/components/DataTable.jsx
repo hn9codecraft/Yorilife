@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useRef } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef } from 'react'
 import EmptyState from './EmptyState.jsx'
-import { stickyEndRight, tableMinWidth } from '../utils/tableWidth.js'
+import { measureNameColumnWidth, stickyEndRight, tableMinWidth } from '../utils/tableWidth.js'
 
 /**
  * Responsive data table inside the standard .table-container.
@@ -15,9 +15,9 @@ import { stickyEndRight, tableMinWidth } from '../utils/tableWidth.js'
  *   compact   as narrow as its content (one line); wide columns take the rest
  *   key 'actions' is always compact, right-aligned and on one line.
  * striped (optional): zebra rows.
- * fixedLayout (optional): table-layout fixed. Columns with a width token keep
- *   that width, and the pinned first column uses whatever space is left, with
- *   its text on the left. Sibling tables that share a column config then line up.
+ * nameColumn (optional): shared width for the pinned first column, from
+ *   measureNameColumnWidth. Sibling tables pass the same value so they line up.
+ *   Without it, the column is measured from this table's own header and cells.
  * scroll (optional): sticky header inside a max-height box. Lists leave this off
  *   so the table grows to its rows. Bonus Calc's year table still opts in.
  * Empty cell values (null, '', '—') show a muted "—".
@@ -102,10 +102,22 @@ function useScrollEdges(ref, deps) {
 }
 
 
-export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, rowClassName = null, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, fixedLayout = false, scroll = false, scrollAfter = 10 }) {
+export default function DataTable({ columns, rows, caption, empty, emptyText = 'No records yet.', emptyHint = null, emptyIcon = 'bi-inbox', emptyAction = null, rowKey = (row) => row.id, rowClassName = null, sort = null, onSort = null, selection = null, renderAfterRow = null, striped = false, nameColumn, scroll = false, scrollAfter = 10 }) {
   const boxRef = useRef(null)
   const showEmpty = rows.length === 0 && Boolean(empty)
   useScrollEdges(boxRef, [showEmpty, rows.length, columns.length])
+  useLayoutEffect(() => {
+    const table = boxRef.current?.querySelector('table')
+    if (!table || scroll) return undefined
+    if (nameColumn) {
+      table.style.setProperty('--table-name-col', nameColumn)
+      return undefined
+    }
+    const labels = [...table.querySelectorAll('.table-col--sticky-start')].map((cell) => cell.innerText.replace(/\s+/g, ' ').trim())
+    const width = measureNameColumnWidth(labels)
+    if (width) table.style.setProperty('--table-name-col', width)
+    return undefined
+  }, [nameColumn, scroll, rows, columns])
   if (showEmpty) return empty
 
   const scrolling = scroll && rows.length > scrollAfter
@@ -131,7 +143,6 @@ export default function DataTable({ columns, rows, caption, empty, emptyText = '
     'table table-hover',
     striped && 'table--striped',
     stickyStart && 'table--sticky-start',
-    fixedLayout && 'table--spread',
     selection && 'table--has-select',
   ].filter(Boolean).join(' ')
 

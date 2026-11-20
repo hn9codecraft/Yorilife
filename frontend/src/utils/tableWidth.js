@@ -25,6 +25,36 @@ export function stickyEndRight(columns = [], column) {
   return `calc(${after.map((item) => `var(${columnToken(item)})`).join(' + ')})`
 }
 
+/**
+ * Pixel width of a name column: the longest label as a header or as a cell,
+ * plus the table's horizontal cell padding. Capped in CSS at the pinned max.
+ */
+export function measureNameColumnWidth(labels = []) {
+  if (typeof document === 'undefined') return undefined
+  const header = document.createElement('span')
+  const cell = document.createElement('span')
+  header.className = 'table-measure table-measure--header'
+  cell.className = 'table-measure table-measure--cell'
+  const padProbe = document.createElement('div')
+  padProbe.className = 'table-measure'
+  padProbe.style.width = 'var(--table-cell-padding-x)'
+  document.body.append(header, cell, padProbe)
+  let text = 0
+  for (const label of labels) {
+    const value = String(label ?? '').trim()
+    if (!value) continue
+    header.textContent = value
+    cell.textContent = value
+    text = Math.max(text, header.getBoundingClientRect().width, cell.getBoundingClientRect().width)
+  }
+  const pad = padProbe.getBoundingClientRect().width
+  header.remove()
+  cell.remove()
+  padProbe.remove()
+  if (text <= 0) return undefined
+  return `${Math.ceil(text + pad * 2)}px`
+}
+
 /** calc() of every column's min-width (plus the select column), or undefined. */
 export function tableMinWidth(columns = [], withSelection = false) {
   const parts = columns.map((column) => `var(${columnToken(column)})`)

@@ -1349,7 +1349,10 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   /* position: relative keeps absolutely positioned children (e.g. .visually-hidden
      header labels) inside the scroll box instead of widening the page */
   position: relative;
-  width: 100%;
+  /* As wide as the columns, up to the card. A short name does not stretch the
+     first column across the card. */
+  width: fit-content;
+  max-width: 100%;
   overflow-x: auto;
   /* overflow-x: auto would otherwise turn overflow-y into auto as well,
      which draws a vertical scrollbar and squeezes the last column. */
@@ -1489,38 +1492,10 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
   --bs-table-bg-type: var(--table-stripe-bg);
 }
 
-/* Sibling tables (Category) keep Products, Last Updated and Actions at their
-   token widths, the same widths in every table. The name column takes the
-   remaining width and stays left-aligned, so a short count or date cannot
-   open an empty band between those columns. */
-.table.table--spread {
-  width: 100%;
-  table-layout: fixed;
-}
-
-.table.table--spread > :not(caption) > tr > .table-col--sticky-start {
-  width: auto;
-  max-width: none;
-}
-
-.table.table--spread > :not(caption) > tr > .table-col--sm:not(.table-col--sticky-start) {
-  width: var(--table-col-sm);
-  max-width: var(--table-col-sm);
-}
-
-.table.table--spread > :not(caption) > tr > .table-col--md:not(.table-col--sticky-start) {
-  width: var(--table-col-md);
-  max-width: var(--table-col-md);
-}
-
-.table.table--spread > :not(caption) > tr > .table-col--lg:not(.table-col--sticky-start) {
-  width: var(--table-col-lg);
-  max-width: var(--table-col-lg);
-}
-
-.table.table--spread > :not(caption) > tr > .table-col--xl:not(.table-col--sticky-start) {
-  width: var(--table-col-xl);
-  max-width: var(--table-col-xl);
+/* The table is as wide as its columns. It does not stretch to the card, so the
+   leftover width cannot open a gap after the name. */
+.table-container > .table {
+  width: max-content;
 }
 
 .table-col--sm { min-width: var(--table-col-sm); }
@@ -1572,8 +1547,21 @@ input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):
 /* Opt-in vertical scroll with a sticky header (Bonus Calc year table).
    Every other list grows to its rows and only scrolls sideways. */
 .table-container--scroll {
+  width: 100%;
   max-height: var(--table-scroll-max-height);
   overflow: auto;
+}
+
+/* Bonus Calc keeps its full-width sheets. List tables stay as wide as their columns. */
+.bonus-year .table-container,
+.bonus-sheet .table-container {
+  width: 100%;
+}
+
+.table-container--scroll > .table,
+.bonus-year .table-container > .table,
+.bonus-sheet .table-container > .table {
+  width: 100%;
 }
 
 .table-container--scroll > .table > thead > tr > th {
@@ -2684,13 +2672,44 @@ select.filter-bar__control {
   white-space: nowrap;
 }
 
-/* Pinned first column sizes to its content: small min-width, capped at
-   --table-col-pinned-max with … + tooltip (DataTable wraps the content in
-   .table-pinned). Overrides any width token set on the column. */
+/* Pinned first column is the longest name or the header, plus cell padding,
+   and never the leftover width of the table. Past --table-col-pinned-max the
+   text ends with … and a tooltip. DataTable sets --table-name-col. */
 .table > :not(caption) > tr > .table-col--sticky-start {
+  width: min(var(--table-name-col, max-content), var(--table-col-pinned-max));
+  min-width: min(var(--table-name-col, max-content), var(--table-col-pinned-max));
+  max-width: min(var(--table-name-col, var(--table-col-pinned-max)), var(--table-col-pinned-max));
+  white-space: nowrap;
+}
+
+.bonus-year .table > :not(caption) > tr > .table-col--sticky-start,
+.bonus-sheet .table > :not(caption) > tr > .table-col--sticky-start,
+.table-container--scroll > .table > :not(caption) > tr > .table-col--sticky-start {
   width: auto;
   min-width: var(--table-col-pinned-min);
   max-width: var(--table-col-pinned-max);
+}
+
+/* Off-screen probe used to measure a name column. Matches the table fonts. */
+.table-measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.table-measure--header {
+  font-size: var(--table-header-font-size);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.table-measure--cell {
+  font-size: var(--table-font-size);
+  font-weight: var(--font-weight-semibold);
 }
 
 .table-pinned {
@@ -3654,6 +3673,7 @@ legend.form-label {
 
   /* Label/value rows instead of a sideways scroll, when cells name their column. */
   .table-container:has(td[data-label]) {
+    width: 100%;
     overflow: visible;
   }
 
